@@ -6,16 +6,5 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
-    'WpOrg\\Requests\\' => array($vendorDir . '/rmccue/requests/src'),
-    'React\\Promise\\' => array($vendorDir . '/react/promise/src'),
-    'Razorpay\\Tests\\' => array($vendorDir . '/razorpay/razorpay/tests'),
-    'Razorpay\\Api\\' => array($vendorDir . '/razorpay/razorpay/src'),
     'PHPMailer\\PHPMailer\\' => array($vendorDir . '/phpmailer/phpmailer/src'),
-    'Happyr\\LinkedIn\\' => array($vendorDir . '/happyr/linkedin-api-client/src'),
-    'GuzzleHttp\\Stream\\' => array($vendorDir . '/guzzlehttp/streams/src'),
-    'GuzzleHttp\\Ring\\' => array($vendorDir . '/guzzlehttp/ringphp/src'),
-    'GuzzleHttp\\' => array($vendorDir . '/guzzlehttp/guzzle/src'),
-    'Facebook\\' => array($vendorDir . '/facebook/graph-sdk/src/Facebook'),
-    'Composer\\CaBundle\\' => array($vendorDir . '/composer/ca-bundle/src'),
-    'Abraham\\TwitterOAuth\\' => array($vendorDir . '/abraham/twitteroauth/src'),
 );
