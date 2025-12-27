@@ -1,0 +1,68 @@
+# -------------------------------
+# Enable Rewrite Engine
+# -------------------------------
+RewriteEngine On
+
+# -------------------------------
+# Force HTTPS and www (Optional)
+# -------------------------------
+# RewriteCond %{HTTPS} off
+# RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+
+# -------------------------------
+# URL Rewrites
+# -------------------------------
+RewriteRule ^about/?$ about.php [L,NC]
+RewriteRule ^contact/?$ contact.php [L,NC]
+RewriteRule ^cart/?$ cart.php [L,NC]
+RewriteRule ^checkout/?$ checkout.php [L,NC]
+RewriteRule ^user-login/?$ login.php [L,NC]
+RewriteRule ^register/?$ register.php [L,NC]
+RewriteRule ^logout/?$ logout.php [L,NC]
+RewriteRule ^wishlist/?$ wishlist.php [L,NC]
+RewriteRule ^my-account/?$ my-account.php [L,NC]
+
+RewriteRule ^blogs/?$ blog.php [L,NC]
+# Product Details
+RewriteRule ^product-details/([^/]+)/?$ product-details.php?alias=$1 [L,QSA]
+
+# Products
+RewriteRule ^shop/([^/]+)/?$ shop.php?alias=$1 [L,QSA]
+
+# Brand Search
+RewriteRule ^brand/([^/]+)/?$ search.php?query=$1 [L,QSA]
+
+# Blogs
+RewriteRule ^blogs/([^/]+)/?$ blog-details.php?alias=$1 [L,QSA]
+
+# -------------------------------
+# Custom Error Pages
+# -------------------------------
+ErrorDocument 404 /wasa-engine/404.php
+ErrorDocument 500 /wasa-engine/500.php
+
+# -------------------------------
+# Security: Protect .htaccess and .env
+# -------------------------------
+<FilesMatch "(\.htaccess|\.env)">
+    Require all denied
+</FilesMatch>
+
+# -------------------------------
+# Security: Protect sensitive files
+# -------------------------------
+<FilesMatch "(\.ini|\.log|\.conf|\.bak|\.sql|composer\.json|composer\.lock)$">
+    Require all denied
+</FilesMatch>
+
+# -------------------------------
+# Prevent directory listing
+# -------------------------------
+Options -Indexes
+
+# -------------------------------
+# PHP handler (cPanel default)
+# -------------------------------
+<IfModule mime_module>
+    AddHandler application/x-httpd-ea-php81 .php .php8 .phtml
+</IfModule>
