@@ -1,9 +1,6 @@
 {
     "require": {
         "setasign/fpdf": "^1.8",
-        "facebook/graph-sdk": "^5.1",
-        "abraham/twitteroauth": "^7.0",
-        "happyr/linkedin-api-client": "^0.6.3",
         "phpmailer/phpmailer": "^6.11",
         "razorpay/razorpay": "^2.9"
     }

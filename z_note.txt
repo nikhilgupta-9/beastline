@@ -1,0 +1,10 @@
+1- admin me init error log ko 1 karna he
+
+
+
+
+
+##  this is admin session check 
+
+require_once __DIR__ . '/../config/db-conn.php';
+require_once __DIR__ . '/../auth/admin-auth.php';

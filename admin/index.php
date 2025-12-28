@@ -1,11 +1,7 @@
 <?php
-include('auth_check.php');
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
-
-include "db-conn.php"
-  ?>
+require_once __DIR__ . '/config/db-conn.php';
+require_once __DIR__ . '/auth/admin-auth.php';
+?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -124,14 +120,14 @@ include "db-conn.php"
 
   <div class="wrapper">
     <?php
-    include "header.php";
+    include "includes/header.php";
     ?>
 
     <section class="main_content dashboard_part">
       <div class="container-fluid g-0">
         <div class="row">
           <div class="col-lg-12 p-0">
-            <?php include "top_nav.php"; ?>
+            <?php include "includes/top_nav.php"; ?>
           </div>
         </div>
       </div>
@@ -399,7 +395,7 @@ include "db-conn.php"
     </section>
 
     <footer>
-      <?php include "footer.php"; ?>
+      <?php include "includes/footer.php"; ?>
     </footer>
   </div>
 
@@ -409,7 +405,7 @@ include "db-conn.php"
 </html>
 <script>
   // Simulate new order notification (replace with real WebSocket/API implementation)
-  document.addEventListener('DOMContentLoaded', function () {
+  document.addEventListener('DOMContentLoaded', function() {
     // Notification badge elements
     const orderBadge = document.getElementById('order-notification-badge');
     const unreadCount = document.getElementById('unread-count');
@@ -453,8 +449,7 @@ include "db-conn.php"
 
     function loadNotifications() {
       // In a real app, you would fetch this from your API
-      const notifications = [
-        {
+      const notifications = [{
           id: 1,
           type: 'order',
           title: 'Order Shipped',
@@ -540,7 +535,7 @@ include "db-conn.php"
     }
 
     // Mark as read when clicked
-    notificationContainer.addEventListener('click', function (e) {
+    notificationContainer.addEventListener('click', function(e) {
       const notification = e.target.closest('.single_notify');
       if (notification && notification.classList.contains('unread')) {
         notification.classList.remove('unread');
@@ -549,7 +544,7 @@ include "db-conn.php"
     });
 
     // Mark all as read
-    document.querySelector('.mark-all-read')?.addEventListener('click', function (e) {
+    document.querySelector('.mark-all-read')?.addEventListener('click', function(e) {
       e.preventDefault();
       document.querySelectorAll('.single_notify.unread').forEach(el => {
         el.classList.remove('unread');

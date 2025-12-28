@@ -2,11 +2,11 @@
 include_once "./config/connect.php";
 
 // get category 
-function get_category()
+function get_category_home()
 {
     global $conn;
 
-    $sql = "SELECT * FROM `categories` WHERE status = 1";
+    $sql = "SELECT * FROM `categories` WHERE `show_in_home` = 1 AND status = 1";
     $res = mysqli_query($conn, $sql);
 
     $categories = [];
@@ -84,12 +84,12 @@ function get_footer_logo()
 
 
 // fetch banners 
-function fetch_banner()
+function get_banner()
 {
     global $conn;
 
     $banners = [];
-    $sql_banner = "SELECT * FROM `banners` order by id desc";
+    $sql_banner = "SELECT * FROM `banners` order by display_order";
     $res_banner = mysqli_query($conn, $sql_banner);
 
     if ($res_banner) {

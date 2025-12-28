@@ -1,4 +1,9 @@
- <!--footer area start-->
+<?php
+include_once "models/WebsiteSettings.php";
+
+$setting = new Setting($conn);
+?>
+<!--footer area start-->
     <footer class="footer_widgets"> 
         <div class="container">
             <div class="footer_top">
@@ -32,11 +37,11 @@
             		<div class="col-12">
             			<div class="footer_social">
 							<ul>
-								<li><a href="#"><i class="fa fa-facebook" aria-hidden="true"></i></a></li>
-								<li><a href="#"><i class="fa fa-twitter" aria-hidden="true"></i></a></li>
-								<li><a href="#"><i class="fa fa-youtube-play" aria-hidden="true"></i></a></li>
-								<li><a href="#"><i class="fa fa-google" aria-hidden="true"></i></a></li>
-								<li><a href="#"><i class="fa fa-instagram" aria-hidden="true"></i></a></li>
+								<li><a href="<?= htmlspecialchars($setting->get('facebook_url')) ?>"><i class="fa fa-facebook" aria-hidden="true"></i></a></li>
+								<li><a href="<?= htmlspecialchars($setting->get('twitter_url')) ?>"><i class="fa fa-twitter" aria-hidden="true"></i></a></li>
+								<li><a href="<?= htmlspecialchars($setting->get('youtube_url')) ?>"><i class="fa fa-youtube-play" aria-hidden="true"></i></a></li>
+								<li><a href="<?= htmlspecialchars($setting->get('linkedin_url')) ?>"><i class="fa fa-linkedin" aria-hidden="true"></i></a></li>
+								<li><a href="<?= htmlspecialchars($setting->get('instagram_url')) ?>"><i class="fa fa-instagram" aria-hidden="true"></i></a></li>
 							</ul>
 						</div>
             		</div>
@@ -50,7 +55,7 @@
 							   <a href="<?= $site ?>"><img src="<?= $site ?>assets/img/logo/logo2.png" alt=""></a>
 							</div>
                         	<div class="copyright_area">
-								<p>Copyright  © 2021  <a href="<?= $site ?>">Braga</a>.  <a href="https://hasthemes.com/" target="_blank">All rights reserved.</a></p>
+								<p><?= htmlspecialchars($setting->get('copyright_text')) ?> | Designed By <a href="https://codewithnikhil.in/">Code With Nikhil</a></p>
 							</div>
                         </div>
                     </div> 

@@ -1,3 +1,11 @@
+<?php
+include_once "config/connect.php";
+include_once "util/function.php";
+include_once "models/WebsiteSettings.php";
+
+$setting = new Setting($conn);
+$banners = get_banner();
+?>
 <!doctype html>
 <html class="no-js" lang="en">
 
@@ -8,125 +16,124 @@
 	<meta name="description" content="">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<!-- Favicon -->
-	<link rel="shortcut icon" type="image/x-icon" href="assets/img/favicon/favicon.ico">
+	<link rel="shortcut icon" type="image/x-icon" href="admin/<?php echo htmlspecialchars($setting->get('favicon')); ?>">
 
 	<!-- CSS 
     ========================= -->
-	<!--bootstrap min css-->
-	<link rel="stylesheet" href="assets/css/bootstrap.min.css">
-	<!--owl carousel min css-->
-	<link rel="stylesheet" href="assets/css/owl.carousel.min.css">
-	<!--slick min css-->
-	<link rel="stylesheet" href="assets/css/slick.css">
-	<!--magnific popup min css-->
-	<link rel="stylesheet" href="assets/css/magnific-popup.css">
-	<!--font awesome css-->
-	<link rel="stylesheet" href="assets/css/font.awesome.css">
-	<!--ionicons css-->
-	<link rel="stylesheet" href="assets/css/ionicons.min.css">
-	<!--7 stroke icons css-->
-	<link rel="stylesheet" href="assets/css/pe-icon-7-stroke.css">
-	<!--animate css-->
-	<link rel="stylesheet" href="assets/css/animate.css">
-	<!--jquery ui min css-->
-	<link rel="stylesheet" href="assets/css/jquery-ui.min.css">
-	<!--plugins css-->
-	<link rel="stylesheet" href="assets/css/plugins.css">
+	 <!--bootstrap min css-->
+    <link rel="stylesheet" href="<?= $site ?>assets/css/bootstrap.min.css">
+    <!--owl carousel min css-->
+    <link rel="stylesheet" href="<?= $site ?>assets/css/owl.carousel.min.css">
+    <!--slick min css-->
+    <link rel="stylesheet" href="<?= $site ?>assets/css/slick.css">
+    <!--magnific popup min css-->
+    <link rel="stylesheet" href="<?= $site ?>assets/css/magnific-popup.css">
+    <!--font awesome css-->
+    <link rel="stylesheet" href="<?= $site ?>assets/css/font.awesome.css">
+    <!--ionicons css-->
+    <link rel="stylesheet" href="<?= $site ?>assets/css/ionicons.min.css">
+    <!--7 stroke icons css-->
+    <link rel="stylesheet" href="<?= $site ?>assets/css/pe-icon-7-stroke.css">
+    <!--animate css-->
+    <link rel="stylesheet" href="<?= $site ?>assets/css/animate.css">
+    <!--jquery ui min css-->
+    <link rel="stylesheet" href="<?= $site ?>assets/css/jquery-ui.min.css">
+    <!--plugins css-->
+    <link rel="stylesheet" href="<?= $site ?>assets/css/plugins.css">
 
-	<!-- Main Style CSS -->
-	<link rel="stylesheet" href="assets/css/style.css">
+    <!-- Main Style CSS -->
+    <link rel="stylesheet" href="<?= $site ?>assets/css/style.css">
 
-	<!--modernizr min js here-->
-	<script src="assets/js/vendor/modernizr-3.7.1.min.js"></script>
+    <!--modernizr min js here-->
+    <script src="<?= $site ?>assets/js/vendor/modernizr-3.7.1.min.js"></script>
 </head>
 <style>
 	/* Banner Video Base Fix */
-.banner_thumb {
-    position: relative;
-    overflow: hidden;
-    /* border-radius: 12px; */
-}
+	.banner_thumb {
+		position: relative;
+		overflow: hidden;
+		/* border-radius: 12px; */
+	}
 
-.banner_thumb video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
+	.banner_thumb video {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
 
-/* Text Overlay */
-.banner_text1 {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0,0,0,0.35);
-}
+	/* Text Overlay */
+	.banner_text1 {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: rgba(0, 0, 0, 0.35);
+	}
 
-.banner_text1_inner {
-    text-align: center;
-    color: #fff;
-}
+	.banner_text1_inner {
+		text-align: center;
+		color: #fff;
+	}
 
-.banner_text1_inner h3 {
-    font-size: 26px;
-    font-weight: 700;
-    line-height: 1.2;
-}
+	.banner_text1_inner h3 {
+		font-size: 26px;
+		font-weight: 700;
+		line-height: 1.2;
+	}
 
-.banner_text1_inner a {
-    display: inline-block;
-    margin-top: 10px;
-    padding: 8px 18px;
-    background: #000;
-    color: #fff;
-    text-transform: uppercase;
-    font-size: 13px;
-    letter-spacing: 1px;
-    border-radius: 4px;
-}
+	.banner_text1_inner a {
+		display: inline-block;
+		margin-top: 10px;
+		padding: 8px 18px;
+		background: #000;
+		color: #fff;
+		text-transform: uppercase;
+		font-size: 13px;
+		letter-spacing: 1px;
+		border-radius: 4px;
+	}
 
-/* ===== MOBILE RESPONSIVE ===== */
-@media (max-width: 767px) {
+	/* ===== MOBILE RESPONSIVE ===== */
+	@media (max-width: 767px) {
 
-    .banner_area {
-        margin-bottom: 20px;
-    }
+		.banner_area {
+			margin-bottom: 20px;
+		}
 
-    .single_banner {
-        height: 360px;
-    }
+		.single_banner {
+			height: 360px;
+		}
 
-    .banner_thumb {
-        height: 100%;
-    }
+		.banner_thumb {
+			height: 100%;
+		}
 
-    .banner_thumb video {
-        height: 100%;
-    }
+		.banner_thumb video {
+			height: 100%;
+		}
 
-    .banner_text1_inner h3 {
-        font-size: 20px;
-    }
+		.banner_text1_inner h3 {
+			font-size: 20px;
+		}
 
-    .banner_text1_inner a {
-        font-size: 12px;
-        padding: 7px 16px;
-    }
-}
+		.banner_text1_inner a {
+			font-size: 12px;
+			padding: 7px 16px;
+		}
+	}
 
-/* ===== TABLET ===== */
-@media (max-width: 991px) {
+	/* ===== TABLET ===== */
+	@media (max-width: 991px) {
 
-    .single_banner {
-        height: 360px;
-    }
+		.single_banner {
+			height: 360px;
+		}
 
-    .banner_text1_inner h3 {
-        font-size: 22px;
-    }
-}
-
+		.banner_text1_inner h3 {
+			font-size: 22px;
+		}
+	}
 </style>
 
 <body>
@@ -139,22 +146,28 @@
 	<!--slider area start-->
 	<section class="slider_section mb-100">
 		<div class="slider_area owl-carousel">
-			<div class="single_slider d-flex align-items-center" data-bgimg="assets/img/slider/s1.png">
+			<?php
+			foreach($banners as $b){
+			?>
+			<div class="single_slider d-flex align-items-center" data-bgimg="<?= $site ?>admin/<?= $b['banner_path'] ?>">
 				<div class="container">
 					<div class="row">
 						<div class="col-12">
 							<div class="slider_content">
 								<h2>Get 30% Off &amp; Free Shipping </h2>
-								<h1>SUmmer sale</h1>
+								<h1><?= $b['title'] ?></h1>
 								<p>
-									An exclusive selection of this season’s trends. <span>Exclusively online </span>
+									<?= $b['description'] ?>
 								</p>
-								<a href="shop.html">Shop Now +</a>
+								<a href="<?= $site ?>shop.php">Shop Now +</a>
 							</div>
 						</div>
 					</div>
 				</div>
 			</div>
+			<?php
+			}
+			?>
 			<div class="single_slider d-flex align-items-center" data-bgimg="assets/img/slider/s2.png">
 				<div class="container">
 					<div class="row">
@@ -219,7 +232,7 @@
 						<div class="banner_thumb">
 							<a href="shop.html">
 								<video autoplay muted loop playsinline class="w-100">
-									<source src="assets/videos/v2.mp4" type="video/mp4">
+									<source src="assets/videos/shirt-v1.mp4" type="video/mp4">
 								</video>
 							</a>
 							<div class="banner_text1">
@@ -238,7 +251,7 @@
 						<div class="banner_thumb">
 							<a href="shop.html">
 								<video autoplay muted loop playsinline class="w-100">
-									<source src="assets/videos/v1.mp4" type="video/mp4">
+									<source src="assets/videos/pant-v1.mp4" type="video/mp4">
 								</video>
 							</a>
 							<div class="banner_text1">
@@ -257,7 +270,7 @@
 						<div class="banner_thumb">
 							<a href="shop.html">
 								<video autoplay muted loop playsinline class="w-100">
-									<source src="assets/videos/v3.mp4" type="video/mp4">
+									<source src="assets/videos/v5.mp4" type="video/mp4">
 								</video>
 							</a>
 							<div class="banner_text1">
@@ -288,70 +301,31 @@
 			</div>
 			<div class="row">
 				<div class="product_carousel product_column4 owl-carousel">
+					<?php
+					$category = get_category_home();
+					foreach($category as $cate){
+					?>
 					<div class="col-lg-3">
 						<article class="single_categories">
 							<figure>
 								<div class="categories_thumb">
-									<a href="product-details.html"><img src="assets/img/s-product/category1.jpg" alt=""></a>
+									<a href="<?= $site ?>shop/<?= $cate['slug_url'] ?>">
+										<img src="<?= $site ?>admin/uploads/category/<?= $cate['image'] ?>" alt="<?= $cate['categories'] ?>">
+									</a>
 								</div>
 								<figcaption class="categories_content">
-									<h4 class="product_name"><a href="shop.html">t-shirt</a></h4>
+									<h4 class="product_name"><a href="<?= $site ?>shop/<?= $cate['slug_url'] ?>"><?= $cate['categories'] ?></a></h4>
 									<div class="product_collection">
 										<p>13 Products</p>
-										<a href="shop.html">+ Shop Collection</a>
+										<a href="<?= $site ?>shop/<?= $cate['slug_url'] ?>">+ Shop Collection</a>
 									</div>
 								</figcaption>
 							</figure>
 						</article>
 					</div>
-					<div class="col-lg-3">
-						<article class="single_categories">
-							<figure>
-								<div class="categories_thumb">
-									<a href="product-details.html"><img src="assets/img/s-product/category2.jpg" alt=""></a>
-								</div>
-								<figcaption class="categories_content">
-									<h4 class="product_name"><a href="shop.html">Blazer</a></h4>
-									<div class="product_collection">
-										<p>13 Products</p>
-										<a href="shop.html">+ Shop Collection</a>
-									</div>
-								</figcaption>
-							</figure>
-						</article>
-					</div>
-					<div class="col-lg-3">
-						<article class="single_categories">
-							<figure>
-								<div class="categories_thumb">
-									<a href="product-details.html"><img src="assets/img/s-product/category3.jpg" alt=""></a>
-								</div>
-								<figcaption class="categories_content">
-									<h4 class="product_name"><a href="shop.html">jacket</a></h4>
-									<div class="product_collection">
-										<p>13 Products</p>
-										<a href="shop.html">+ Shop Collection</a>
-									</div>
-								</figcaption>
-							</figure>
-						</article>
-					</div>
-					<div class="col-lg-3">
-						<article class="single_categories">
-							<figure>
-								<div class="categories_thumb">
-									<a href="product-details.html"><img src="assets/img/s-product/category4.jpg" alt=""></a>
-								</div>
-								<figcaption class="categories_content">
-									<h4 class="product_name"><a href="shop.html">Dress</a></h4>
-									<div class="product_collection">
-										<p>13 Products</p>
-										<a href="shop.html">+ Shop Collection</a>
-									</div>
-								</figcaption>
-							</figure>
-						</article>
-					</div>
+					<?php 
+					}
+					?>
 					<div class="col-lg-3">
 						<article class="single_categories">
 							<figure>
@@ -368,6 +342,7 @@
 							</figure>
 						</article>
 					</div>
+					
 				</div>
 			</div>
 		</div>

@@ -1,6 +1,6 @@
 <?php
-session_start();
-include "db-conn.php";
+require_once __DIR__ . '/config/db-conn.php';
+require_once __DIR__ . '/auth/admin-auth.php';
 
 // Handle file upload
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -86,13 +86,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
 <body class="crm_body_bg">
 
-    <?php include "header.php"; ?>
+    <?php include "includes/header.php"; ?>
     
     <section class="main_content dashboard_part large_header_bg">
         <div class="container-fluid g-0">
             <div class="row">
                 <div class="col-lg-12 p-0">
-                    <?php include "top_nav.php"; ?>
+                    <?php include "includes/top_nav.php"; ?>
                 </div>
             </div>
         </div>
@@ -182,7 +182,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </div>
         </div>
 
-        <?php include "footer.php"; ?>
+        <?php include "includes/footer.php"; ?>
     </section>
 
     <script>

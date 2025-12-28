@@ -1,13 +1,11 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
 session_start();
  
-require '../db-conn.php'; // Database connection
+include_once '../config/db-conn.php'; // Database connection
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $username = $_POST['username'];
-    $password = $_POST['password'];
+    $username = trim($_POST['username']);
+    $password = trim($_POST['password']);
 
     // Prepare SQL statement
     $stmt = $conn->prepare("SELECT id, username, password FROM admin_user WHERE username = ?");
@@ -23,7 +21,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $_SESSION['admin_id'] = $id;
             $_SESSION['admin_user'] = $user;
 
-            header("Location: ../index.php");
+            header("Location: ".ADMIN_URL."index.php");
             exit();
         } else {
             $error = "Invalid username or password";

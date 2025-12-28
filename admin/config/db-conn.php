@@ -1,27 +1,33 @@
 <?php
 error_reporting(E_ALL);
-ini_set('display_errors', 0);
-ini_set('display_startup_errors', 0);
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+// init log error on in production 
+ini_set('log_errors', 0);
 
 if (session_status() === PHP_SESSION_NONE) {
   session_start();
 }
 
 // Database Configuration
-$local = false; // Set to false for live server
+$local = true; // Set to false for live server
 
 if ($local) {
     $host = 'localhost';
     $username = 'root';
     $password = '';
     $dbName = 'beast_line_db';
-    $site = "http://localhost/beast-line/";
+    // $site = "http://localhost/beast-line/";
+    define('BASE_URL', 'http://localhost/beast-line/') ;
+    define('ADMIN_URL', 'http://localhost/beast-line/admin/') ;
 } else {
     $host = 'localhost';
     $username = 'u799879276_1zebulli_db';
     $password = '6Aq0F[o*';
     $dbName = 'u799879276_1zebulli_db';
-    $site = 'https://zebulli.com/';
+    // $site = 'https://zebulli.com/';
+    define('BASE_URL', 'https://localhost/beast-line/') ;
+    define('ADMIN_URL', 'https://localhost/beast-line/admin/') ;
 }
 
 // Create Database Connection

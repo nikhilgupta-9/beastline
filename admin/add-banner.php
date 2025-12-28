@@ -1,23 +1,41 @@
-<?php include('auth_check.php'); ?>
 <?php
-include "db-conn.php";
+require_once __DIR__ . '/config/db-conn.php';
+require_once __DIR__ . '/auth/admin-auth.php';
+require_once __DIR__ . '/models/Setting.php';
 
-// Check admin authentication
-// session_start();
-if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
-    header("Location: login.php");
-    exit();
-}
+// Initialize Settings
+$setting = new Setting($conn);
 
-// Handle file upload
+$errors = [];
+$success = '';
+
+// Handle form submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit'])) {
-    $errors = [];
-    $success = '';
+    // Collect form data
+    $title = trim($_POST['title'] ?? '');
+    $description = trim($_POST['description'] ?? '');
+    $alt_text = trim($_POST['alt_text'] ?? '');
+    $link_url = trim($_POST['link_url'] ?? '');
+    $target_blank = isset($_POST['target_blank']) ? 1 : 0;
+    $display_order = (int)($_POST['display_order'] ?? 0);
+    $status = isset($_POST['status']) ? 1 : 0;
+    $expiry_date = !empty($_POST['expiry_date']) ? $_POST['expiry_date'] : NULL;
     
-    // Validate file upload
-    if (!isset($_FILES['banner'])) {
-        $errors[] = "No file was uploaded.";
-    } else {
+    // Validate
+    if (empty($_FILES['banner']['name'])) {
+        $errors[] = "Banner image is required";
+    }
+    
+    if (empty($title)) {
+        $errors[] = "Banner title is required";
+    }
+    
+    if (strlen($title) > 255) {
+        $errors[] = "Title must be less than 255 characters";
+    }
+    
+    // File validation
+    if (empty($errors)) {
         $target_dir = "uploads/banners/";
         
         // Create directory if it doesn't exist
@@ -25,45 +43,70 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit'])) {
             mkdir($target_dir, 0755, true);
         }
         
-        // Generate unique filename to prevent overwrites
+        // Generate unique filename
         $file_ext = strtolower(pathinfo($_FILES["banner"]["name"], PATHINFO_EXTENSION));
-        $target_file = $target_dir . uniqid('banner_') . '.' . $file_ext;
+        $unique_id = uniqid('banner_');
+        $target_file = $target_dir . $unique_id . '.' . $file_ext;
         
-        // Check if image file is an actual image
-        $check = getimagesize($_FILES["banner"]["tmp_name"]);
+        // Validate image
+        $check = @getimagesize($_FILES["banner"]["tmp_name"]);
         if ($check === false) {
-            $errors[] = "File is not an image.";
+            $errors[] = "Invalid image file";
         }
         
         // Check file size (5MB limit)
         if ($_FILES["banner"]["size"] > 5000000) {
-            $errors[] = "Sorry, your file is too large (max 5MB).";
+            $errors[] = "Image size exceeds 5MB limit";
         }
         
         // Allow certain file formats
         $allowed_types = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
         if (!in_array($file_ext, $allowed_types)) {
-            $errors[] = "Only JPG, JPEG, PNG, GIF & WEBP files are allowed.";
+            $errors[] = "Allowed formats: JPG, JPEG, PNG, GIF, WEBP";
         }
         
-        // If no errors, proceed with upload
-        if (empty($errors)) {
-            if (move_uploaded_file($_FILES["banner"]["tmp_name"], $target_file)) {
-                // Insert into database
-                $stmt = $conn->prepare("INSERT INTO banners (banner_path, uploaded_at) VALUES (?, NOW())");
-                $stmt->bind_param("s", $target_file);
+        // Check dimensions
+        if ($check && ($check[0] > 4000 || $check[1] > 4000)) {
+            $errors[] = "Image dimensions too large (max 4000x4000)";
+        }
+    }
+    
+    // Process if no errors
+    if (empty($errors)) {
+        if (move_uploaded_file($_FILES["banner"]["tmp_name"], $target_file)) {
+            $created_by = $_SESSION['admin_id'] ?? 0;
+            
+            $stmt = $conn->prepare("INSERT INTO banners 
+                (banner_path, title, description, alt_text, link_url, target_blank, 
+                 display_order, status, expiry_date, created_by, uploaded_at) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+            
+            $stmt->bind_param("sssssiiisi", 
+                $target_file, 
+                $title,
+                $description,
+                $alt_text,
+                $link_url,
+                $target_blank,
+                $display_order,
+                $status,
+                $expiry_date,
+                $created_by
+            );
+            
+            if ($stmt->execute()) {
+                $banner_id = $stmt->insert_id;
+                $success = "Banner added successfully!";
                 
-                if ($stmt->execute()) {
-                    $success = "The banner has been uploaded successfully.";
-                } else {
-                    // Delete the uploaded file if DB insert fails
-                    unlink($target_file);
-                    $errors[] = "Sorry, there was an error saving to the database.";
-                }
-                $stmt->close();
+                // Clear form
+                $_POST = array();
             } else {
-                $errors[] = "Sorry, there was an error uploading your file.";
+                unlink($target_file);
+                $errors[] = "Database error: " . $conn->error;
             }
+            $stmt->close();
+        } else {
+            $errors[] = "Error uploading file";
         }
     }
 }
@@ -75,242 +118,292 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit'])) {
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <title>Banner Management | Admin Panel</title>
-    <link rel="icon" href="assets/img/logo.png" type="image/png">
+    <title>Add Banner | Admin Panel</title>
+    <link rel="icon" href="<?php echo htmlspecialchars($setting->get('favicon', 'assets/img/logo.png')); ?>" type="image/png">
 
     <?php include "links.php"; ?>
     
     <style>
-        :root {
-            --primary-color: #4361ee;
-            --secondary-color: #3f37c9;
-            --accent-color: #4cc9f0;
-            --dark-color: #1a1a2e;
-            --light-color: #f8f9fa;
-            --danger-color: #f72585;
-            --success-color: #4bb543;
-        }
-        
-        .upload-card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            padding: 2rem;
-            margin-bottom: 2rem;
-        }
-        
+        /* Minimal custom CSS */
         .upload-area {
-            border: 2px dashed #ddd;
+            border: 2px dashed #dee2e6;
             border-radius: 8px;
-            padding: 2rem;
+            padding: 2.5rem;
             text-align: center;
-            transition: all 0.3s;
             cursor: pointer;
-            margin-bottom: 1rem;
+            transition: all 0.3s;
+            background: #f8f9fa;
         }
         
         .upload-area:hover {
-            border-color: var(--primary-color);
+            border-color: #4361ee;
             background: rgba(67, 97, 238, 0.05);
         }
         
-        .upload-area i {
-            font-size: 3rem;
-            color: var(--primary-color);
-            margin-bottom: 1rem;
+        .upload-area.dragover {
+            border-color: #4361ee;
+            background: rgba(67, 97, 238, 0.1);
         }
         
-        .banner-preview {
+        .image-preview {
             max-width: 100%;
-            max-height: 200px;
+            max-height: 250px;
+            border-radius: 6px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             display: none;
-            margin: 1rem auto;
+            margin: 15px auto;
+        }
+        
+        .preview-info {
+            background: #f8f9fa;
+            border-radius: 6px;
+            padding: 10px 15px;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+        
+        .form-section {
+            border-left: 4px solid #4361ee;
+            background: #f8fafc;
+            padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
         }
         
-        .banner-table img {
-            max-width: 300px;
-            max-height: 100px;
-            object-fit: contain;
+        .required-star {
+            color: #dc3545;
+        }
+        
+        .dimension-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            background: #e9ecef;
             border-radius: 4px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s;
+            font-size: 0.8rem;
+            margin-right: 5px;
         }
         
-        .banner-table img:hover {
-            transform: scale(1.05);
+        .switch-sm {
+            width: 45px;
+            height: 24px;
         }
         
-        .btn-action {
-            padding: 0.375rem 0.75rem;
-            font-size: 0.875rem;
+        .switch-sm .slider:before {
+            height: 18px;
+            width: 18px;
         }
         
-        .section-title {
-            font-weight: 600;
-            color: var(--dark-color);
-            margin-bottom: 1.5rem;
-            position: relative;
-            padding-bottom: 0.5rem;
-        }
-        
-        .section-title:after {
-            content: '';
-            position: absolute;
-            left: 0;
-            bottom: 0;
-            width: 50px;
-            height: 3px;
-            background: var(--primary-color);
+        .switch-sm input:checked + .slider:before {
+            transform: translateX(21px);
         }
     </style>
 </head>
 
 <body class="crm_body_bg">
 
-    <?php include "header.php"; ?>
+    <?php include "includes/header.php"; ?>
     
     <section class="main_content dashboard_part large_header_bg">
         <div class="container-fluid g-0">
             <div class="row">
                 <div class="col-lg-12 p-0">
-                    <?php include "top_nav.php"; ?>
+                    <?php include "includes/top_nav.php"; ?>
                 </div>
             </div>
         </div>
 
-        <div class="main_content_iner">
+        <div class="main_content_iner ">
             <div class="container-fluid p-0 sm_padding_15px">
                 <div class="row justify-content-center">
-                    <div class="col-lg-12">
+                    <div class="col-12">
                         <div class="white_card card_height_100 mb_30">
                             <div class="white_card_header">
                                 <div class="box_header m-0">
                                     <div class="main-title">
-                                        <h2 class="m-0">Banner Management</h2>
+                                        <h3 class="m-0"><i class="fas fa-image mr-2"></i> Add New Banner</h3>
+                                    </div>
+                                    <div class="action-btn">
+                                        <a href="view-banners.php" class="btn btn-sm btn-outline-secondary">
+                                            <i class="fas fa-list mr-1"></i> View All Banners
+                                        </a>
                                     </div>
                                 </div>
                             </div>
+                            
                             <div class="white_card_body">
-                                <!-- Display messages -->
+                                <!-- Messages -->
                                 <?php if (!empty($errors)): ?>
-                                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                                        <ul class="mb-0">
-                                            <?php foreach ($errors as $error): ?>
-                                                <li><?= htmlspecialchars($error) ?></li>
-                                            <?php endforeach; ?>
-                                        </ul>
-                                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                                    </div>
-                                <?php endif; ?>
-                                
-                                <?php if (isset($success) && !empty($success)): ?>
-                                    <div class="alert alert-success alert-dismissible fade show" role="alert">
-                                        <?= htmlspecialchars($success) ?>
-                                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                                    </div>
-                                <?php endif; ?>
-                                
-                                <!-- Upload Form -->
-                                <div class="upload-card">
-                                    <h3 class="section-title">Upload New Banner</h3>
-                                    <form action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" method="post" enctype="multipart/form-data" id="bannerForm">
-                                        <div class="upload-area" id="uploadArea">
-                                            <i class="fas fa-cloud-upload-alt"></i>
-                                            <h5>Drag & Drop your banner image here</h5>
-                                            <p class="text-muted">or click to browse files</p>
-                                            <img id="bannerPreview" class="banner-preview" alt="Banner Preview">
-                                        </div>
-                                        <input type="file" name="banner" id="banner" accept="image/*" class="d-none" required>
-                                        <div class="d-grid gap-2">
-                                            <button type="submit" name="submit" class="btn btn-primary">
-                                                <i class="fas fa-upload me-2"></i> Upload Banner
-                                            </button>
-                                        </div>
-                                        <div class="mt-2 text-muted small">
-                                            <p>Allowed formats: JPG, JPEG, PNG, GIF, WEBP | Max size: 5MB</p>
-                                        </div>
-                                    </form>
+                                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                    <h6><i class="fas fa-exclamation-circle mr-2"></i> Please fix the following:</h6>
+                                    <ul class="mb-0 pl-3">
+                                        <?php foreach ($errors as $error): ?>
+                                        <li><?= htmlspecialchars($error) ?></li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
                                 </div>
+                                <?php endif; ?>
                                 
-                                <!-- Banner List -->
-                                <div class="mt-5">
-                                    <h3 class="section-title">Current Banners</h3>
-                                    <div class="table-responsive">
-                                        <table class="table banner-table">
-                                            <thead>
-                                                <tr>
-                                                    <th width="5%">#</th>
-                                                    <th width="55%">Banner</th>
-                                                    <th width="10%">status</th>
-                                                    <th width="10%">Uploaded</th>
-                                                    <th width="20%">Actions</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <?php
-                                                // Fetch and display uploaded banners
-                                                $banner_query = "SELECT * FROM banners ORDER BY uploaded_at DESC LIMIT 10";
-                                                $banner_res = mysqli_query($conn, $banner_query);
+                                <?php if (!empty($success)): ?>
+                                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                    <i class="fas fa-check-circle mr-2"></i> <?= htmlspecialchars($success) ?>
+                                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                                <?php endif; ?>
+
+                                <form action="<?php echo htmlspecialchars($_SERVER['PHP_SELF']); ?>" method="post" enctype="multipart/form-data" id="bannerForm">
+                                    <div class="row">
+                                        <!-- Left Column: Image Upload -->
+                                        <div class="col-lg-6">
+                                            <div class="form-section mb-4">
+                                                <h5 class="mb-3"><i class="fas fa-upload mr-2"></i> Banner Image <span class="required-star">*</span></h5>
                                                 
-                                                if ($banner_res && mysqli_num_rows($banner_res) > 0) {
-                                                    $sno = 1;
-                                                    while ($banner_row = mysqli_fetch_assoc($banner_res)) {
-                                                        ?>
-                                                        <tr>
-                                                            <td><?= $sno++ ?></td>
-                                                            <td>
-                                                                <img src="<?= htmlspecialchars($banner_row['banner_path']) ?>" 
-                                                                     alt="Banner <?= $sno-1 ?>" 
-                                                                     class="img-fluid">
-                                                            </td>
-                                                            <td>
-                                                                <?php
-                                                                if($banner_row['status'] == 1){
-                                                                    echo "<li class='p-2 bg-success text-center '>Active</li>";
-                                                                }else{
-                                                                    echo "<li class='p-2 bg-danger text-center '>Inactive</li>";
-                                                                }
-                                                                ?>
-                                                            </td>
-                                                            <td>
-                                                                <?= date('M d, Y', strtotime($banner_row['uploaded_at'])) ?>
-                                                            </td>
-                                                            <td>
-                                                                <div class="d-flex gap-2">
-                                                                    <a href="edit_banner.php?id=<?= $banner_row['id'] ?>" 
-                                                                       class="btn btn-outline-primary btn-action">
-                                                                        <i class="fas fa-edit"></i> Edit
-                                                                    </a>
-                                                                    <a href="delete_banner.php?id=<?= $banner_row['id'] ?>" 
-                                                                       class="btn btn-outline-danger btn-action" 
-                                                                       onclick="return confirm('Are you sure you want to delete this banner?')">
-                                                                        <i class="fas fa-trash"></i> Delete
-                                                                    </a>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                        <?php
-                                                    }
-                                                } else {
-                                                    ?>
-                                                    <tr>
-                                                        <td colspan="4" class="text-center py-4">
-                                                            <div class="d-flex flex-column align-items-center">
-                                                                <i class="fas fa-image text-muted mb-2" style="font-size: 2rem;"></i>
-                                                                <p class="text-muted">No banners uploaded yet</p>
-                                                                <p class="text-muted small">Upload your first banner using the form above</p>
+                                                <div class="upload-area" id="uploadArea" onclick="document.getElementById('banner').click()">
+                                                    <div class="mb-3">
+                                                        <i class="fas fa-cloud-upload-alt fa-3x text-primary"></i>
+                                                    </div>
+                                                    <h5 class="mb-2">Click to upload banner</h5>
+                                                    <p class="text-muted mb-0">or drag and drop</p>
+                                                    <p class="text-muted small mt-2">PNG, JPG, GIF, WEBP up to 5MB</p>
+                                                </div>
+                                                
+                                                <input type="file" name="banner" id="banner" accept="image/*" class="d-none" required>
+                                                
+                                                <div id="previewContainer" class="text-center">
+                                                    <img id="imagePreview" class="image-preview" alt="Preview">
+                                                    <div id="imageInfo" class="preview-info d-none">
+                                                        <div class="row">
+                                                            <div class="col-6">
+                                                                <strong>Size:</strong> <span id="fileSize">0 KB</span>
                                                             </div>
-                                                        </td>
-                                                    </tr>
-                                                    <?php
-                                                }
-                                                ?>
-                                            </tbody>
-                                        </table>
+                                                            <div class="col-6">
+                                                                <strong>Dimensions:</strong> <span id="fileDimensions">0x0</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="mt-3">
+                                                    <small class="text-muted">
+                                                        <i class="fas fa-info-circle mr-1"></i>
+                                                        Recommended: 1920x500px for banners, 800x600px for side banners
+                                                    </small>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="form-section">
+                                                <h5 class="mb-3"><i class="fas fa-link mr-2"></i> Banner Link Settings</h5>
+                                                
+                                                <div class="form-group">
+                                                    <label class="form-label">Redirect URL</label>
+                                                    <input type="url" class="form-control" name="link_url" 
+                                                           value="<?php echo htmlspecialchars($_POST['link_url'] ?? ''); ?>"
+                                                           placeholder="https://example.com/page">
+                                                </div>
+                                                
+                                                <div class="form-group mb-0">
+                                                    <div class="custom-control custom-checkbox">
+                                                        <input type="checkbox" class="custom-control-input" 
+                                                               name="target_blank" id="target_blank" value="1"
+                                                               <?php echo isset($_POST['target_blank']) ? 'checked' : ''; ?>>
+                                                        <label class="custom-control-label" for="target_blank">
+                                                            Open link in new tab
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Right Column: Banner Details -->
+                                        <div class="col-lg-6">
+                                            <div class="form-section">
+                                                <h5 class="mb-3"><i class="fas fa-info-circle mr-2"></i> Banner Details</h5>
+                                                
+                                                <div class="form-group">
+                                                    <label class="form-label">Title <span class="required-star">*</span></label>
+                                                    <input type="text" class="form-control" name="title" 
+                                                           value="<?php echo htmlspecialchars($_POST['title'] ?? ''); ?>" 
+                                                           required maxlength="255">
+                                                    <small class="form-text text-muted">Enter a descriptive title for this banner</small>
+                                                </div>
+                                                
+                                                <div class="form-group">
+                                                    <label class="form-label">Description</label>
+                                                    <textarea class="form-control" name="description" rows="3"><?php echo htmlspecialchars($_POST['description'] ?? ''); ?></textarea>
+                                                    <small class="form-text text-muted">Optional description for internal reference</small>
+                                                </div>
+                                                
+                                                <div class="form-group">
+                                                    <label class="form-label">Alt Text (SEO)</label>
+                                                    <input type="text" class="form-control" name="alt_text" 
+                                                           value="<?php echo htmlspecialchars($_POST['alt_text'] ?? ''); ?>"
+                                                           placeholder="Describe the banner image for SEO">
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="form-section">
+                                                <h5 class="mb-3"><i class="fas fa-cog mr-2"></i> Display Settings</h5>
+                                                
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label class="form-label">Display Order</label>
+                                                            <input type="number" class="form-control" name="display_order" 
+                                                                   value="<?php echo htmlspecialchars($_POST['display_order'] ?? 0); ?>"
+                                                                   min="0" max="999">
+                                                            <small class="form-text text-muted">Lower numbers display first</small>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div class="col-md-6">
+                                                        <div class="form-group">
+                                                            <label class="form-label">Expiry Date (Optional)</label>
+                                                            <input type="date" class="form-control" name="expiry_date" 
+                                                                   value="<?php echo htmlspecialchars($_POST['expiry_date'] ?? ''); ?>">
+                                                            <small class="form-text text-muted">Banner will auto-expire</small>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="form-group mb-0">
+                                                    <div class="d-flex align-items-center justify-content-between">
+                                                        <label class="form-label mb-0">Banner Status</label>
+                                                        <div class="custom-control custom-switch">
+                                                            <input type="checkbox" class="custom-control-input" 
+                                                                   name="status" id="status" value="1"
+                                                                   <?php echo !isset($_POST['submit']) || isset($_POST['status']) ? 'checked' : ''; ?>>
+                                                            <label class="custom-control-label" for="status">
+                                                                <span id="statusText">Active</span>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <small class="form-text text-muted">Inactive banners won't be displayed on the website</small>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
+                                    
+                                    <!-- Submit Button -->
+                                    <div class="mt-4 pt-3 border-top">
+                                        <div class="d-flex justify-content-between">
+                                            <a href="view-banners.php" class="btn btn-secondary">
+                                                <i class="fas fa-arrow-left mr-2"></i> Back to List
+                                            </a>
+                                            <div>
+                                                <button type="reset" class="btn btn-outline-secondary mr-2">
+                                                    <i class="fas fa-redo mr-1"></i> Reset
+                                                </button>
+                                                <button type="submit" name="submit" class="btn btn-primary">
+                                                    <i class="fas fa-save mr-2"></i> Save Banner
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
                             </div>
                         </div>
                     </div>
@@ -318,39 +411,65 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit'])) {
             </div>
         </div>
 
-        <?php include "footer.php"; ?>
+        <?php include "includes/footer.php"; ?>
     </section>
 
     <script>
-        // File upload preview and drag-drop functionality
+        // File upload and preview functionality
         document.addEventListener('DOMContentLoaded', function() {
             const uploadArea = document.getElementById('uploadArea');
             const fileInput = document.getElementById('banner');
-            const preview = document.getElementById('bannerPreview');
-            const form = document.getElementById('bannerForm');
+            const preview = document.getElementById('imagePreview');
+            const previewContainer = document.getElementById('previewContainer');
+            const imageInfo = document.getElementById('imageInfo');
+            const fileSize = document.getElementById('fileSize');
+            const fileDimensions = document.getElementById('fileDimensions');
+            const statusSwitch = document.getElementById('status');
+            const statusText = document.getElementById('statusText');
             
-            // Click on upload area triggers file input
+            // Click upload area
             uploadArea.addEventListener('click', function() {
                 fileInput.click();
             });
             
-            // File input change event
+            // File input change
             fileInput.addEventListener('change', function(e) {
                 if (fileInput.files && fileInput.files[0]) {
+                    const file = fileInput.files[0];
                     const reader = new FileReader();
                     
                     reader.onload = function(event) {
                         preview.src = event.target.result;
                         preview.style.display = 'block';
-                        uploadArea.querySelector('h5').textContent = fileInput.files[0].name;
-                        uploadArea.querySelector('p').textContent = (fileInput.files[0].size / 1024 / 1024).toFixed(2) + 'MB';
+                        previewContainer.style.display = 'block';
+                        
+                        // Show file info
+                        const sizeKB = (file.size / 1024).toFixed(2);
+                        fileSize.textContent = sizeKB + ' KB';
+                        
+                        // Get image dimensions
+                        const img = new Image();
+                        img.onload = function() {
+                            fileDimensions.textContent = img.width + 'x' + img.height;
+                            imageInfo.classList.remove('d-none');
+                        };
+                        img.src = event.target.result;
+                        
+                        // Update upload area text
+                        uploadArea.innerHTML = `
+                            <div class="mb-2">
+                                <i class="fas fa-check-circle fa-2x text-success"></i>
+                            </div>
+                            <h6 class="mb-1">${file.name}</h6>
+                            <p class="text-muted small mb-0">Click to change image</p>
+                        `;
                     };
                     
-                    reader.readAsDataURL(fileInput.files[0]);
+                    reader.readAsDataURL(file);
                 }
             });
             
-            // Drag and drop functionality
+            // Drag and drop
             ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
                 uploadArea.addEventListener(eventName, preventDefaults, false);
             });
@@ -361,42 +480,98 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit'])) {
             }
             
             ['dragenter', 'dragover'].forEach(eventName => {
-                uploadArea.addEventListener(eventName, highlight, false);
+                uploadArea.addEventListener(eventName, () => {
+                    uploadArea.classList.add('dragover');
+                });
             });
             
             ['dragleave', 'drop'].forEach(eventName => {
-                uploadArea.addEventListener(eventName, unhighlight, false);
+                uploadArea.addEventListener(eventName, () => {
+                    uploadArea.classList.remove('dragover');
+                });
             });
             
-            function highlight() {
-                uploadArea.classList.add('bg-light');
-            }
-            
-            function unhighlight() {
-                uploadArea.classList.remove('bg-light');
-            }
-            
-            // Handle dropped files
-            uploadArea.addEventListener('drop', handleDrop, false);
-            
-            function handleDrop(e) {
+            uploadArea.addEventListener('drop', function(e) {
                 const dt = e.dataTransfer;
                 const files = dt.files;
                 
                 if (files.length) {
                     fileInput.files = files;
-                    
-                    // Trigger change event manually
                     const event = new Event('change');
                     fileInput.dispatchEvent(event);
                 }
-            }
+            });
+            
+            // Status switch text update
+            statusSwitch.addEventListener('change', function() {
+                statusText.textContent = this.checked ? 'Active' : 'Inactive';
+            });
             
             // Form validation
+            const form = document.getElementById('bannerForm');
             form.addEventListener('submit', function(e) {
                 if (!fileInput.files || !fileInput.files[0]) {
                     e.preventDefault();
-                    alert('Please select a banner image to upload');
+                    alert('Please select a banner image');
+                    return false;
+                }
+                
+                const titleInput = document.querySelector('input[name="title"]');
+                if (!titleInput.value.trim()) {
+                    e.preventDefault();
+                    alert('Please enter a banner title');
+                    titleInput.focus();
+                    return false;
+                }
+                
+                // Check file size
+                const file = fileInput.files[0];
+                if (file.size > 5000000) { // 5MB
+                    e.preventDefault();
+                    alert('File size exceeds 5MB limit');
+                    return false;
+                }
+                
+                // Check file type
+                const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+                if (!allowedTypes.includes(file.type)) {
+                    e.preventDefault();
+                    alert('Invalid file type. Allowed: JPG, PNG, GIF, WEBP');
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            // Real-time character count
+            const titleInput = document.querySelector('input[name="title"]');
+            const titleCounter = document.createElement('small');
+            titleCounter.className = 'form-text text-muted text-right';
+            titleCounter.textContent = '0/255 characters';
+            titleInput.parentNode.appendChild(titleCounter);
+            
+            titleInput.addEventListener('input', function() {
+                titleCounter.textContent = this.value.length + '/255 characters';
+                if (this.value.length > 255) {
+                    titleCounter.style.color = '#dc3545';
+                } else {
+                    titleCounter.style.color = '#6c757d';
+                }
+            });
+            
+            // Alt text counter
+            const altInput = document.querySelector('input[name="alt_text"]');
+            const altCounter = document.createElement('small');
+            altCounter.className = 'form-text text-muted text-right';
+            altCounter.textContent = '0/255 characters';
+            altInput.parentNode.appendChild(altCounter);
+            
+            altInput.addEventListener('input', function() {
+                altCounter.textContent = this.value.length + '/255 characters';
+                if (this.value.length > 255) {
+                    altCounter.style.color = '#dc3545';
+                } else {
+                    altCounter.style.color = '#6c757d';
                 }
             });
         });
