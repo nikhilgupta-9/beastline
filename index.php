@@ -1559,7 +1559,8 @@ $banners = get_banner();
 	<?php include_once "includes/footer.php"; ?>
 
 	<!--news letter popup start-->
-	<div class="newletter-popup">
+
+	<!-- <div class="newletter-popup">
 		<div id="boxes" class="newletter-container">
 			<div id="dialog" class="window">
 				<div id="popup2">
@@ -1573,7 +1574,6 @@ $banners = get_banner();
 						<label class="newletter-label">Enter your email address to subscribe our notification of our new post &amp; features by email.</label>
 						<div id="frm_subscribe">
 							<form name="subscribe" id="subscribe_popup">
-								<!-- <span class="required">*</span><span>Enter you email address here...</span>-->
 								<input type="text" value="" name="subscribe_pemail" id="subscribe_pemail" placeholder="Enter you email address here...">
 								<input type="hidden" value="" name="subscribe_pname" id="subscribe_pname">
 								<div id="notification"></div>
@@ -1584,15 +1584,13 @@ $banners = get_banner();
 								<label for="newsletter_popup_dont_show_again">Don't show this popup again</label>
 							</div>
 						</div>
-						<!-- /#frm_subscribe -->
 					</div>
-					<!-- /.box-content -->
 				</div>
 			</div>
 
 		</div>
-		<!-- /.box -->
-	</div>
+	</div> -->
+
 	<!--news letter popup start-->
 
 	<?php include_once "includes/footer-link.php"; ?>

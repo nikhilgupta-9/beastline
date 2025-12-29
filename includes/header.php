@@ -170,7 +170,7 @@ $contact = contact_us();
 									<li><a href="#">pages <i class="fa fa-angle-down"></i></a>
 										<ul class="sub_menu pages">
 											<li><a href="<?= $site ?>about/">About Us</a></li>
-											<li><a href="<?= $site ?>faq.php">Frequently Questions</a></li>
+											<li><a href="<?= $site ?>faq/">Frequently Questions</a></li>
 											<li><a href="<?= $site ?>contact/">contact</a></li>
 											<li><a href="<?= $site ?>login/">login</a></li>
 											<li><a href="<?= $site ?>register/">Register</a></li>

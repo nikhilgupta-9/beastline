@@ -1,6 +1,10 @@
-<?php include('auth_check.php'); ?>
 <?php
-include "db-conn.php";
+require_once __DIR__ . '/config/db-conn.php';
+require_once __DIR__ . '/auth/admin-auth.php';
+require_once __DIR__ . '/models/setting.php';
+
+// Initialize Settings
+$setting = new Setting($conn);
 
 // Handle image upload
 if (isset($_POST['gallery-img'])) {
@@ -93,7 +97,7 @@ $result = mysqli_query($conn, $query);
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <title>Gallery Management | Sales Dashboard</title>
-    <link rel="icon" href="assets/img/logo.png" type="image/png">
+    <link rel="icon" href="<?php echo htmlspecialchars($setting->get('favicon', 'assets/img/logo.png')); ?>" type="image/png">
     
     <?php include "links.php"; ?>
     
@@ -152,13 +156,13 @@ $result = mysqli_query($conn, $query);
 </head>
 
 <body class="crm_body_bg">
-    <?php include "header.php"; ?>
+    <?php include "includes/header.php"; ?>
     
     <section class="main_content dashboard_part large_header_bg">
         <div class="container-fluid g-0">
             <div class="row">
                 <div class="col-lg-12 p-0">
-                    <?php include "top_nav.php"; ?>
+                    <?php include "includes/top_nav.php"; ?>
                 </div>
             </div>
         </div>
@@ -263,7 +267,7 @@ $result = mysqli_query($conn, $query);
             </div>
         </div>
 
-        <?php include "footer.php"; ?>
+        <?php include "includes/footer.php"; ?>
     </section>
 
     <!-- Image Preview Modal -->

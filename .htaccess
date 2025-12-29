@@ -21,13 +21,15 @@ RewriteRule ^register/?$ register.php [L,NC]
 RewriteRule ^logout/?$ logout.php [L,NC]
 RewriteRule ^wishlist/?$ wishlist.php [L,NC]
 RewriteRule ^my-account/?$ my-account.php [L,NC]
+RewriteRule ^my-account/?$ my-account.php [L,NC]
+RewriteRule ^faq/?$ faq.php [L,NC]
 
 RewriteRule ^blogs/?$ blog.php [L,NC]
 # Product Details
 RewriteRule ^product-details/([^/]+)/?$ product-details.php?alias=$1 [L,QSA]
 
 # Products
-RewriteRule ^shop/([^/]+)/?$ shop.php?alias=$1 [L,QSA]
+RewriteRule ^products/([^/]+)/?$ products.php?alias=$1 [L,QSA]
 
 # Brand Search
 RewriteRule ^brand/([^/]+)/?$ search.php?query=$1 [L,QSA]

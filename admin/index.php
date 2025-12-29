@@ -1,6 +1,11 @@
 <?php
 require_once __DIR__ . '/config/db-conn.php';
 require_once __DIR__ . '/auth/admin-auth.php';
+require_once __DIR__ . '/models/setting.php';
+// require_once __DIR__ . '/models/Policy.php';
+
+// Initialize
+$setting = new Setting($conn);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -9,7 +14,7 @@ require_once __DIR__ . '/auth/admin-auth.php';
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
   <title>Admin Panel | Dashboard</title>
-  <link rel="icon" href="img/logo.png" type="image/png">
+  <link rel="icon" href="<?php echo htmlspecialchars($setting->get('favicon', 'assets/img/logo.png')); ?>" type="image/png">
 
   <!-- Bootstrap & Icons -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
