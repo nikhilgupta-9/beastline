@@ -104,7 +104,8 @@
         </li>
 
         <li><a href="orders.php"><i class="fas fa-shopping-cart" style="color: #e67e22;"></i> <span>Orders</span></a></li>
-        <li><a href="view-policies.php"><i class="fas fa-shopping-cart" style="color: #e67e22;"></i> <span>Policies</span></a></li>
+        <li><a href="view-policies.php"><i class="fas fa-shipping-fast" style="color:#c41b91;"></i>
+ <span>Policies</span></a></li>
 
         <li>
             <a class="has-arrow" href="#"><i class="fas fa-user-cog" style="color: #7f8c8d;"></i> <span>Users</span></a>
