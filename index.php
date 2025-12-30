@@ -1,7 +1,8 @@
 <?php
-include_once "config/connect.php";
-include_once "util/function.php";
-include_once "models/WebsiteSettings.php";
+
+include_once(__DIR__ . "/config/connect.php");
+include_once(__DIR__ . "/util/function.php");
+include_once(__DIR__ . "/models/WebsiteSettings.php");
 
 $setting = new Setting($conn);
 $banners = get_banner();

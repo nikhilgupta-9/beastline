@@ -1,5 +1,5 @@
 <?php
-include_once "./config/connect.php";
+// include_once(__DIR__ . "/../config/connect.php");
 
 // get category 
 function get_category_home()

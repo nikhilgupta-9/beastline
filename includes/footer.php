@@ -1,5 +1,5 @@
 <?php
-include_once "models/WebsiteSettings.php";
+include_once(__DIR__. "/../models/WebsiteSettings.php");
 $setting = new Setting($conn);
 ?>
 <!-- Footer Start -->
@@ -64,11 +64,11 @@ $setting = new Setting($conn);
                         <ul class="footer_links list-unstyled">
                             <li class="mb-2"><a href="<?= $site ?>contact/" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Contact Us</a></li>
                             <li class="mb-2"><a href="<?= $site ?>customer-service" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Customer Service</a></li>
-                            <li class="mb-2"><a href="<?= $site ?>shipping-delivery" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Shipping & Delivery</a></li>
-                            <li class="mb-2"><a href="<?= $site ?>returns-exchange" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Returns & Exchanges</a></li>
+                            <li class="mb-2"><a href="<?= $site ?>policy/shipping-policy" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Shipping & Delivery</a></li>
+                            <li class="mb-2"><a href="<?= $site ?>policy/return-refund-policy" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Returns & Exchanges</a></li>
                             <li class="mb-2"><a href="<?= $site ?>size-guide" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Size Guide</a></li>
                             <li class="mb-2"><a href="<?= $site ?>faq/" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">FAQ</a></li>
-                            <li class="mb-2"><a href="<?= $site ?>privacy-policy" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Privacy Policy</a></li>
+                            <li class="mb-2"><a href="<?= $site ?>policy/privacy-policy" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Privacy Policy</a></li>
                         </ul>
                     </div>
                 </div>
@@ -135,7 +135,7 @@ $setting = new Setting($conn);
                                     <img src="<?= $site ?>assets/img/app-store.png" alt="App Store" style="max-width: 120px;">
                                 </a>
                                 <a href="#" class="play_store">
-                                    <img src="<?= $site ?>assets/img/google-play.png" alt="Google Play" style="max-width: 120px;">
+                                    <img src="https://c.clc2l.com/t/g/o/google-playstore-Iauj7q.png" alt="Google Play" style="max-width: 80px;">
                                 </a>
                             </div>
                         </div>
@@ -157,9 +157,9 @@ $setting = new Setting($conn);
                         <div class="copyright_area">
                             <p style="color: #999999; font-size: 14px; margin: 0;">
                                 <?= htmlspecialchars($setting->get('copyright_text')) ?> |
-                                <a href="<?= $site ?>terms" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Terms & Conditions</a> |
-                                <a href="<?= $site ?>privacy" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Privacy Policy</a> |
-                                <a href="<?= $site ?>cookies" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Cookies</a>
+                                <a href="<?= $site ?>policy/terms-conditions" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Terms & Conditions</a> |
+                                <a href="<?= $site ?>policy/privacy-policy" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Privacy Policy</a> |
+                                <a href="<?= $site ?>policy/cookie-policy" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Cookies</a>
                             </p>
                         </div>
                     </div>

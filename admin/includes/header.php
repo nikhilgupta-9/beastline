@@ -76,14 +76,15 @@
         <!--</li>-->
 
         <li><a href="about_us.php"><i class="fas fa-info-circle" style="color:  #d35400;"></i> <span>About Us Page</span></a></li>
+        <li><a href="new-leads.php"><i class="fas fa-envelope" style="color: #27ae60;"></i> <span>Inquiries</span></a></li>
 
-        <li>
+        <!-- <li>
             <a class="has-arrow" href="#"><i class="fas fa-envelope" style="color: #27ae60;"></i> <span>Contact Page</span></a>
             <ul>
                 <li><a href="add_contact.php">Edit Contact Info</a></li>
                 <li><a href="new-leads.php">Inquiries</a></li>
             </ul>
-        </li>
+        </li> -->
 
         <li><a href="add-gallery.php"><i class="fas fa-images" style="color: #8e44ad;"></i> <span>Gallery</span></a></li>
 

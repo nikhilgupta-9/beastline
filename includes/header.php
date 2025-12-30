@@ -1,6 +1,6 @@
 <?php
-include_once "config/connect.php";
-include_once "util/function.php";
+include_once(__DIR__. "/../config/connect.php");
+include_once(__DIR__. "/../util/function.php");
 
 $contact = contact_us();
 ?>

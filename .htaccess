@@ -2,12 +2,7 @@
 # Enable Rewrite Engine
 # -------------------------------
 RewriteEngine On
-
-# -------------------------------
-# Force HTTPS and www (Optional)
-# -------------------------------
-# RewriteCond %{HTTPS} off
-# RewriteRule ^(.*)$ https://%{HTTP_HOST}/$1 [R=301,L]
+RewriteBase /beast-line/
 
 # -------------------------------
 # URL Rewrites
@@ -21,27 +16,35 @@ RewriteRule ^register/?$ register.php [L,NC]
 RewriteRule ^logout/?$ logout.php [L,NC]
 RewriteRule ^wishlist/?$ wishlist.php [L,NC]
 RewriteRule ^my-account/?$ my-account.php [L,NC]
-RewriteRule ^my-account/?$ my-account.php [L,NC]
 RewriteRule ^faq/?$ faq.php [L,NC]
 
-RewriteRule ^blogs/?$ blog.php [L,NC]
-# Product Details
-RewriteRule ^product-details/([^/]+)/?$ product-details.php?alias=$1 [L,QSA]
+# -------------------------------
+# Policy Pages (Dynamic)
+# -------------------------------
+RewriteRule ^policy/([^/]+)/?$ policy/privacy-policy.php?alias=$1 [L,QSA,NC]
 
+# -------------------------------
+# Blogs
+# -------------------------------
+RewriteRule ^blogs/?$ blog.php [L,NC]
+RewriteRule ^blogs/([^/]+)/?$ blog-details.php?alias=$1 [L,QSA]
+
+# -------------------------------
 # Products
+# -------------------------------
+RewriteRule ^product-details/([^/]+)/?$ product-details.php?alias=$1 [L,QSA]
 RewriteRule ^products/([^/]+)/?$ products.php?alias=$1 [L,QSA]
 
+# -------------------------------
 # Brand Search
+# -------------------------------
 RewriteRule ^brand/([^/]+)/?$ search.php?query=$1 [L,QSA]
-
-# Blogs
-RewriteRule ^blogs/([^/]+)/?$ blog-details.php?alias=$1 [L,QSA]
 
 # -------------------------------
 # Custom Error Pages
 # -------------------------------
-ErrorDocument 404 /wasa-engine/404.php
-ErrorDocument 500 /wasa-engine/500.php
+ErrorDocument 404 /beast-line/404.php
+ErrorDocument 500 /beast-line/500.php
 
 # -------------------------------
 # Security: Protect .htaccess and .env
@@ -63,7 +66,7 @@ ErrorDocument 500 /wasa-engine/500.php
 Options -Indexes
 
 # -------------------------------
-# PHP handler (cPanel default)
+# PHP handler
 # -------------------------------
 <IfModule mime_module>
     AddHandler application/x-httpd-ea-php81 .php .php8 .phtml
