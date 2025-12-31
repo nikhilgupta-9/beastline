@@ -3,7 +3,7 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-include "db-conn.php";
+include_once(__DIR__ . "/config/db-conn.php");
 
 if (isset($_POST["add-categories"])) {
     // Initialize variables
@@ -411,15 +411,29 @@ function get_category_by_id($cat_id)
 
 
 
+if (isset($_POST['action']) && $_POST['action'] === 'get_sub_category_by_id') {
+    $cat_id = (int) $_POST['category_id'];
+    get_sub_category_by_id($cat_id);
+    exit;
+}
+
 function get_sub_category_by_id($cat_id)
 {
     global $conn;
-    $cat_id = mysqli_real_escape_string($conn, $cat_id);
-    $sql = "SELECT * FROM `sub_categories` WHERE cate_id = '$cat_id' LIMIT 1";
-    $result = mysqli_query($conn, $sql);
-    return mysqli_fetch_assoc($result);
-}
 
+    $sql = "SELECT id, categories FROM categories WHERE parent_id = '$cat_id'";
+    $result = mysqli_query($conn, $sql);
+
+    echo '<option value="">Select Sub Category</option>';
+
+    if (mysqli_num_rows($result) > 0) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            echo '<option value="' . $row['id'] . '">' .
+                 htmlspecialchars($row['categories']) .
+                 '</option>';
+        }
+    }
+}
 
 function get_testimonial_by_id($id) {
     global $conn;

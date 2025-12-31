@@ -1,7 +1,10 @@
-<?php include('auth_check.php'); ?>
 <?php
-include "db-conn.php";
-include "functions.php";
+require_once __DIR__ . '/config/db-conn.php';
+require_once __DIR__ . '/auth/admin-auth.php';
+require_once __DIR__ . '/models/Setting.php';
+
+// Initialize
+$setting = new Setting($conn);
 
 if (!isset($_GET['edit_product_details'])) {
     die("Product ID is missing from the URL.");
@@ -10,114 +13,118 @@ if (!isset($_GET['edit_product_details'])) {
 $product_id = intval($_GET['edit_product_details']);
 
 // Handle form submission
-if (isset($_POST['update-product'])) {
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update-product'])) {
     $pro_id = intval($_POST['pro_id']);
     $pro_name = mysqli_real_escape_string($conn, $_POST['pro_name']);
     $brand_name = mysqli_real_escape_string($conn, $_POST['brand_name']);
     $pro_cate = mysqli_real_escape_string($conn, $_POST['pro_cate']);
     $pro_sub_cate = mysqli_real_escape_string($conn, $_POST['pro_sub_cate']);
+    $sku = mysqli_real_escape_string($conn, $_POST['sku']);
+    $product_type = mysqli_real_escape_string($conn, $_POST['product_type'] ?? '');
     $short_desc = mysqli_real_escape_string($conn, $_POST['short_desc']);
     $pro_desc = mysqli_real_escape_string($conn, $_POST['pro_desc']);
-    $new_arrival = intval($_POST['new_arrival']);
-    $trending = intval($_POST['trending']);
-    $qty = intval($_POST['qty']);
-    $mrp = floatval($_POST['mrp']);
-    $selling_price = floatval($_POST['selling_price']);
-    $whole_sale_selling_price = floatval($_POST['whole_sale_selling_price']);
-    $stock = intval($_POST['stock']);
-    $status = intval($_POST['status']);
-    $meta_title = mysqli_real_escape_string($conn, $_POST['meta_title']);
-    $meta_desc = mysqli_real_escape_string($conn, $_POST['meta_desc']);
-    $meta_key = mysqli_real_escape_string($conn, $_POST['meta_key']);
-    $is_deal = intval($_POST['is_deal']);
-    $is_disabled = intval($_POST['is_disabled']);
-    $deal_of_the_day = intval($_POST['deal_of_the_day']);
-    
+    $new_arrival = intval($_POST['new_arrival'] ?? 0);
+    $trending = intval($_POST['trending'] ?? 0);
+    $qty = intval($_POST['qty'] ?? 0);
+    $mrp = floatval($_POST['mrp'] ?? 0);
+    $selling_price = floatval($_POST['selling_price'] ?? 0);
+    $whole_sale_selling_price = floatval($_POST['whole_sale_selling_price'] ?? 0);
+    $weight = floatval($_POST['weight'] ?? 0);
+    $stock = mysqli_real_escape_string($conn, $_POST['stock'] ?? 'in_stock');
+    $status = intval($_POST['status'] ?? 1);
+    $meta_title = mysqli_real_escape_string($conn, $_POST['meta_title'] ?? '');
+    $meta_desc = mysqli_real_escape_string($conn, $_POST['meta_desc'] ?? '');
+    $meta_key = mysqli_real_escape_string($conn, $_POST['meta_key'] ?? '');
+    $is_deal = intval($_POST['is_deal'] ?? 0);
+    $is_disabled = intval($_POST['is_disabled'] ?? 0);
+    $deal_of_the_day = intval($_POST['deal_of_the_day'] ?? 0);
+    $material = mysqli_real_escape_string($conn, $_POST['material'] ?? '');
+    $fit_type = mysqli_real_escape_string($conn, $_POST['fit_type'] ?? '');
+    $season = mysqli_real_escape_string($conn, $_POST['season'] ?? '');
+    $care_instructions = mysqli_real_escape_string($conn, $_POST['care_instructions'] ?? '');
+    $video_url = mysqli_real_escape_string($conn, $_POST['video_url'] ?? '');
+    $tags = mysqli_real_escape_string($conn, $_POST['tags'] ?? '');
+
+    // Handle colors and sizes
+    $colors = isset($_POST['colors']) ? json_encode($_POST['colors']) : '[]';
+    $sizes = isset($_POST['sizes']) ? json_encode($_POST['sizes']) : '[]';
+    $attributes_json = $_POST['attributes_json'] ?? '[]';
+    $variants_json = $_POST['variants_json'] ?? '[]';
+
     // Generate slug URL
-    $slug_url = generate_slug($pro_name);
-    
-    // Handle image upload
-    $uploaded_images = array();
-    
-    if (!empty($_FILES['pro_img']['name'][0])) {
-        $target_dir = "assets/img/uploads/";
-        
-        foreach ($_FILES['pro_img']['tmp_name'] as $key => $tmp_name) {
-            $file_name = basename($_FILES['pro_img']['name'][$key]);
-            $target_file = $target_dir . uniqid() . "_" . $file_name;
-            $imageFileType = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
-            
-            // Check if image file is actual image
-            $check = getimagesize($_FILES['pro_img']['tmp_name'][$key]);
-            if ($check !== false) {
-                // Check file size (5MB limit)
-                if ($_FILES['pro_img']['size'][$key] <= 5000000) {
-                    // Allow certain file formats
-                    if (in_array($imageFileType, array('jpg', 'jpeg', 'png', 'gif', 'webp'))) {
-                        if (move_uploaded_file($_FILES['pro_img']['tmp_name'][$key], $target_file)) {
-                            $uploaded_images[] = pathinfo($target_file, PATHINFO_BASENAME);
-                        }
-                    }
+    $slug_url = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $pro_name)));
+
+    // Handle main image upload
+    $pro_img = $product['pro_img'] ?? ''; // Keep existing images
+    if (isset($_FILES['main_image']) && $_FILES['main_image']['error'] === 0) {
+        $upload_dir = 'assets/img/uploads/';
+        $file_name = 'product-' . time() . '-' . $_FILES['main_image']['name'];
+        $target_path = $upload_dir . $file_name;
+
+        if (move_uploaded_file($_FILES['main_image']['tmp_name'], $target_path)) {
+            $pro_img = $file_name;
+        }
+    }
+
+    // Handle additional images
+    $additional_images = [];
+    if (isset($_FILES['additional_images']) && count($_FILES['additional_images']['name']) > 0) {
+        $upload_dir = 'assets/img/uploads/';
+        foreach ($_FILES['additional_images']['name'] as $key => $name) {
+            if ($_FILES['additional_images']['error'][$key] === 0) {
+                $file_name = 'product-' . time() . '-' . $key . '-' . $name;
+                $target_path = $upload_dir . $file_name;
+
+                if (move_uploaded_file($_FILES['additional_images']['tmp_name'][$key], $target_path)) {
+                    $additional_images[] = $file_name;
                 }
             }
         }
     }
-    
-    // If new images uploaded, use them; otherwise keep existing images
-    if (!empty($uploaded_images)) {
-        $pro_img = implode(',', $uploaded_images);
-        $update_sql = "UPDATE products SET 
-            pro_name = '$pro_name',
-            brand_name = '$brand_name',
-            pro_cate = '$pro_cate',
-            pro_sub_cate = '$pro_sub_cate',
-            short_desc = '$short_desc',
-            description = '$pro_desc',
-            new_arrival = '$new_arrival',
-            trending = '$trending',
-            qty = '$qty',
-            mrp = '$mrp',
-            selling_price = '$selling_price',
-            whole_sale_selling_price = '$whole_sale_selling_price',
-            stock = '$stock',
-            pro_img = '$pro_img',
-            status = '$status',
-            slug_url = '$slug_url',
-            meta_title = '$meta_title',
-            meta_desc = '$meta_desc',
-            meta_key = '$meta_key',
-            is_deal = '$is_deal',
-            is_disabled = '$is_disabled',
-            deal_of_the_day = '$deal_of_the_day'
-            WHERE pro_id = $pro_id";
-    } else {
-        $update_sql = "UPDATE products SET 
-            pro_name = '$pro_name',
-            brand_name = '$brand_name',
-            pro_cate = '$pro_cate',
-            pro_sub_cate = '$pro_sub_cate',
-            short_desc = '$short_desc',
-            description = '$pro_desc',
-            new_arrival = '$new_arrival',
-            trending = '$trending',
-            qty = '$qty',
-            mrp = '$mrp',
-            selling_price = '$selling_price',
-            whole_sale_selling_price = '$whole_sale_selling_price',
-            stock = '$stock',
-            status = '$status',
-            slug_url = '$slug_url',
-            meta_title = '$meta_title',
-            meta_desc = '$meta_desc',
-            meta_key = '$meta_key',
-            is_deal = '$is_deal',
-            is_disabled = '$is_disabled',
-            deal_of_the_day = '$deal_of_the_day'
-            WHERE pro_id = $pro_id";
-    }
-    
+    $additional_images_json = !empty($additional_images) ? json_encode($additional_images) : '';
+
+    $update_sql = "UPDATE products SET 
+        pro_name = '$pro_name',
+        brand_name = '$brand_name',
+        pro_cate = '$pro_cate',
+        pro_sub_cate = '$pro_sub_cate',
+        sku = '$sku',
+        product_type = '$product_type',
+        short_desc = '$short_desc',
+        description = '$pro_desc',
+        new_arrival = '$new_arrival',
+        trending = '$trending',
+        qty = '$qty',
+        mrp = '$mrp',
+        selling_price = '$selling_price',
+        whole_sale_selling_price = '$whole_sale_selling_price',
+        weight = '$weight',
+        stock = '$stock',
+        pro_img = '$pro_img',
+        status = '$status',
+        slug_url = '$slug_url',
+        meta_title = '$meta_title',
+        meta_desc = '$meta_desc',
+        meta_key = '$meta_key',
+        is_deal = '$is_deal',
+        is_disabled = '$is_disabled',
+        deal_of_the_day = '$deal_of_the_day',
+        material = '$material',
+        fit_type = '$fit_type',
+        season = '$season',
+        care_instructions = '$care_instructions',
+        video_url = '$video_url',
+        tags = '$tags',
+        color_options = '$colors',
+        size_options = '$sizes',
+        attributes_json = '$attributes_json',
+        variants_json = '$variants_json',
+        additional_images = '$additional_images_json',
+        updated_on = NOW()
+        WHERE pro_id = $pro_id";
+
     if (mysqli_query($conn, $update_sql)) {
-        echo "<script>alert('Product updated successfully!'); window.location.href='show-products.php';</script>";
+        echo "<script>alert('Product updated successfully!'); window.location.href='viewproduct-details.php';</script>";
     } else {
         echo "<script>alert('Error updating product: " . mysqli_error($conn) . "');</script>";
     }
@@ -133,39 +140,32 @@ if ($result && mysqli_num_rows($result) > 0) {
     die("Product not found.");
 }
 
+// Decode JSON fields
+$colors = !empty($product['color_options']) ? json_decode($product['color_options'], true) : [];
+$sizes = !empty($product['size_options']) ? json_decode($product['size_options'], true) : [];
+$attributes = !empty($product['attributes_json']) ? json_decode($product['attributes_json'], true) : [];
+$variants = !empty($product['variants_json']) ? json_decode($product['variants_json'], true) : [];
+$additional_images = !empty($product['additional_images']) ? json_decode($product['additional_images'], true) : [];
+
 // Fetch categories
-$category_query = "SELECT * FROM `categories` ORDER BY id DESC";
-$categories = mysqli_query($conn, $category_query);
+$categories_query = "SELECT * FROM `categories` WHERE `parent_id` = 0 AND `status` = 1 ORDER BY display_order ASC";
+$categories = mysqli_query($conn, $categories_query);
 
 // Fetch subcategories based on product's category
-$subcategories = array();
-if ($product['pro_cate']) {
-    $subcategory_query = "SELECT * FROM `sub_categories` WHERE cate_id = '{$product['pro_cate']}' ORDER BY id DESC";
-    $subcategories_result = mysqli_query($conn, $subcategory_query);
-    if ($subcategories_result) {
-        $subcategories = mysqli_fetch_all($subcategories_result, MYSQLI_ASSOC);
-    }
-}
+$subcategories_query = "SELECT * FROM `categories` WHERE `parent_id` = '{$product['pro_cate']}' AND `status` = 1 ORDER BY display_order ASC";
+$subcategories = mysqli_query($conn, $subcategories_query);
 
-// Fetch all brands
-$brands_query = "SELECT * FROM `brands` ORDER BY id DESC";
+// Fetch brands from pro_brands table
+$brands_query = "SELECT * FROM `pro_brands` WHERE `status` = 1 ORDER BY `brand_name` ASC";
 $brands = mysqli_query($conn, $brands_query);
 
-// Function to generate slug
-function generate_slug($text) {
-    $text = preg_replace('~[^\pL\d]+~u', '-', $text);
-    $text = iconv('utf-8', 'us-ascii//TRANSLIT', $text);
-    $text = preg_replace('~[^-\w]+~', '', $text);
-    $text = trim($text, '-');
-    $text = preg_replace('~-+~', '-', $text);
-    $text = strtolower($text);
-    
-    if (empty($text)) {
-        return 'n-a';
-    }
-    
-    return $text;
-}
+// Predefined options
+$colors_list = ['Black', 'White', 'Red', 'Blue', 'Green', 'Yellow', 'Purple', 'Pink', 'Orange', 'Brown', 'Grey', 'Navy', 'Maroon', 'Beige', 'Cream', 'Multi-color'];
+$sizes_clothing = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '28', '30', '32', '34', '36', '38', '40', '42'];
+$sizes_shoes = ['6', '7', '8', '9', '10', '11', '12', '13'];
+$material_options = ['Cotton', 'Polyester', 'Denim', 'Leather', 'Suede', 'Wool', 'Silk', 'Linen', 'Nylon', 'Spandex', 'Canvas'];
+$fit_options = ['Regular', 'Slim', 'Loose', 'Athletic', 'Relaxed'];
+$season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -173,405 +173,656 @@ function generate_slug($text) {
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <title>Edit Product | Admin Panel</title>
-    <link rel="icon" href="assets/img/logo.png" type="image/png">
+    <title>Edit Product | Beastline Clothing & Shoes</title>
+    <link rel="icon" href="<?php echo htmlspecialchars($setting->get('favicon', 'assets/img/logo.png')); ?>" type="image/png">
     <?php include "links.php"; ?>
-    <style>
-        .product-form {
-            background: #fff;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            padding: 30px;
-        }
-        .form-label {
-            font-weight: 500;
-            color: #495057;
-            margin-bottom: 8px;
-        }
-        .form-control, .form-select {
-            border-radius: 6px;
-            padding: 10px 15px;
-            border: 1px solid #e0e0e0;
-        }
-        .form-control:focus, .form-select:focus {
-            border-color: #7367f0;
-            box-shadow: 0 0 0 3px rgba(115,103,240,.15);
-        }
-        .card-header {
-            background: #fff;
-            border-bottom: 1px solid #eee;
-            padding: 20px 30px;
-        }
-        .main-title h2 {
-            color: #2c2c2c;
-            font-weight: 600;
-        }
-        .btn-primary {
-            background-color: #7367f0;
-            border-color: #7367f0;
-            padding: 10px 25px;
-            border-radius: 6px;
-            font-weight: 500;
-            letter-spacing: 0.5px;
-        }
-        .btn-primary:hover {
-            background-color: #5d50e6;
-            border-color: #5d50e6;
-        }
-        .image-preview {
-            max-width: 150px;
-            max-height: 150px;
-            margin-top: 10px;
-            border-radius: 4px;
-            border: 1px dashed #ddd;
-            padding: 5px;
-        }
-        .image-thumbnail {
-            width: 100px;
-            height: 100px;
-            object-fit: cover;
-            margin-right: 10px;
-            margin-bottom: 10px;
-            border: 1px solid #eee;
-            border-radius: 4px;
-        }
-        .status-badge {
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-size: 12px;
-        }
-        .status-active {
-            background-color: #e8f5e9;
-            color: #2e7d32;
-        }
-        .status-inactive {
-            background-color: #ffebee;
-            color: #c62828;
-        }
-        .price-input {
-            position: relative;
-        }
-        .price-input:before {
-            content: "₹";
-            position: absolute;
-            left: 12px;
-            top: 38px;
-            font-weight: 500;
-            color: #495057;
-            z-index: 1;
-        }
-        .price-input input {
-            padding-left: 30px;
-        }
-        .current-images {
-            margin-top: 15px;
-        }
-        .image-container {
-            position: relative;
-            display: inline-block;
-            margin-right: 10px;
-            margin-bottom: 10px;
-        }
-        .image-container img {
-            width: 100px;
-            height: 100px;
-            object-fit: cover;
-            border-radius: 4px;
-            border: 1px solid #ddd;
-        }
-        .alert {
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-        .additional-flags {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 20px;
-            margin-top: 20px;
-        }
-    </style>
+
+    <!-- Include CKEditor -->
+    <script src="https://cdn.ckeditor.com/4.21.0/standard/ckeditor.js"></script>
 </head>
 
 <body class="crm_body_bg">
-    <?php include "header.php"; ?>
+    <?php include "includes/header.php"; ?>
 
-    <section class="main_content dashboard_part">
+    <section class="main_content dashboard_part large_header_bg">
         <div class="container-fluid g-0">
             <div class="row">
                 <div class="col-lg-12 p-0">
-                    <?php include "top_nav.php"; ?>
+                    <?php include "includes/top_nav.php"; ?>
                 </div>
             </div>
         </div>
 
         <div class="main_content_iner">
-            <div class="container-fluid">
+            <div class="container-fluid p-0 sm_padding_15px">
                 <div class="row justify-content-center">
-                    <div class="col-12">
-                        <div class="page-header mb-4">
-                            <div class="d-flex align-items-center justify-content-between">
-                                <h2 class="mb-0">Edit Product</h2>
-                                <a href="show-products.php" class="btn btn-outline-secondary">
-                                    <i class="fas fa-arrow-left me-2"></i> Back to Products
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                    
                     <div class="col-lg-12">
-                        <div class="product-form">
-                            <?php if (isset($success_message)): ?>
-                                <div class="alert alert-success">
-                                    <?php echo $success_message; ?>
-                                </div>
-                            <?php endif; ?>
-                            
-                            <?php if (isset($error_message)): ?>
-                                <div class="alert alert-danger">
-                                    <?php echo $error_message; ?>
-                                </div>
-                            <?php endif; ?>
-                            
-                            <form action="" method="POST" enctype="multipart/form-data">
-                                <input type="hidden" name="pro_id" value="<?= $product['pro_id'] ?>">
-                                
-                                <div class="row">
-                                    <!-- Basic Information -->
-                                    <div class="col-md-6 mb-4">
-                                        <label class="form-label">Product Name <span class="text-danger">*</span></label>
-                                        <input type="text" class="form-control" name="pro_name" 
-                                            value="<?= htmlspecialchars($product['pro_name']) ?>" required>
+                        <div class="white_card card_height_100 mb_30">
+                            <div class="white_card_header">
+                                <div class="box_header m-0">
+                                    <div class="main-title">
+                                        <h2 class="m-0">Edit Product</h2>
+                                        <p class="text-muted mb-0">Update product details for your clothing or shoe item</p>
                                     </div>
-                                    
-                                    <div class="col-md-6 mb-4">
-                                        <label class="form-label">Brand Name</label>
-                                        <select class="form-select" name="brand_name">
-                                            <option value="">Select Brand</option>
-                                            <?php while ($brand = mysqli_fetch_assoc($brands)): ?>
-                                                <option value="<?= $brand['brand_name'] ?>" <?= ($brand['brand_name'] == $product['brand_name']) ? 'selected' : '' ?>>
-                                                    <?= htmlspecialchars(ucwords($brand['brand_name'])) ?>
-                                                </option>
-                                            <?php endwhile; ?>
-                                        </select>
-                                    </div>
-                                    
-                                    <div class="col-md-6 mb-4">
-                                        <label class="form-label">Category <span class="text-danger">*</span></label>
-                                        <select class="form-select" name="pro_cate" required onchange="get_subcategory(this.value)">
-                                            <option value="">Select Category</option>
-                                            <?php 
-                                            // Reset categories pointer
-                                            mysqli_data_seek($categories, 0);
-                                            while ($category = mysqli_fetch_assoc($categories)): ?>
-                                                <option value="<?= $category['cate_id'] ?>" <?= ($category['cate_id'] == $product['pro_cate']) ? 'selected' : '' ?>>
-                                                    <?= htmlspecialchars(ucwords($category['categories'])) ?>
-                                                </option>
-                                            <?php endwhile; ?>
-                                        </select>
-                                    </div>
-                                    
-                                    <div class="col-md-6 mb-4">
-                                        <label class="form-label">Sub Category</label>
-                                        <select class="form-select" name="pro_sub_cate" id="subcate_id">
-                                            <option value="">Select Sub Category</option>
-                                            <?php foreach ($subcategories as $subcategory): ?>
-                                                <option value="<?= $subcategory['sub_cate_id'] ?>" <?= ($subcategory['sub_cate_id'] == $product['pro_sub_cate']) ? 'selected' : '' ?>>
-                                                    <?= htmlspecialchars(ucwords($subcategory['sub_categories'])) ?>
-                                                </option>
-                                            <?php endforeach; ?>
-                                        </select>
-                                    </div>
-                                    
-                                    <div class="col-md-6 mb-4">
-                                        <label class="form-label">Stock <span class="text-danger">*</span></label>
-                                        <input type="number" class="form-control" name="stock" 
-                                            value="<?= htmlspecialchars($product['stock']) ?>" required min="0">
-                                    </div>
-                                    
-                                    <div class="col-md-6 mb-4">
-                                        <label class="form-label">Quantity <span class="text-danger">*</span></label>
-                                        <input type="number" class="form-control" name="qty" 
-                                            value="<?= htmlspecialchars($product['qty']) ?>" required min="0">
-                                    </div>
-                                    
-                                    <!-- Pricing -->
-                                    <div class="col-md-4 mb-4">
-                                        <label class="form-label">MRP <span class="text-danger">*</span></label>
-                                        <div class="price-input">
-                                            <input type="number" step="0.01" class="form-control" name="mrp" 
-                                                value="<?= htmlspecialchars($product['mrp']) ?>" required min="0">
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="col-md-4 mb-4">
-                                        <label class="form-label">Selling Price <span class="text-danger">*</span></label>
-                                        <div class="price-input">
-                                            <input type="number" step="0.01" class="form-control" name="selling_price" 
-                                                value="<?= htmlspecialchars($product['selling_price']) ?>" required min="0">
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="col-md-4 mb-4">
-                                        <label class="form-label">Wholesale Price</label>
-                                        <div class="price-input">
-                                            <input type="number" step="0.01" class="form-control" name="whole_sale_selling_price" 
-                                                value="<?= htmlspecialchars($product['whole_sale_selling_price']) ?>" min="0">
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Images -->
-                                    <div class="col-md-12 mb-4">
-                                        <label class="form-label">Product Images</label>
-                                        <input type="file" class="form-control" name="pro_img[]" multiple accept="image/*">
-                                        <small class="text-muted">You can select multiple images. Supported formats: JPG, JPEG, PNG, GIF, WEBP. Max size: 5MB per image.</small>
-                                        
-                                        <?php if (!empty($product['pro_img'])): ?>
-                                            <div class="current-images mt-3">
-                                                <label class="form-label">Current Images:</label>
-                                                <div class="d-flex flex-wrap">
-                                                    <?php 
-                                                    $images = explode(',', $product['pro_img']);
-                                                    foreach ($images as $img): 
-                                                        if (!empty(trim($img))): ?>
-                                                            <div class="image-container">
-                                                                <img src="assets/img/uploads/<?= htmlspecialchars(trim($img)) ?>" 
-                                                                    alt="Product Image" class="image-thumbnail">
-                                                            </div>
-                                                        <?php endif;
-                                                    endforeach; ?>
-                                                </div>
-                                            </div>
-                                        <?php endif; ?>
-                                    </div>
-                                    
-                                    <!-- Descriptions -->
-                                    <div class="col-md-12 mb-4">
-                                        <label class="form-label">Short Description <span class="text-danger">*</span></label>
-                                        <textarea class="form-control" name="short_desc" rows="3" required><?= htmlspecialchars($product['short_desc']) ?></textarea>
-                                    </div>
-                                    
-                                    <div class="col-md-12 mb-4">
-                                        <label class="form-label">Long Description <span class="text-danger">*</span></label>
-                                        <textarea class="form-control" name="pro_desc" id="pro_desc" rows="5" required><?= htmlspecialchars($product['description']) ?></textarea>
-                                    </div>
-                                    
-                                    <!-- Basic Flags -->
-                                    <div class="col-md-4 mb-4">
-                                        <label class="form-label">New Arrival</label>
-                                        <select class="form-select" name="new_arrival" required>
-                                            <option value="0" <?= $product['new_arrival'] == 0 ? 'selected' : '' ?>>No</option>
-                                            <option value="1" <?= $product['new_arrival'] == 1 ? 'selected' : '' ?>>Yes</option>
-                                        </select>
-                                    </div>
-                                    
-                                    <div class="col-md-4 mb-4">
-                                        <label class="form-label">Trending</label>
-                                        <select class="form-select" name="trending" required>
-                                            <option value="0" <?= $product['trending'] == 0 ? 'selected' : '' ?>>No</option>
-                                            <option value="1" <?= $product['trending'] == 1 ? 'selected' : '' ?>>Yes</option>
-                                        </select>
-                                    </div>
-                                    
-                                    <div class="col-md-4 mb-4">
-                                        <label class="form-label">Status <span class="text-danger">*</span></label>
-                                        <select class="form-select" name="status" required>
-                                            <option value="1" <?= $product['status'] == 1 ? 'selected' : '' ?>>Active</option>
-                                            <option value="0" <?= $product['status'] == 0 ? 'selected' : '' ?>>Inactive</option>
-                                        </select>
-                                    </div>
-                                    
-                                    <!-- Additional Flags -->
-                                    <div class="col-12">
-                                        <div class="additional-flags">
-                                            <h5 class="mb-3">Additional Flags</h5>
-                                            <div class="row">
-                                                <div class="col-md-4 mb-3">
-                                                    <label class="form-label">Is Deal</label>
-                                                    <select class="form-select" name="is_deal">
-                                                        <option value="0" <?= $product['is_deal'] == 0 ? 'selected' : '' ?>>No</option>
-                                                        <option value="1" <?= $product['is_deal'] == 1 ? 'selected' : '' ?>>Yes</option>
-                                                    </select>
-                                                </div>
-                                                
-                                                <div class="col-md-4 mb-3">
-                                                    <label class="form-label">Is Disabled</label>
-                                                    <select class="form-select" name="is_disabled">
-                                                        <option value="0" <?= $product['is_disabled'] == 0 ? 'selected' : '' ?>>No</option>
-                                                        <option value="1" <?= $product['is_disabled'] == 1 ? 'selected' : '' ?>>Yes</option>
-                                                    </select>
-                                                </div>
-                                                
-                                                <div class="col-md-4 mb-3">
-                                                    <label class="form-label">Deal of the Day</label>
-                                                    <select class="form-select" name="deal_of_the_day">
-                                                        <option value="0" <?= $product['deal_of_the_day'] == 0 ? 'selected' : '' ?>>No</option>
-                                                        <option value="1" <?= $product['deal_of_the_day'] == 1 ? 'selected' : '' ?>>Yes</option>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- SEO -->
-                                    <div class="col-md-6 mb-4">
-                                        <label class="form-label">Meta Title</label>
-                                        <input type="text" class="form-control" name="meta_title" 
-                                            value="<?= htmlspecialchars($product['meta_title']) ?>">
-                                    </div>
-                                    
-                                    <div class="col-md-6 mb-4">
-                                        <label class="form-label">Meta Keywords</label>
-                                        <input type="text" class="form-control" name="meta_key" 
-                                            value="<?= htmlspecialchars($product['meta_key']) ?>">
-                                    </div>
-                                    
-                                    <div class="col-md-12 mb-4">
-                                        <label class="form-label">Meta Description</label>
-                                        <textarea class="form-control" name="meta_desc" rows="2"><?= htmlspecialchars($product['meta_desc']) ?></textarea>
-                                    </div>
-                                    
-                                    <!-- Submit -->
-                                    <div class="col-12 mt-4">
-                                        <button type="submit" name="update-product" class="btn btn-primary me-2">
-                                            <i class="fas fa-save me-2"></i> Update Product
-                                        </button>
-                                        <a href="show-products.php" class="btn btn-outline-secondary">
-                                            <i class="fas fa-times me-2"></i> Cancel
+                                    <div class="action-buttons">
+                                        <a href="view-product-details.php?id=<?= $product['pro_id'] ?>" class="btn btn-outline-info btn-sm">
+                                            <i class="fas fa-eye me-2"></i>View
+                                        </a>
+                                        <a href="view-products.php" class="btn btn-outline-secondary btn-sm">
+                                            <i class="fas fa-arrow-left me-2"></i>Back to List
                                         </a>
                                     </div>
                                 </div>
-                            </form>
+                            </div>
+                            <div class="white_card_body">
+                                <form id="productForm" action="" method="post" enctype="multipart/form-data">
+                                    <input type="hidden" name="pro_id" value="<?= $product['pro_id'] ?>">
+
+                                    <!-- Tab Navigation -->
+                                    <ul class="nav nav-tabs mb-3" id="productTab" role="tablist">
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link active" id="basic-tab" data-bs-toggle="tab" data-bs-target="#basic" type="button" role="tab">Basic Info</button>
+                                        </li>
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link" id="pricing-tab" data-bs-toggle="tab" data-bs-target="#pricing" type="button" role="tab">Pricing & Inventory</button>
+                                        </li>
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link" id="attributes-tab" data-bs-toggle="tab" data-bs-target="#attributes" type="button" role="tab">Attributes</button>
+                                        </li>
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link" id="variants-tab" data-bs-toggle="tab" data-bs-target="#variants" type="button" role="tab">Variants</button>
+                                        </li>
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link" id="media-tab" data-bs-toggle="tab" data-bs-target="#media" type="button" role="tab">Media</button>
+                                        </li>
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link" id="seo-tab" data-bs-toggle="tab" data-bs-target="#seo" type="button" role="tab">SEO & Status</button>
+                                        </li>
+                                    </ul>
+
+                                    <div class="tab-content" id="productTabContent">
+
+                                        <!-- Basic Information Tab -->
+                                        <div class="tab-pane fade show active" id="basic" role="tabpanel" aria-labelledby="basic-tab">
+                                            <div class="row">
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label">Product Name *</label>
+                                                    <input type="text" class="form-control" name="pro_name" required value="<?= htmlspecialchars($product['pro_name']) ?>">
+                                                </div>
+
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label">SKU *</label>
+                                                    <input type="text" class="form-control" name="sku" required value="<?= htmlspecialchars($product['sku'] ?? '') ?>">
+                                                </div>
+
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label">Brand *</label>
+                                                    <select class="form-control" name="brand_name" required>
+                                                        <option value="">Select Brand</option>
+                                                        <?php while ($brand = mysqli_fetch_assoc($brands)): ?>
+                                                            <option value="<?= $brand['id'] ?>" <?= $brand['id'] == $product['brand_name'] ? 'selected' : '' ?>>
+                                                                <?= htmlspecialchars($brand['brand_name']) ?>
+                                                            </option>
+                                                        <?php endwhile; ?>
+                                                    </select>
+                                                </div>
+
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label">Product Type *</label>
+                                                    <select class="form-control" name="product_type" id="productType" required>
+                                                        <option value="">Select Type</option>
+                                                        <option value="clothing" <?= ($product['product_type'] ?? '') == 'clothing' ? 'selected' : '' ?>>Clothing</option>
+                                                        <option value="shoes" <?= ($product['product_type'] ?? '') == 'shoes' ? 'selected' : '' ?>>Shoes</option>
+                                                        <option value="accessories" <?= ($product['product_type'] ?? '') == 'accessories' ? 'selected' : '' ?>>Accessories</option>
+                                                    </select>
+                                                </div>
+
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label">Category *</label>
+                                                    <select class="form-control" name="pro_cate" id="mainCategory" required onchange="getSubcategories(this.value)">
+                                                        <option value="">Select Category</option>
+                                                        <?php while ($category = mysqli_fetch_assoc($categories)): ?>
+                                                            <option value="<?= $category['id'] ?>" <?= $category['id'] == $product['pro_cate'] ? 'selected' : '' ?>>
+                                                                <?= htmlspecialchars($category['categories']) ?>
+                                                            </option>
+                                                        <?php endwhile; ?>
+                                                    </select>
+                                                </div>
+
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label">Sub Category</label>
+                                                    <select class="form-control" name="pro_sub_cate" id="subCategory">
+                                                        <option value="">Select Sub Category</option>
+                                                        <?php while ($subcat = mysqli_fetch_assoc($subcategories)): ?>
+                                                            <option value="<?= $subcat['id'] ?>" <?= $subcat['id'] == $product['pro_sub_cate'] ? 'selected' : '' ?>>
+                                                                <?= htmlspecialchars($subcat['categories']) ?>
+                                                            </option>
+                                                        <?php endwhile; ?>
+                                                    </select>
+                                                </div>
+
+                                                <div class="col-md-12 mb-3">
+                                                    <label class="form-label">Short Description *</label>
+                                                    <textarea class="form-control" name="short_desc" id="short_desc" rows="3" required><?= htmlspecialchars($product['short_desc']) ?></textarea>
+                                                </div>
+
+                                                <div class="col-md-12 mb-3">
+                                                    <label class="form-label">Full Description *</label>
+                                                    <textarea class="form-control" name="pro_desc" id="pro_desc" rows="6" required><?= htmlspecialchars($product['description']) ?></textarea>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Pricing & Inventory Tab -->
+                                        <div class="tab-pane fade" id="pricing" role="tabpanel" aria-labelledby="pricing-tab">
+                                            <div class="row">
+                                                <div class="col-md-4 mb-3">
+                                                    <label class="form-label">MRP *</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text">₹</span>
+                                                        <input type="number" class="form-control" name="mrp" step="0.01" required value="<?= $product['mrp'] ?>">
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-md-4 mb-3">
+                                                    <label class="form-label">Selling Price *</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text">₹</span>
+                                                        <input type="number" class="form-control" name="selling_price" step="0.01" required value="<?= $product['selling_price'] ?>">
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-md-4 mb-3">
+                                                    <label class="form-label">Wholesale Price</label>
+                                                    <div class="input-group">
+                                                        <span class="input-group-text">₹</span>
+                                                        <input type="number" class="form-control" name="whole_sale_selling_price" step="0.01" value="<?= $product['whole_sale_selling_price'] ?>">
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-md-4 mb-3">
+                                                    <label class="form-label">Weight (kg)</label>
+                                                    <input type="number" class="form-control" name="weight" step="0.01" value="<?= $product['weight'] ?? 0 ?>">
+                                                </div>
+
+                                                <div class="col-md-4 mb-3">
+                                                    <label class="form-label">Stock Status *</label>
+                                                    <select class="form-control" name="stock" required>
+                                                        <option value="in_stock" <?= $product['stock'] == 'in_stock' ? 'selected' : '' ?>>In Stock</option>
+                                                        <option value="low_stock" <?= $product['stock'] == 'low_stock' ? 'selected' : '' ?>>Low Stock</option>
+                                                        <option value="out_of_stock" <?= $product['stock'] == 'out_of_stock' ? 'selected' : '' ?>>Out of Stock</option>
+                                                    </select>
+                                                </div>
+
+                                                <div class="col-md-4 mb-3">
+                                                    <label class="form-label">Quantity</label>
+                                                    <input type="number" class="form-control" name="qty" min="0" value="<?= $product['qty'] ?>">
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Attributes Tab -->
+                                        <div class="tab-pane fade" id="attributes" role="tabpanel" aria-labelledby="attributes-tab">
+                                            <div class="row">
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label">Available Colors</label>
+                                                    <div class="checkbox-group" id="colorOptions">
+                                                        <?php foreach ($colors_list as $color): ?>
+                                                            <label class="form-check form-check-inline">
+                                                                <input class="form-check-input" type="checkbox" name="colors[]" value="<?= $color ?>" <?= in_array($color, $colors) ? 'checked' : '' ?>>
+                                                                <span class="form-check-label"><?= $color ?></span>
+                                                            </label>
+                                                        <?php endforeach; ?>
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label">Available Sizes</label>
+                                                    <div id="sizeOptionsContainer">
+                                                        <!-- Sizes will be loaded based on product type -->
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label">Material/Fabric</label>
+                                                    <select class="form-control" name="material">
+                                                        <option value="">Select Material</option>
+                                                        <?php foreach ($material_options as $material): ?>
+                                                            <option value="<?= $material ?>" <?= ($product['material'] ?? '') == $material ? 'selected' : '' ?>><?= $material ?></option>
+                                                        <?php endforeach; ?>
+                                                    </select>
+                                                </div>
+
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label">Fit Type</label>
+                                                    <select class="form-control" name="fit_type">
+                                                        <option value="">Select Fit</option>
+                                                        <?php foreach ($fit_options as $fit): ?>
+                                                            <option value="<?= $fit ?>" <?= ($product['fit_type'] ?? '') == $fit ? 'selected' : '' ?>><?= $fit ?></option>
+                                                        <?php endforeach; ?>
+                                                    </select>
+                                                </div>
+
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label">Season</label>
+                                                    <select class="form-control" name="season">
+                                                        <option value="">Select Season</option>
+                                                        <?php foreach ($season_options as $season): ?>
+                                                            <option value="<?= $season ?>" <?= ($product['season'] ?? '') == $season ? 'selected' : '' ?>><?= $season ?></option>
+                                                        <?php endforeach; ?>
+                                                    </select>
+                                                </div>
+
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label">Care Instructions</label>
+                                                    <input type="text" class="form-control" name="care_instructions" value="<?= htmlspecialchars($product['care_instructions'] ?? '') ?>">
+                                                </div>
+
+                                                <div class="col-12 mb-3">
+                                                    <label class="form-label">Additional Attributes</label>
+                                                    <div class="input-group mb-2">
+                                                        <input type="text" class="form-control" id="attrName" placeholder="Attribute name">
+                                                        <input type="text" class="form-control" id="attrValue" placeholder="Attribute value">
+                                                        <button type="button" class="btn btn-outline-primary" onclick="addAttribute()">Add</button>
+                                                    </div>
+                                                    <div class="attribute-tags" id="attributeTags">
+                                                        <?php foreach ($attributes as $index => $attr): ?>
+                                                            <span class="badge bg-light text-dark p-2 me-2 mb-2">
+                                                                <?= htmlspecialchars($attr['name']) ?>: <?= htmlspecialchars($attr['value']) ?>
+                                                                <button type="button" class="btn-close ms-2" onclick="removeAttribute(<?= $index ?>)"></button>
+                                                            </span>
+                                                        <?php endforeach; ?>
+                                                    </div>
+                                                    <input type="hidden" name="attributes_json" id="attributesJson" value='<?= json_encode($attributes) ?>'>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Variants Tab -->
+                                        <div class="tab-pane fade" id="variants" role="tabpanel" aria-labelledby="variants-tab">
+                                            <div class="row">
+                                                <div class="col-12 mb-3">
+                                                    <div class="alert alert-info">
+                                                        <i class="fas fa-info-circle me-2"></i>
+                                                        Select colors and sizes in Attributes tab, then click "Generate Variants"
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-12">
+                                                    <button type="button" class="btn btn-success mb-3" onclick="generateVariants()">
+                                                        <i class="fas fa-sync-alt me-2"></i> Generate Variants
+                                                    </button>
+
+                                                    <div id="variantsContainer">
+                                                        <?php if (!empty($variants)): ?>
+                                                            <div class="table-responsive">
+                                                                <table class="table table-bordered">
+                                                                    <thead>
+                                                                        <tr>
+                                                                            <th>Color</th>
+                                                                            <th>Size</th>
+                                                                            <th>SKU</th>
+                                                                            <th>Price</th>
+                                                                            <th>Quantity</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        <?php foreach ($variants as $index => $variant): ?>
+                                                                            <tr>
+                                                                                <td><?= htmlspecialchars($variant['color']) ?></td>
+                                                                                <td><?= htmlspecialchars($variant['size']) ?></td>
+                                                                                <td>
+                                                                                    <input type="text" class="form-control form-control-sm"
+                                                                                        name="variants[<?= $index ?>][sku]"
+                                                                                        value="<?= htmlspecialchars($variant['sku']) ?>">
+                                                                                </td>
+                                                                                <td>
+                                                                                    <input type="number" class="form-control form-control-sm"
+                                                                                        name="variants[<?= $index ?>][price]"
+                                                                                        value="<?= $variant['price'] ?>" step="0.01">
+                                                                                </td>
+                                                                                <td>
+                                                                                    <input type="number" class="form-control form-control-sm"
+                                                                                        name="variants[<?= $index ?>][quantity]"
+                                                                                        value="<?= $variant['quantity'] ?>" min="0">
+                                                                                </td>
+                                                                            </tr>
+                                                                        <?php endforeach; ?>
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        <?php else: ?>
+                                                            <p class="text-muted">No variants generated yet.</p>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                    <input type="hidden" name="variants_json" id="variantsJson" value='<?= json_encode($variants) ?>'>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Media Tab -->
+                                        <div class="tab-pane fade" id="media" role="tabpanel" aria-labelledby="media-tab">
+                                            <div class="row">
+                                                <div class="col-md-12 mb-3">
+                                                    <label class="form-label">Main Product Image</label>
+                                                    <?php if (!empty($product['pro_img'])): ?>
+                                                        <div class="mb-2">
+                                                            <img src="assets/img/uploads/<?= htmlspecialchars($product['pro_img']) ?>"
+                                                                alt="Current Image" style="max-width: 200px;" class="img-thumbnail">
+                                                        </div>
+                                                    <?php endif; ?>
+                                                    <input type="file" class="form-control" name="main_image" accept="image/*">
+                                                </div>
+
+                                                <div class="col-md-12 mb-3">
+                                                    <label class="form-label">Additional Images</label>
+                                                    <?php if (!empty($additional_images)): ?>
+                                                        <div class="mb-2">
+                                                            <?php foreach ($additional_images as $img): ?>
+                                                                <img src="assets/img/uploads/<?= htmlspecialchars($img) ?>"
+                                                                    alt="Additional Image" style="width: 100px; height: 100px; object-fit: cover;" class="img-thumbnail me-2 mb-2">
+                                                            <?php endforeach; ?>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                    <input type="file" class="form-control" name="additional_images[]" accept="image/*" multiple>
+                                                </div>
+
+                                                <div class="col-md-12 mb-3">
+                                                    <label class="form-label">Product Video URL</label>
+                                                    <input type="url" class="form-control" name="video_url" value="<?= htmlspecialchars($product['video_url'] ?? '') ?>">
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- SEO & Status Tab -->
+                                        <div class="tab-pane fade" id="seo" role="tabpanel" aria-labelledby="seo-tab">
+                                            <div class="row">
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label">Meta Title</label>
+                                                    <input type="text" class="form-control" name="meta_title" value="<?= htmlspecialchars($product['meta_title']) ?>">
+                                                </div>
+
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label">Meta Keywords</label>
+                                                    <input type="text" class="form-control" name="meta_key" value="<?= htmlspecialchars($product['meta_key']) ?>">
+                                                </div>
+
+                                                <div class="col-md-12 mb-3">
+                                                    <label class="form-label">Meta Description</label>
+                                                    <textarea class="form-control" name="meta_desc" rows="3"><?= htmlspecialchars($product['meta_desc']) ?></textarea>
+                                                </div>
+
+                                                <div class="col-md-12 mb-3">
+                                                    <label class="form-label">Product Tags</label>
+                                                    <input type="text" class="form-control" name="tags" value="<?= htmlspecialchars($product['tags'] ?? '') ?>">
+                                                </div>
+
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label">Special Tags</label>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox" name="new_arrival" value="1" <?= $product['new_arrival'] == '1' ? 'checked' : '' ?>>
+                                                        <label class="form-check-label">New Arrival</label>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox" name="trending" value="1" <?= $product['trending'] == '1' ? 'checked' : '' ?>>
+                                                        <label class="form-check-label">Trending</label>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox" name="is_deal" value="1" <?= $product['is_deal'] == '1' ? 'checked' : '' ?>>
+                                                        <label class="form-check-label">Special Deal</label>
+                                                    </div>
+                                                    <div class="form-check">
+                                                        <input class="form-check-input" type="checkbox" name="deal_of_the_day" value="1" <?= $product['deal_of_the_day'] == '1' ? 'checked' : '' ?>>
+                                                        <label class="form-check-label">Deal of the Day</label>
+                                                    </div>
+                                                </div>
+
+                                                <div class="col-md-6 mb-3">
+                                                    <label class="form-label">Status *</label>
+                                                    <select class="form-control" name="status" required>
+                                                        <option value="1" <?= $product['status'] == '1' ? 'selected' : '' ?>>Active</option>
+                                                        <option value="0" <?= $product['status'] == '0' ? 'selected' : '' ?>>Inactive</option>
+                                                        <option value="2" <?= $product['status'] == '2' ? 'selected' : '' ?>>Draft</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row mt-4">
+                                        <div class="col-12">
+                                            <button type="submit" name="update-product" class="btn btn-primary px-5">
+                                                <i class="fas fa-save me-2"></i> Update Product
+                                            </button>
+                                            <a href="products.php" class="btn btn-outline-secondary px-5">
+                                                <i class="fas fa-times me-2"></i> Cancel
+                                            </a>
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <?php include "footer.php"; ?>
+        <?php include "includes/footer.php"; ?>
+    </section>
+    </section>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Bootstrap Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Color Picker -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-colorpicker/3.4.0/js/bootstrap-colorpicker.min.js"></script>
+    <!-- JavaScript -->
 
-        <script src="https://cdn.ckeditor.com/4.21.0/standard/ckeditor.js"></script>
-        <script>
+    <script>
+        // Initialize CKEditor
+        document.addEventListener('DOMContentLoaded', function() {
             CKEDITOR.replace('short_desc');
             CKEDITOR.replace('pro_desc');
-            
-            function get_subcategory(cate_id) {
-                if (cate_id === "") {
-                    $("#subcate_id").html('<option value="">Select Sub Category</option>');
-                    return;
-                }
-                
-                $.ajax({
-                    url: 'functions.php',
-                    method: 'post',
-                    data: { cate_id: cate_id },
-                    error: function() {
-                        alert("Something went wrong while loading subcategories");
-                    },
-                    success: function(data) {
-                        $("#subcate_id").html(data);
-                    }
-                });
+
+            // Load size options based on current product type
+            const productType = document.getElementById('productType').value;
+            if (productType) {
+                loadSizeOptions(productType);
             }
-        </script>
-    </body>
+        });
+
+        // Function to get subcategories
+        function getSubcategories(categoryId) {
+            if (!categoryId) {
+                document.getElementById('subCategory').innerHTML = '<option value="">Select Sub Category</option>';
+                return;
+            }
+
+            fetch('functions.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: 'action=get_sub_category_by_id&category_id=' + categoryId
+                })
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById('subCategory').innerHTML = data;
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Load size options based on product type
+        function loadSizeOptions(productType) {
+            const container = document.getElementById('sizeOptionsContainer');
+            let sizeOptions = '';
+
+            if (productType === 'clothing') {
+                <?php foreach ($sizes_clothing as $size): ?>
+                    sizeOptions += `
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" name="sizes[]" value="<?= $size ?>" 
+                                   <?= in_array($size, $sizes) ? 'checked' : '' ?>>
+                            <span class="form-check-label"><?= $size ?></span>
+                        </div>`;
+                <?php endforeach; ?>
+            } else if (productType === 'shoes') {
+                <?php foreach ($sizes_shoes as $size): ?>
+                    sizeOptions += `
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="checkbox" name="sizes[]" value="<?= $size ?>" 
+                                   <?= in_array($size, $sizes) ? 'checked' : '' ?>>
+                            <span class="form-check-label"><?= $size ?></span>
+                        </div>`;
+                <?php endforeach; ?>
+            }
+
+            container.innerHTML = sizeOptions;
+        }
+
+        // Event listener for product type change
+        document.getElementById('productType').addEventListener('change', function() {
+            loadSizeOptions(this.value);
+        });
+
+        // Attributes management
+        let attributes = <?= json_encode($attributes) ?>;
+
+        function addAttribute() {
+            const name = document.getElementById('attrName').value.trim();
+            const value = document.getElementById('attrValue').value.trim();
+
+            if (name && value) {
+                attributes.push({
+                    name,
+                    value
+                });
+                updateAttributeTags();
+                document.getElementById('attrName').value = '';
+                document.getElementById('attrValue').value = '';
+            }
+        }
+
+        function updateAttributeTags() {
+            const container = document.getElementById('attributeTags');
+            container.innerHTML = '';
+
+            attributes.forEach((attr, index) => {
+                const tag = document.createElement('span');
+                tag.className = 'badge bg-light text-dark p-2 me-2 mb-2';
+                tag.innerHTML = `
+                    ${attr.name}: ${attr.value}
+                    <button type="button" class="btn-close ms-2" onclick="removeAttribute(${index})"></button>
+                `;
+                container.appendChild(tag);
+            });
+
+            document.getElementById('attributesJson').value = JSON.stringify(attributes);
+        }
+
+        function removeAttribute(index) {
+            attributes.splice(index, 1);
+            updateAttributeTags();
+        }
+
+        // Generate variants
+        function generateVariants() {
+            const selectedColors = Array.from(document.querySelectorAll('input[name="colors[]"]:checked')).map(cb => cb.value);
+            const selectedSizes = Array.from(document.querySelectorAll('input[name="sizes[]"]:checked')).map(cb => cb.value);
+
+            if (selectedColors.length === 0 || selectedSizes.length === 0) {
+                alert('Please select at least one color and one size');
+                return;
+            }
+
+            let variants = [];
+            let variantsHtml = `
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Color</th>
+                                <th>Size</th>
+                                <th>SKU</th>
+                                <th>Price</th>
+                                <th>Quantity</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+            selectedColors.forEach((color, colorIndex) => {
+                selectedSizes.forEach((size, sizeIndex) => {
+                    const variantIndex = variants.length;
+                    const baseSku = document.querySelector('input[name="sku"]').value || 'BL';
+                    const variantSku = `${baseSku}-${color.substr(0,3).toUpperCase()}-${size}`;
+                    const sellingPrice = document.querySelector('input[name="selling_price"]').value || 0;
+
+                    variants.push({
+                        id: variantIndex,
+                        color: color,
+                        size: size,
+                        sku: variantSku,
+                        price: sellingPrice,
+                        quantity: 0
+                    });
+
+                    variantsHtml += `
+                        <tr>
+                            <td>${color}</td>
+                            <td>${size}</td>
+                            <td>
+                                <input type="text" class="form-control form-control-sm" 
+                                       name="variants[${variantIndex}][sku]" 
+                                       value="${variantSku}">
+                            </td>
+                            <td>
+                                <input type="number" class="form-control form-control-sm" 
+                                       name="variants[${variantIndex}][price]" 
+                                       value="${sellingPrice}" step="0.01">
+                            </td>
+                            <td>
+                                <input type="number" class="form-control form-control-sm" 
+                                       name="variants[${variantIndex}][quantity]" 
+                                       value="0" min="0">
+                            </td>
+                        </tr>`;
+                });
+            });
+
+            variantsHtml += `</tbody></table></div>`;
+            document.getElementById('variantsContainer').innerHTML = variantsHtml;
+            document.getElementById('variantsJson').value = JSON.stringify(variants);
+        }
+
+        // Form validation
+        document.getElementById('productForm').addEventListener('submit', function(e) {
+            const productName = document.querySelector('input[name="pro_name"]').value.trim();
+            const sku = document.querySelector('input[name="sku"]').value.trim();
+            const sellingPrice = parseFloat(document.querySelector('input[name="selling_price"]').value);
+            const mrp = parseFloat(document.querySelector('input[name="mrp"]').value);
+
+            if (!productName) {
+                alert('Product name is required');
+                e.preventDefault();
+                return false;
+            }
+
+            if (!sku) {
+                alert('SKU is required');
+                e.preventDefault();
+                return false;
+            }
+
+            if (sellingPrice > mrp) {
+                if (!confirm('Selling price is higher than MRP. Continue anyway?')) {
+                    e.preventDefault();
+                    return false;
+                }
+            }
+
+            return true;
+        });
+    </script>
+</body>
+
 </html>

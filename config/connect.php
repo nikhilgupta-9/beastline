@@ -17,10 +17,10 @@ if ($local) {
     $site = "http://localhost/beast-line/";
 } else {
     $host = 'localhost';
-    $username = 'u799879276_1zebulli_db';
-    $password = '6Aq0F[o*';
-    $dbName = 'u799879276_1zebulli_db';
-    $site = 'https://zebulli.com/';
+    $username = 'u950539402_doctor_db';
+    $password = '@7:o&LZh^vF3';
+    $dbName = 'u950539402_doctor_db';
+    $site = 'https://mediumorchid-porpoise-577452.hostingersite.com/';
 }
 
 // Make `$site` global

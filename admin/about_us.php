@@ -534,7 +534,13 @@ MODIFY COLUMN content LONGTEXT;
 
         <?php include "includes/footer.php"; ?>
     </section>
-    
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- Bootstrap Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Color Picker -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-colorpicker/3.4.0/js/bootstrap-colorpicker.min.js"></script>
+    <!-- JavaScript -->
     <script>
         // Initialize Summernote editor
         $(document).ready(function() {

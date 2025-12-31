@@ -100,9 +100,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add-categories'])) {
             if ($check[0] > 800 || $check[1] > 800) {
                 // Create resized version
                 $resized_file = $target_dir . 'resized_' . $unique_filename;
-                if ($this->resizeImage($_FILES["imageUpload"]["tmp_name"], $resized_file, 800, 800)) {
-                    $target_file = $resized_file;
-                }
+                if (resizeImage($_FILES["imageUpload"]["tmp_name"], $resized_file, 800, 800)) {
+    $target_file = $resized_file;
+}
+
             }
             
             if (move_uploaded_file($_FILES["imageUpload"]["tmp_name"], $target_file)) {
@@ -191,47 +192,58 @@ function generate_slug($text) {
     return empty($text) ? 'n-a' : $text;
 }
 
-// Function to resize image (optional)
 function resizeImage($source, $destination, $max_width, $max_height) {
-    list($width, $height, $type) = getimagesize($source);
-    
-    if ($width <= $max_width && $height <= $max_height) {
-        return false; // No need to resize
+
+    if (!extension_loaded('gd')) {
+        return false;
     }
-    
-    $ratio = min($max_width/$width, $max_height/$height);
-    $new_width = $width * $ratio;
-    $new_height = $height * $ratio;
-    
-    // Create new image
+
+    $info = getimagesize($source);
+    if (!$info) return false;
+
+    list($width, $height, $type) = $info;
+
+    if ($width <= $max_width && $height <= $max_height) {
+        return false;
+    }
+
+    $ratio = min($max_width / $width, $max_height / $height);
+    $new_width  = (int) ($width * $ratio);
+    $new_height = (int) ($height * $ratio);
+
     $new_image = imagecreatetruecolor($new_width, $new_height);
-    
-    // Load original image based on type
-    switch($type) {
+
+    switch ($type) {
         case IMAGETYPE_JPEG:
             $original_image = imagecreatefromjpeg($source);
             break;
+
         case IMAGETYPE_PNG:
             $original_image = imagecreatefrompng($source);
             imagealphablending($new_image, false);
             imagesavealpha($new_image, true);
             break;
+
         case IMAGETYPE_GIF:
             $original_image = imagecreatefromgif($source);
             break;
+
         case IMAGETYPE_WEBP:
             $original_image = imagecreatefromwebp($source);
             break;
+
         default:
             return false;
     }
-    
-    // Resize image
-    imagecopyresampled($new_image, $original_image, 0, 0, 0, 0, 
-        $new_width, $new_height, $width, $height);
-    
-    // Save resized image
-    switch($type) {
+
+    imagecopyresampled(
+        $new_image, $original_image,
+        0, 0, 0, 0,
+        $new_width, $new_height,
+        $width, $height
+    );
+
+    switch ($type) {
         case IMAGETYPE_JPEG:
             imagejpeg($new_image, $destination, 85);
             break;
@@ -245,13 +257,13 @@ function resizeImage($source, $destination, $max_width, $max_height) {
             imagewebp($new_image, $destination, 85);
             break;
     }
-    
-    // Free memory
+
     imagedestroy($original_image);
     imagedestroy($new_image);
-    
+
     return true;
 }
+
 ?>
 
 <!DOCTYPE html>

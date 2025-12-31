@@ -37,7 +37,7 @@
             <a class="has-arrow" href="#"><i class="fas fa-box-open" style="color: #f39c12;"></i> <span>Products</span></a>
             <ul>
                 <li><a href="add-products.php">Add Products</a></li>
-                <li><a href="show-products.php">Show Products</a></li>
+                <li><a href="view-products.php">Show Products</a></li>
                 <li><a href="show-products-review.php">Products Reviews</a></li>
             </ul>
         </li>

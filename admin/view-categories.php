@@ -334,6 +334,7 @@ $stats = $stats_result ? mysqli_fetch_assoc($stats_result) : ['total' => 0, 'act
                                                     </th>
                                                     <th scope="col">#</th>
                                                     <th scope="col">Category Id</th>
+                                                    <th scope="col">Parent Id</th>
                                                     <th scope="col">Category Details</th>
                                                     <th scope="col">Slug URL</th>
                                                     <th scope="col">Status</th>
@@ -392,7 +393,8 @@ $stats = $stats_result ? mysqli_fetch_assoc($stats_result) : ['total' => 0, 'act
                                                                 <input type="checkbox" name="selected_ids[]" value="<?php echo $result['id']; ?>" class="category-checkbox">
                                                             </td>
                                                             <td class="text-center"><?php echo $sno++; ?></td>
-                                                            <td class="fw-semibold"><?php echo $result['cate_id']; ?></td>
+                                                            <td class="fw-semibold"><?php echo $result['id']; ?></td>
+                                                            <td class="fw-semibold"><?php echo $result['parent_id']; ?></td>
                                                             <td class="text-capitalize">
                                                                 <div class="d-flex align-items-center">
                                                                     <?php echo $image_html; ?>
