@@ -1,362 +1,570 @@
-<?php include('auth_check.php'); ?>
 <?php
-include "db-conn.php";
+require_once __DIR__ . '/config/db-conn.php';
+require_once __DIR__ . '/auth/admin-auth.php';
+require_once __DIR__ . '/models/Setting.php';
 
+// Initialize
+$setting = new Setting($conn);
+
+// Messages
+$success = '';
+$error = '';
+$deleted = '';
+
+// Handle delete action
 if (isset($_GET['delete_id'])) {
-    $review_id = (int) $_GET['delete_id']; // Sanitize to ensure it's an integer
-    $sql_del = "DELETE FROM `product_reviews` WHERE `review_id` = $review_id";
-    $res = mysqli_query($conn, $sql_del);
-
-    if ($res) {
+    $review_id = (int) $_GET['delete_id'];
+    $sql = "DELETE FROM product_reviews WHERE review_id = $review_id";
+    if (mysqli_query($conn, $sql)) {
         $deleted = "Review deleted successfully.";
-        // Optional: Redirect back to the list page
-        // header("Location: reviews_list.php");
-        // exit;
     } else {
-        echo "Error deleting review: " . mysqli_error($conn);
+        $error = "Error deleting review: " . mysqli_error($conn);
     }
 }
 
+// Handle status update
+if (isset($_GET['toggle_status'])) {
+    $review_id = (int) $_GET['toggle_status'];
+    $sql = "UPDATE product_reviews SET status = CASE WHEN status = 1 THEN 0 ELSE 1 END WHERE review_id = $review_id";
+    if (mysqli_query($conn, $sql)) {
+        $success = "Review status updated successfully.";
+    } else {
+        $error = "Error updating review status: " . mysqli_error($conn);
+    }
+}
 
-// Initialize variables
-$error = '';
-$success = '';
+// Handle bulk actions
+if (isset($_POST['bulk_action']) && isset($_POST['selected_reviews'])) {
+    $selected_ids = $_POST['selected_reviews'];
+    $ids_str = implode(',', array_map('intval', $selected_ids));
+    
+    switch ($_POST['bulk_action']) {
+        case 'approve':
+            $sql = "UPDATE product_reviews SET status = 1 WHERE review_id IN ($ids_str)";
+            break;
+        case 'pending':
+            $sql = "UPDATE product_reviews SET status = 0 WHERE review_id IN ($ids_str)";
+            break;
+        case 'delete':
+            $sql = "DELETE FROM product_reviews WHERE review_id IN ($ids_str)";
+            break;
+        default:
+            $error = "Invalid bulk action.";
+            break;
+    }
+    
+    if (!empty($sql)) {
+        if (mysqli_query($conn, $sql)) {
+            $success = "Bulk action completed successfully.";
+        } else {
+            $error = "Error performing bulk action: " . mysqli_error($conn);
+        }
+    }
+}
 
-// Handle review submission
+// Handle review submission/edit
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['submit_review'])) {
-    // Sanitize and validate input
+    $review_id = isset($_POST['review_id']) ? (int) $_POST['review_id'] : 0;
     $product_id = filter_input(INPUT_POST, 'product_id', FILTER_SANITIZE_NUMBER_INT);
     $rating = filter_input(INPUT_POST, 'rating', FILTER_SANITIZE_NUMBER_INT);
-    $review_message = filter_input(INPUT_POST, 'review_message', FILTER_SANITIZE_STRING);
-    $reviewer_name = filter_input(INPUT_POST, 'reviewer_name', FILTER_SANITIZE_STRING);
-    $reviewer_email = filter_input(INPUT_POST, 'reviewer_email', FILTER_SANITIZE_EMAIL);
-    $image_path = '';
-
-    // Validate required fields
+    $review_message = trim($_POST['review_message']);
+    $reviewer_name = trim($_POST['reviewer_name']);
+    $reviewer_email = filter_input(INPUT_POST, 'reviewer_email', FILTER_VALIDATE_EMAIL);
+    $status = isset($_POST['status']) ? 1 : 0;
+    
+    // Validation
     if (empty($product_id)) {
         $error = "Please select a product.";
     } elseif ($rating < 1 || $rating > 5) {
-        $error = "Please select a rating between 1 and 5 stars.";
-    } elseif (empty($review_message) || empty($reviewer_name) || empty($reviewer_email)) {
+        $error = "Rating must be between 1 and 5 stars.";
+    } elseif (empty($review_message) || empty($reviewer_name)) {
         $error = "Please fill in all required fields.";
+    } elseif (!$reviewer_email) {
+        $error = "Please enter a valid email address.";
     }
-
-    // Handle image upload if no errors so far
+    
+    // Handle image upload
+    $image_path = isset($_POST['current_image']) ? $_POST['current_image'] : '';
+    if (empty($error) && isset($_FILES['reviewer_img']) && $_FILES['reviewer_img']['error'] === 0) {
+        $upload_dir = "uploads/reviews/";
+        if (!is_dir($upload_dir)) {
+            mkdir($upload_dir, 0755, true);
+        }
+        
+        $file_name = uniqid() . '_' . basename($_FILES["reviewer_img"]["name"]);
+        $target_file = $upload_dir . $file_name;
+        $imageFileType = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
+        
+        // Validate image
+        $allowed_types = ["jpg", "png", "jpeg", "gif", "webp"];
+        $check = getimagesize($_FILES["reviewer_img"]["tmp_name"]);
+        
+        if (!$check) {
+            $error = "File is not a valid image.";
+        } elseif ($_FILES["reviewer_img"]["size"] > 2097152) { // 2MB
+            $error = "File size must be less than 2MB.";
+        } elseif (!in_array($imageFileType, $allowed_types)) {
+            $error = "Only JPG, JPEG, PNG, GIF & WEBP files are allowed.";
+        } elseif (move_uploaded_file($_FILES["reviewer_img"]["tmp_name"], $target_file)) {
+            // Delete old image if exists
+            if (!empty($image_path) && file_exists($image_path)) {
+                unlink($image_path);
+            }
+            $image_path = $target_file;
+        } else {
+            $error = "Sorry, there was an error uploading your file.";
+        }
+    }
+    
+    // Save to database
     if (empty($error)) {
-        if (isset($_FILES['reviewer_img']) && $_FILES['reviewer_img']['error'] === UPLOAD_ERR_OK) {
-            $target_dir = "uploads/reviews/";
-            if (!file_exists($target_dir)) {
-                mkdir($target_dir, 0777, true);
-            }
-
-            $file_name = basename($_FILES["reviewer_img"]["name"]);
-            $target_file = $target_dir . uniqid() . '_' . $file_name;
-            $imageFileType = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
-
-            // Check if image file is a actual image
-            $check = getimagesize($_FILES["reviewer_img"]["tmp_name"]);
-            if ($check === false) {
-                $error = "File is not a valid image.";
-            }
-
-            // Check file size (max 2MB)
-            if ($_FILES["reviewer_img"]["size"] > 2000000) {
-                $error = "Sorry, your file is too large (max 2MB).";
-            }
-
-            // Allow certain file formats
-            $allowed_types = ["jpg", "png", "jpeg", "gif"];
-            if (!in_array($imageFileType, $allowed_types)) {
-                $error = "Sorry, only JPG, JPEG, PNG & GIF files are allowed.";
-            }
-
-            if (empty($error)) {
-                if (move_uploaded_file($_FILES["reviewer_img"]["tmp_name"], $target_file)) {
-                    $image_path = $target_file;
-                } else {
-                    $error = "Sorry, there was an error uploading your file.";
-                }
-            }
+        if ($review_id > 0) {
+            // Update existing review
+            $stmt = $conn->prepare("UPDATE product_reviews SET 
+                product_id = ?, rating = ?, review_message = ?, reviewer_name = ?, 
+                reviewer_email = ?, reviewver_img = ?, status = ?
+                WHERE review_id = ?");
+            $stmt->bind_param("iissssii", $product_id, $rating, $review_message, 
+                $reviewer_name, $reviewer_email, $image_path, $status, $review_id);
+        } else {
+            // Insert new review
+            $stmt = $conn->prepare("INSERT INTO product_reviews 
+                (product_id, rating, review_message, reviewer_name, reviewer_email, reviewver_img, status, created_at) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, NOW())");
+            $stmt->bind_param("iissssi", $product_id, $rating, $review_message, 
+                $reviewer_name, $reviewer_email, $image_path, $status);
         }
-        // Image is not required, so we proceed even if no image was uploaded
-
-        // Insert into database if no errors
-        if (empty($error)) {
-            $stmt = $conn->prepare("INSERT INTO product_reviews (product_id, rating, review_message, reviewer_name, reviewer_email, reviewver_img, created_at) 
-                                   VALUES (?, ?, ?, ?, ?, ?, NOW())");
-            $stmt->bind_param("iissss", $product_id, $rating, $review_message, $reviewer_name, $reviewer_email, $image_path);
-
-            if ($stmt->execute()) {
-                $success = "Thank you for your review!";
-                // Clear form if needed
+        
+        if ($stmt->execute()) {
+            $success = $review_id > 0 ? "Review updated successfully!" : "Review added successfully!";
+            // Clear form for new entry
+            if ($review_id == 0) {
                 $_POST = array();
-            } else {
-                $error = "Sorry, there was an error submitting your review: " . $conn->error;
             }
-            $stmt->close();
+        } else {
+            $error = "Database error: " . $stmt->error;
         }
+        $stmt->close();
     }
 }
 
-// Fetch existing reviews for display
-$reviews_query = "SELECT * FROM product_reviews ORDER BY created_at DESC";
-$reviews_result = mysqli_query($conn, $reviews_query);
+// Fetch review for editing
+$edit_review = null;
+if (isset($_GET['edit_id'])) {
+    $edit_id = (int) $_GET['edit_id'];
+    $sql = "SELECT * FROM product_reviews WHERE review_id = $edit_id";
+    $result = mysqli_query($conn, $sql);
+    if (mysqli_num_rows($result) > 0) {
+        $edit_review = mysqli_fetch_assoc($result);
+    }
+}
+
+// Get filter parameters
+$filter_product = isset($_GET['product']) ? (int) $_GET['product'] : 0;
+$filter_rating = isset($_GET['rating']) ? (int) $_GET['rating'] : 0;
+$filter_status = isset($_GET['status']) ? ($_GET['status'] == 'approved' ? 1 : 0) : null;
+$search = isset($_GET['search']) ? trim($_GET['search']) : '';
+
+// Build filter conditions
+$where = [];
+$params = [];
+
+if ($filter_product > 0) {
+    $where[] = "r.product_id = $filter_product";
+}
+
+if ($filter_rating > 0) {
+    $where[] = "r.rating = $filter_rating";
+}
+
+if ($filter_status !== null) {
+    $where[] = "r.status = $filter_status";
+}
+
+if (!empty($search)) {
+    $search_term = mysqli_real_escape_string($conn, $search);
+    $where[] = "(r.reviewer_name LIKE '%$search_term%' OR 
+                 r.reviewer_email LIKE '%$search_term%' OR 
+                 r.review_message LIKE '%$search_term%' OR
+                 p.pro_name LIKE '%$search_term%')";
+}
+
+$where_clause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+
+// Pagination
+$per_page = 10;
+$page = isset($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
+$offset = ($page - 1) * $per_page;
+
+// Count total reviews
+$count_sql = "SELECT COUNT(*) as total 
+              FROM product_reviews r
+              LEFT JOIN products p ON r.product_id = p.pro_id 
+              $where_clause";
+$count_result = mysqli_query($conn, $count_sql);
+$total_reviews = mysqli_fetch_assoc($count_result)['total'];
+$total_pages = ceil($total_reviews / $per_page);
+
+// Fetch reviews with filters and pagination
+$reviews_sql = "SELECT r.*, p.pro_name, p.pro_img 
+                FROM product_reviews r
+                LEFT JOIN products p ON r.product_id = p.pro_id 
+                $where_clause 
+                ORDER BY r.created_at DESC 
+                LIMIT $offset, $per_page";
+$reviews_result = mysqli_query($conn, $reviews_sql);
+
+// Fetch products for dropdown
+$products_sql = "SELECT pro_id, pro_name FROM products ORDER BY pro_name";
+$products_result = mysqli_query($conn, $products_sql);
+
+// Fetch statistics
+$stats_sql = "SELECT 
+                COUNT(*) as total_reviews,
+                AVG(rating) as avg_rating,
+                SUM(CASE WHEN status = 1 THEN 1 ELSE 0 END) as approved,
+                SUM(CASE WHEN status = 0 THEN 1 ELSE 0 END) as pending
+              FROM product_reviews";
+$stats_result = mysqli_query($conn, $stats_sql);
+$stats = mysqli_fetch_assoc($stats_result);
 ?>
-
-
 <!DOCTYPE html>
 <html lang="zxx">
 
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <title>Product Reviews</title>
-    <link rel="icon" href="assets/img/logo.png" type="image/png">
+    <title>Product Reviews Management | Admin Panel</title>
+    <link rel="icon" href="<?php echo htmlspecialchars($setting->get('favicon', 'assets/img/logo.png')); ?>" type="image/png">
     <?php include "links.php"; ?>
-    <style>
-        .rating-stars {
-            color: #ffc107;
-            font-size: 1.5em;
-        }
-        .review-card {
-            border: 1px solid #eee;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 15px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .review-header {
-            display: flex;
-            flex-direction: column;
-            margin-bottom: 10px;
-        }
-        @media (min-width: 768px) {
-            .review-header {
-                flex-direction: row;
-                justify-content: space-between;
-                align-items: center;
-            }
-        }
-        .reviewer-info {
-            margin-bottom: 5px;
-        }
-        @media (min-width: 768px) {
-            .reviewer-info {
-                margin-bottom: 0;
-            }
-        }
-        .reviewer-name {
-            font-weight: bold;
-            margin-right: 10px;
-        }
-        .review-date {
-            color: #777;
-            font-size: 0.9em;
-        }
-       .star-rating {
-    display: flex;
-    flex-direction: row-reverse; /* This makes the stars highlight properly on hover */
-    justify-content: flex-end; /* Align to the left */
-    gap: 5px;
-    font-size: 1.5em;
-}
-
-.star-rating input {
-    display: none; /* Hide the radio buttons */
-}
-
-.star-rating label {
-    color: #ddd; /* Default empty star color */
-    cursor: pointer;
-    transition: color 0.2s;
-}
-
-.star-rating label:hover,
-.star-rating label:hover ~ label,
-.star-rating input:checked ~ label {
-    color: #ffc107; /* Gold color for selected stars */
-}
-
-.star-rating input:checked + label {
-    color: #ffc107; /* Ensure the clicked star gets the color */
-}
-
-/* Optional: Add animation for hover */
-.star-rating label:hover {
-    transform: scale(1.2);
-}
-        .form-container {
-            padding: 15px;
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-        .white_card_body {
-            padding: 20px;
-        }
-        @media (max-width: 767px) {
-            .white_card_body {
-                padding: 15px;
-            }
-            .review-card {
-                padding: 10px;
-            }
-        }
-    </style>
+    
+    <!-- Include DataTables CSS -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.bootstrap5.min.css">
 </head>
 
 <body class="crm_body_bg">
-
-    <?php include "header.php"; ?>
+    <?php include "includes/header.php"; ?>
+    
     <section class="main_content dashboard_part large_header_bg">
-
         <div class="container-fluid g-0">
             <div class="row">
                 <div class="col-lg-12 p-0">
-                    <?php include "top_nav.php"; ?>
+                    <?php include "includes/top_nav.php"; ?>
                 </div>
             </div>
         </div>
+        
         <div class="main_content_iner">
             <div class="container-fluid p-0 sm_padding_15px">
                 <div class="row justify-content-center">
-                    <div class="col-12 col-md-10 col-lg-12">
+                    <div class="col-12">
                         <div class="white_card card_height_100 mb_30">
                             <div class="white_card_header">
                                 <div class="box_header m-0">
                                     <div class="main-title">
-                                        <h2 class="m-0">Product Reviews</h2>
+                                        <h2 class="m-0">Product Reviews Management</h2>
+                                        <p class="text-muted mb-0">Manage and moderate customer reviews</p>
                                     </div>
                                 </div>
                             </div>
+                            
                             <div class="white_card_body">
-                               
-                                <div class="row">
-
-                                    <div class="form-container col-md-6 col-sm-12">
-                                        <h4>Submit Your Review</h4>
-                                        <!-- Display error/success messages -->
-                                    <?php if (!empty($error)): ?>
-                                        <div class="alert alert-danger"><?php echo $error; ?></div>
-                                        <?php endif; ?>
-                                        <!-- Display error/success messages -->
-                                        <?php if (!empty($deleted)): ?>
-                                        <div class="alert alert-danger"><?php echo $deleted; ?></div>
-                                        <?php endif; ?>
-                                        <?php if (!empty($success)): ?>
-                                            <div class="alert alert-success"><?php echo $success; ?></div>
-                                            <?php endif; ?>
-                                    
-                                    <form method="post" enctype="multipart/form-data">
-                                        <!-- Remove the action attribute to process in the same file -->
-                                        <div class="mb-3">
-                                            <label for="product_id" class="form-label">Product</label>
-                                            <select class="form-control" id="product_id" name="product_id" required>
-                                                <option value="">-- SELECT PRODUCTS --</option>
-                                                <?php
-                                                $sql_pro = "SELECT * FROM products";
-                                                $res_pro = mysqli_query($conn, $sql_pro);
-                                                while($row_pro = mysqli_fetch_assoc($res_pro)){
-                                                    $selected = (isset($_POST['product_id']) && $_POST['product_id'] == $row_pro['pro_id']) ? 'selected' : '';
-                                                    echo '<option value="'.$row_pro['pro_id'].'" '.$selected.'>'.$row_pro['pro_name'].'</option>';
-                                                }
-                                                ?>
-                                            </select>
-                                        </div>
-                                        
-                                        <div class="mb-3">
-                                            <label class="form-label">Rating</label>
-                                            <div class="star-rating">
-                                                <?php 
-                                                // Get current rating (from POST or from existing review)
-                                                $current_rating = isset($_POST['rating']) ? $_POST['rating'] : (isset($review['rating']) ? $review['rating'] : 0);
-                                                
-                                                // Display stars from 5 to 1
-                                                for ($i = 5; $i >= 1; $i--): 
-                                                ?>
-                                                    <input type="radio" id="star<?php echo $i; ?>" name="rating" value="<?php echo $i; ?>" 
-                                                        <?php echo ($current_rating == $i) ? 'checked' : ''; ?>
-                                                        <?php echo ($i == 5 && empty($current_rating)) ? 'required' : ''; ?>>
-                                                    <label for="star<?php echo $i; ?>" title="<?php echo $i; ?> stars">
-                                                        <i class="fas fa-star"></i>
-                                                    </label>
-                                                <?php endfor; ?>
-                                            </div>
-                                            <small class="text-muted">Click to rate from 1 (worst) to 5 (best)</small>
-                                        </div>
-                                        
-                                        <div class="mb-3">
-                                            <label for="review_message" class="form-label">Your Review</label>
-                                            <textarea class="form-control" id="review_message" name="review_message" rows="3" required><?php echo isset($_POST['review_message']) ? htmlspecialchars($_POST['review_message']) : ''; ?></textarea>
-                                        </div>
-                                        
-                                        <div class="mb-3">
-                                            <label for="reviewer_name" class="form-label">Your Name</label>
-                                            <input type="text" class="form-control" id="reviewer_name" name="reviewer_name" 
-                                                value="<?php echo isset($_POST['reviewer_name']) ? htmlspecialchars($_POST['reviewer_name']) : ''; ?>" required>
-                                        </div>
-                                        
-                                        <div class="mb-3">
-                                            <label for="reviewer_email" class="form-label">Your Email</label>
-                                            <input type="email" class="form-control" id="reviewer_email" name="reviewer_email" 
-                                                value="<?php echo isset($_POST['reviewer_email']) ? htmlspecialchars($_POST['reviewer_email']) : ''; ?>" required>
-                                        </div>
-                                        
-                                        <div class="mb-3">
-                                            <label for="reviewer_img" class="form-label">Image (Optional)</label>
-                                            <input type="file" class="form-control" id="reviewer_img" name="reviewer_img">
-                                            <small class="text-muted">Max size: 2MB (JPG, PNG, GIF)</small>
-                                        </div>
-                                        
-                                        <button type="submit" name="submit_review" class="btn btn-primary">Submit Review</button>
-                                    </form>
-                                </div>
-                                <div class="col-md-6 col-sm-12">
-
-                                    
-                                    <h4>Customer Reviews</h4>
-                                    <?php if (mysqli_num_rows($reviews_result) > 0): ?>
-                                        <?php while ($review = mysqli_fetch_assoc($reviews_result)): ?>
-                                            <div class="review-card ">
-                                                <div class="review-header">
-                                                <div class="reviewer-info">
-                                                    <span class="reviewer-name"><?php echo htmlspecialchars($review['reviewer_name']); ?></span>
-                                                    <span class="review-date"><?php echo date('F j, Y', strtotime($review['created_at'])); ?></span>
-                                                </div>
-                                                <div class="rating-container">
-                                                    <div class="rating-stars">
-                                                        <?php echo str_repeat('★', $review['rating']) . str_repeat('☆', 5 - $review['rating']); ?>
+                                <!-- Statistics Cards -->
+                                <div class="row mb-4">
+                                    <div class="col-xl-3 col-md-6">
+                                        <div class="card bg-primary text-white mb-4">
+                                            <div class="card-body">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <h4 class="mb-0"><?= number_format($stats['total_reviews']) ?></h4>
+                                                        <p class="mb-0">Total Reviews</p>
                                                     </div>
+                                                    <i class="fas fa-comments fa-2x opacity-50"></i>
                                                 </div>
                                             </div>
-                                            <p><?php echo substr(htmlspecialchars($review['review_message']),0,70)."..."; ?></p>
-                                            <div class="d-flex justify-content-between align-items-center mt-2">
-                                                <!-- Status Badge -->
-                                                <span class="badge 
-                                                    <?php echo ($review['status'] == 1) ? 'bg-success' : 'bg-warning text-dark'; ?>">
-                                                    <?php echo ($review['status'] == 1) ? 'Approved' : 'Pending'; ?>
-                                                </span>
-
-                                                <!-- Action Buttons -->
-                                                <div class="btn-group">
-                                                    <a href="edit_review.php?id=<?php echo htmlspecialchars($review['review_id']); ?>" 
-                                                    class="btn btn-sm btn-outline-primary">
-                                                        <i class="fas fa-edit"></i> Edit
-                                                    </a>
-
-                                                    <a href="?delete_id=<?php echo htmlspecialchars($review['review_id']); ?>" 
-                                                    class="btn btn-sm btn-outline-danger"
-                                                    onclick="return confirm('Are you sure you want to delete this review?');">
-                                                        <i class="fas fa-trash-alt"></i> Delete
-                                                    </a>
-                                                </div>
-                                            </div>
-
+                                        </div>
                                     </div>
-                                    <?php endwhile; ?>
-                                    <?php else: ?>
-                                        <p>No reviews yet. Be the first to review!</p>
+                                    <div class="col-xl-3 col-md-6">
+                                        <div class="card bg-success text-white mb-4">
+                                            <div class="card-body">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <h4 class="mb-0"><?= number_format($stats['approved']) ?></h4>
+                                                        <p class="mb-0">Approved</p>
+                                                    </div>
+                                                    <i class="fas fa-check-circle fa-2x opacity-50"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-xl-3 col-md-6">
+                                        <div class="card bg-warning text-white mb-4">
+                                            <div class="card-body">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <h4 class="mb-0"><?= number_format($stats['pending']) ?></h4>
+                                                        <p class="mb-0">Pending</p>
+                                                    </div>
+                                                    <i class="fas fa-clock fa-2x opacity-50"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-xl-3 col-md-6">
+                                        <div class="card bg-info text-white mb-4">
+                                            <div class="card-body">
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <div>
+                                                        <h4 class="mb-0"><?= number_format($stats['avg_rating'], 1) ?>/5</h4>
+                                                        <p class="mb-0">Avg. Rating</p>
+                                                    </div>
+                                                    <i class="fas fa-star fa-2x opacity-50"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Messages -->
+                                <?php if (!empty($success)): ?>
+                                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                        <?= $success ?>
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                    </div>
+                                <?php endif; ?>
+                                
+                                <?php if (!empty($error)): ?>
+                                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                        <?= $error ?>
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                    </div>
+                                <?php endif; ?>
+                                
+                                <?php if (!empty($deleted)): ?>
+                                    <div class="alert alert-info alert-dismissible fade show" role="alert">
+                                        <?= $deleted ?>
+                                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                                    </div>
+                                <?php endif; ?>
+                                
+                                <!-- Filters -->
+                                <div class="card mb-4">
+                                    <div class="card-header">
+                                        <h5 class="mb-0">Filters</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <form method="GET" class="row g-3">
+                                            <div class="col-md-3">
+                                                <label class="form-label">Product</label>
+                                                <select class="form-control" name="product">
+                                                    <option value="0">All Products</option>
+                                                    <?php while($product = mysqli_fetch_assoc($products_result)): ?>
+                                                        <option value="<?= $product['pro_id'] ?>" <?= $filter_product == $product['pro_id'] ? 'selected' : '' ?>>
+                                                            <?= htmlspecialchars($product['pro_name']) ?>
+                                                        </option>
+                                                    <?php endwhile; ?>
+                                                </select>
+                                            </div>
+                                            
+                                            <div class="col-md-2">
+                                                <label class="form-label">Rating</label>
+                                                <select class="form-control" name="rating">
+                                                    <option value="0">All Ratings</option>
+                                                    <option value="5" <?= $filter_rating == 5 ? 'selected' : '' ?>>5 Stars</option>
+                                                    <option value="4" <?= $filter_rating == 4 ? 'selected' : '' ?>>4 Stars</option>
+                                                    <option value="3" <?= $filter_rating == 3 ? 'selected' : '' ?>>3 Stars</option>
+                                                    <option value="2" <?= $filter_rating == 2 ? 'selected' : '' ?>>2 Stars</option>
+                                                    <option value="1" <?= $filter_rating == 1 ? 'selected' : '' ?>>1 Star</option>
+                                                </select>
+                                            </div>
+                                            
+                                            <div class="col-md-2">
+                                                <label class="form-label">Status</label>
+                                                <select class="form-control" name="status">
+                                                    <option value="">All Status</option>
+                                                    <option value="approved" <?= $filter_status === 1 ? 'selected' : '' ?>>Approved</option>
+                                                    <option value="pending" <?= $filter_status === 0 ? 'selected' : '' ?>>Pending</option>
+                                                </select>
+                                            </div>
+                                            
+                                            <div class="col-md-3">
+                                                <label class="form-label">Search</label>
+                                                <input type="text" class="form-control" name="search" 
+                                                       placeholder="Name, email, or review" value="<?= htmlspecialchars($search) ?>">
+                                            </div>
+                                            
+                                            <div class="col-md-2 d-flex align-items-end">
+                                                <div class="d-flex gap-2 w-100">
+                                                    <button type="submit" class="btn btn-primary flex-fill">
+                                                        <i class="fas fa-filter me-2"></i>Filter
+                                                    </button>
+                                                    <a href="?" class="btn btn-outline-secondary">
+                                                        <i class="fas fa-redo"></i>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                                
+                                <!-- Reviews Table -->
+                                <div class="card">
+                                    <div class="card-header d-flex justify-content-between align-items-center">
+                                        <h5 class="mb-0">Customer Reviews</h5>
+                                        <div class="d-flex gap-2">
+                                            <!-- Bulk Actions -->
+                                            <form method="POST" class="d-flex gap-2" onsubmit="return confirm('Are you sure?')">
+                                                <select class="form-control form-control-sm" name="bulk_action" style="width: 120px;">
+                                                    <option value="">Bulk Action</option>
+                                                    <option value="approve">Approve Selected</option>
+                                                    <option value="pending">Mark as Pending</option>
+                                                    <option value="delete">Delete Selected</option>
+                                                </select>
+                                                <button type="submit" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-check me-1"></i>Apply
+                                                </button>
+                                            </form>
+                                            <a href="#addReviewModal" class="btn btn-sm btn-primary" data-bs-toggle="modal">
+                                                <i class="fas fa-plus me-2"></i>Add Review
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="table-responsive">
+                                            <table class="table table-hover" id="reviewsTable">
+                                                <thead>
+                                                    <tr>
+                                                        <th width="30">
+                                                            <input type="checkbox" id="selectAll" class="form-check-input">
+                                                        </th>
+                                                        <th>Reviewer</th>
+                                                        <th>Product</th>
+                                                        <th>Rating</th>
+                                                        <th>Review</th>
+                                                        <th>Date</th>
+                                                        <th>Status</th>
+                                                        <th>Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <?php if (mysqli_num_rows($reviews_result) > 0): ?>
+                                                        <?php while ($review = mysqli_fetch_assoc($reviews_result)): ?>
+                                                            <tr>
+                                                                <td>
+                                                                    <input type="checkbox" name="selected_reviews[]" 
+                                                                           value="<?= $review['review_id'] ?>" class="form-check-input review-checkbox">
+                                                                </td>
+                                                                <td>
+                                                                    <div class="d-flex align-items-center">
+                                                                        <?php if (!empty($review['reviewver_img'])): ?>
+                                                                            <img src="<?= $review['reviewver_img'] ?>" 
+                                                                                 alt="<?= htmlspecialchars($review['reviewer_name']) ?>" 
+                                                                                 class="rounded-circle me-2" width="32" height="32">
+                                                                        <?php endif; ?>
+                                                                        <div>
+                                                                            <div class="fw-bold"><?= htmlspecialchars($review['reviewer_name']) ?></div>
+                                                                            <small class="text-muted"><?= htmlspecialchars($review['reviewer_email']) ?></small>
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                                <td>
+                                                                    <div class="d-flex align-items-center">
+                                                                        <?php if (!empty($review['pro_img'])): ?>
+                                                                            <img src="assets/img/uploads/<?= $review['pro_img'] ?>" 
+                                                                                 alt="<?= htmlspecialchars($review['pro_name']) ?>" 
+                                                                                 class="rounded me-2" width="40" height="40">
+                                                                        <?php endif; ?>
+                                                                        <div class="text-truncate" style="max-width: 150px;">
+                                                                            <?= htmlspecialchars($review['pro_name']) ?>
+                                                                        </div>
+                                                                    </div>
+                                                                </td>
+                                                                <td>
+                                                                    <div class="rating-stars text-warning">
+                                                                        <?= str_repeat('★', $review['rating']) ?>
+                                                                        <?= str_repeat('☆', 5 - $review['rating']) ?>
+                                                                    </div>
+                                                                </td>
+                                                                <td class="text-truncate" style="max-width: 200px;">
+                                                                    <?= htmlspecialchars($review['review_message']) ?>
+                                                                </td>
+                                                                <td>
+                                                                    <?= date('M j, Y', strtotime($review['created_at'])) ?>
+                                                                    <br>
+                                                                    <small class="text-muted"><?= date('h:i A', strtotime($review['created_at'])) ?></small>
+                                                                </td>
+                                                                <td>
+                                                                    <span class="badge <?= $review['status'] == 1 ? 'bg-success' : 'bg-warning' ?>">
+                                                                        <?= $review['status'] == 1 ? 'Approved' : 'Pending' ?>
+                                                                    </span>
+                                                                </td>
+                                                                <td>
+                                                                    <div class="btn-group btn-group-sm">
+                                                                        <a href="?toggle_status=<?= $review['review_id'] ?>" 
+                                                                           class="btn btn-outline-<?= $review['status'] == 1 ? 'warning' : 'success' ?>"
+                                                                           title="<?= $review['status'] == 1 ? 'Mark as Pending' : 'Approve' ?>">
+                                                                            <i class="fas fa-<?= $review['status'] == 1 ? 'clock' : 'check' ?>"></i>
+                                                                        </a>
+                                                                        <a href="?edit_id=<?= $review['review_id'] ?>#addReviewModal" 
+                                                                           class="btn btn-outline-primary" data-bs-toggle="modal"
+                                                                           title="Edit">
+                                                                            <i class="fas fa-edit"></i>
+                                                                        </a>
+                                                                        <a href="?delete_id=<?= $review['review_id'] ?>" 
+                                                                           class="btn btn-outline-danger"
+                                                                           onclick="return confirm('Are you sure you want to delete this review?')"
+                                                                           title="Delete">
+                                                                            <i class="fas fa-trash"></i>
+                                                                        </a>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        <?php endwhile; ?>
+                                                    <?php else: ?>
+                                                        <tr>
+                                                            <td colspan="8" class="text-center py-4">
+                                                                <div class="text-muted">
+                                                                    <i class="fas fa-comments fa-3x mb-3"></i>
+                                                                    <h5>No reviews found</h5>
+                                                                    <p>Try adjusting your filters or add a new review</p>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    <?php endif; ?>
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        
+                                        <!-- Pagination -->
+                                        <?php if ($total_pages > 1): ?>
+                                            <nav aria-label="Page navigation" class="mt-4">
+                                                <ul class="pagination justify-content-center">
+                                                    <?php if ($page > 1): ?>
+                                                        <li class="page-item">
+                                                            <a class="page-link" href="?<?= http_build_query(array_merge($_GET, ['page' => $page - 1])) ?>">
+                                                                <i class="fas fa-chevron-left"></i>
+                                                            </a>
+                                                        </li>
+                                                    <?php endif; ?>
+                                                    
+                                                    <?php for ($i = max(1, $page - 2); $i <= min($total_pages, $page + 2); $i++): ?>
+                                                        <li class="page-item <?= $i == $page ? 'active' : '' ?>">
+                                                            <a class="page-link" href="?<?= http_build_query(array_merge($_GET, ['page' => $i])) ?>">
+                                                                <?= $i ?>
+                                                            </a>
+                                                        </li>
+                                                    <?php endfor; ?>
+                                                    
+                                                    <?php if ($page < $total_pages): ?>
+                                                        <li class="page-item">
+                                                            <a class="page-link" href="?<?= http_build_query(array_merge($_GET, ['page' => $page + 1])) ?>">
+                                                                <i class="fas fa-chevron-right"></i>
+                                                            </a>
+                                                        </li>
+                                                    <?php endif; ?>
+                                                </ul>
+                                            </nav>
                                         <?php endif; ?>
                                     </div>
                                 </div>
@@ -367,20 +575,164 @@ $reviews_result = mysqli_query($conn, $reviews_query);
             </div>
         </div>
 
-   </section>
+        <?php include "includes/footer.php"; ?>
+    </section>
 
-        <?php include "footer.php"; ?>
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-            integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
-            crossorigin="anonymous"></script>
+    <!-- Add/Edit Review Modal -->
+    <div class="modal fade" id="addReviewModal" tabindex="-1" aria-labelledby="addReviewModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <form method="post" enctype="multipart/form-data">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addReviewModalLabel">
+                            <?= isset($edit_review) ? 'Edit Review' : 'Add New Review' ?>
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="review_id" value="<?= isset($edit_review) ? $edit_review['review_id'] : '' ?>">
+                        <input type="hidden" name="current_image" value="<?= isset($edit_review) ? $edit_review['reviewver_img'] : '' ?>">
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Product *</label>
+                                <select class="form-control" name="product_id" required>
+                                    <option value="">Select Product</option>
+                                    <?php 
+                                    mysqli_data_seek($products_result, 0);
+                                    while ($product = mysqli_fetch_assoc($products_result)): 
+                                    ?>
+                                        <option value="<?= $product['pro_id'] ?>" 
+                                            <?= (isset($edit_review) && $edit_review['product_id'] == $product['pro_id']) ? 'selected' : '' ?>>
+                                            <?= htmlspecialchars($product['pro_name']) ?>
+                                        </option>
+                                    <?php endwhile; ?>
+                                </select>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Rating *</label>
+                                <div class="star-rating">
+                                    <?php for ($i = 5; $i >= 1; $i--): ?>
+                                        <input type="radio" id="star<?= $i ?>" name="rating" value="<?= $i ?>"
+                                               <?= (isset($edit_review) && $edit_review['rating'] == $i) || (!isset($edit_review) && $i == 5) ? 'checked' : '' ?>>
+                                        <label for="star<?= $i ?>" title="<?= $i ?> stars">
+                                            <i class="fas fa-star"></i>
+                                        </label>
+                                    <?php endfor; ?>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Reviewer Name *</label>
+                                <input type="text" class="form-control" name="reviewer_name" required
+                                       value="<?= isset($edit_review) ? htmlspecialchars($edit_review['reviewer_name']) : '' ?>">
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Reviewer Email *</label>
+                                <input type="email" class="form-control" name="reviewer_email" required
+                                       value="<?= isset($edit_review) ? htmlspecialchars($edit_review['reviewer_email']) : '' ?>">
+                            </div>
+                            
+                            <div class="col-12 mb-3">
+                                <label class="form-label">Review Message *</label>
+                                <textarea class="form-control" name="review_message" rows="4" required><?= isset($edit_review) ? htmlspecialchars($edit_review['review_message']) : '' ?></textarea>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Reviewer Image</label>
+                                <?php if (isset($edit_review) && !empty($edit_review['reviewver_img'])): ?>
+                                    <div class="mb-2">
+                                        <img src="<?= $edit_review['reviewver_img'] ?>" alt="Current Image" 
+                                             class="img-thumbnail" style="max-width: 150px;">
+                                    </div>
+                                <?php endif; ?>
+                                <input type="file" class="form-control" name="reviewer_img" accept="image/*">
+                                <small class="text-muted">Optional. Max 2MB (JPG, PNG, GIF, WEBP)</small>
+                            </div>
+                            
+                            <div class="col-md-6 mb-3 d-flex align-items-center">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" name="status" value="1" 
+                                           <?= isset($edit_review) && $edit_review['status'] == 1 ? 'checked' : '' ?>>
+                                    <label class="form-check-label">Approved</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="submit" name="submit_review" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>
+                            <?= isset($edit_review) ? 'Update Review' : 'Add Review' ?>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
-        </body>
-        </html>
-        <script src="https://cdn.ckeditor.com/4.21.0/standard/ckeditor.js"></script>
-
+    <!-- JavaScript -->
+    <!-- <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script> -->
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    
+    <script>
+        // Initialize DataTable
+        $(document).ready(function() {
+            $('#reviewsTable').DataTable({
+                paging: false, // Disable DataTables pagination (we have custom pagination)
+                searching: false, // Disable search box (we have custom filter)
+                info: false, // Disable "Showing X of Y entries"
+                ordering: true, // Enable sorting
+                responsive: true
+            });
+            
+            // Select all checkboxes
+            $('#selectAll').click(function() {
+                $('.review-checkbox').prop('checked', this.checked);
+            });
+            
+            // Star rating functionality
+            $('.star-rating input').change(function() {
+                const rating = $(this).val();
+                $('.star-rating label').css('color', '#ddd');
+                $(this).nextAll('label').addBack().find('label').css('color', '#ffc107');
+            });
+            
+            // Open modal with edit data
+            <?php if (isset($edit_review)): ?>
+                $(document).ready(function() {
+                    var modal = new bootstrap.Modal(document.getElementById('addReviewModal'));
+                    modal.show();
+                });
+            <?php endif; ?>
+            
+            // Auto-close alerts after 5 seconds
+            setTimeout(function() {
+                $('.alert').alert('close');
+            }, 5000);
+            
+            // Confirm before bulk delete
+            $('form[onsubmit]').submit(function(e) {
+                const action = $(this).find('select[name="bulk_action"]').val();
+                if (action === 'delete') {
+                    const count = $(this).find('input[name="selected_reviews[]"]:checked').length;
+                    if (count === 0) {
+                        alert('Please select at least one review to delete.');
+                        e.preventDefault();
+                        return false;
+                    }
+                    return confirm('Are you sure you want to delete ' + count + ' review(s)?');
+                }
+            });
+        });
+        
+        // Function to confirm before deleting single review
+        function confirmDelete() {
+            return confirm('Are you sure you want to delete this review?');
+        }
+    </script>
 </body>
 </html>
-<script>
-    CKEDITOR.replace('pro_desc')
-    CKEDITOR.replace('short_desc')
-</script>

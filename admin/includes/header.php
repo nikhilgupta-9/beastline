@@ -28,8 +28,8 @@
             <ul>
                 <li><a href="add-categories.php">Add Category</a></li>
                 <li><a href="view-categories.php">View Categories</a></li>
-                <li><a href="add-sub-category.php">Add Sub Category</a></li>
-                <li><a href="view-sub-categories.php">View Sub Categories</a></li>
+                <!-- <li><a href="add-sub-category.php">Add Sub Category</a></li>
+                <li><a href="view-sub-categories.php">View Sub Categories</a></li> -->
             </ul>
         </li>
 

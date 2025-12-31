@@ -693,14 +693,14 @@ $updated_at = !empty($product['updated_on']) ? date('d M Y, h:i A', strtotime($p
                                 <div class="col-12">
                                     <div class="d-flex justify-content-between align-items-center">
                                         <div>
-                                            <a href="add-product-page-banner.php?id=<?= $product['pro_id'] ?>" 
+                                            <!-- <a href="add-product-page-banner.php?id=<?= $product['pro_id'] ?>" 
                                                class="btn btn-outline-primary">
                                                 <i class="fas fa-image me-2"></i>Manage Banner
                                             </a>
                                             <a href="multiple_img.php?id=<?= $product['pro_id'] ?>" 
                                                class="btn btn-outline-secondary ms-2">
                                                 <i class="fas fa-images me-2"></i>Manage Images
-                                            </a>
+                                            </a> -->
                                         </div>
                                         <div>
                                             <a href="product_delete.php?delete=<?= $product['pro_id'] ?>" 

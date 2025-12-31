@@ -457,7 +457,7 @@ $totalPages = ceil($totalRows / $perPage);
                                                         </div>
                                                     </td>
                                                     <td>
-                                                        <code class="bg-light p-1 rounded"><?= htmlspecialchars($row['sku'] ?? 'N/A') ?></code>
+                                                        <code class="bg-light p-1 rounded text-dark"><?= htmlspecialchars($row['sku'] ?? 'N/A') ?></code>
                                                     </td>
                                                     <td><?= htmlspecialchars($row['category_name'] ?? 'N/A') ?></td>
                                                     <td><?= htmlspecialchars($row['brand_name'] ?? 'N/A') ?></td>
