@@ -1,4 +1,8 @@
 <?php
+include_once __DIR__ . '/../models/Setting.php';
+
+// Initialize Settings
+$setting = new Setting($conn);
 // $settings array should already be loaded
 $siteName        = htmlspecialchars($setting->get('site_name')) ?? 'Influence';
 $developerName   = $settings['developer_name'] ?? 'Code With Nikhil';

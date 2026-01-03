@@ -2,6 +2,10 @@
 require_once __DIR__ . '/config/db-conn.php';
 require_once __DIR__ . '/auth/admin-auth.php';
 require_once __DIR__ . '/models/PaymentSmtpSetting.php';
+require_once __DIR__ . '/models/Setting.php';
+
+// Initialize Settings
+$setting = new Setting($conn);
 
 // Initialize
 $settingModel = new PaymentSmtpSetting($conn);
@@ -91,7 +95,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST') {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <title>Payment & SMTP Settings | Admin Panel</title>
-    <link rel="icon" href="assets/img/logo.png" type="image/png">
+    <link rel="icon" href="<?php echo htmlspecialchars($setting->get('favicon')); ?>" type="image/png">
 
     <?php include "links.php"; ?>
     

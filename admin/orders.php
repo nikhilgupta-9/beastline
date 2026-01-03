@@ -1,9 +1,11 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-include "db-conn.php";
+require_once __DIR__ . '/config/db-conn.php';
+require_once __DIR__ . '/auth/admin-auth.php';
+require_once __DIR__ . '/models/PaymentSmtpSetting.php';
+require_once __DIR__ . '/models/Setting.php';
 
+// Initialize Settings
+$setting = new Setting($conn);
 // Handle status update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_order_id'], $_POST['update_status'])) {
     $update_order_id = mysqli_real_escape_string($conn, $_POST['update_order_id']);
@@ -92,7 +94,7 @@ $result = $stmt->get_result();
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <title>Order Management | Admin Dashboard</title>
-    <link rel="icon" href="assets/img/logo.png" type="image/png">
+    <link rel="icon" href="<?php echo htmlspecialchars($setting->get('favicon')); ?>" type="image/png">
 
     <?php include "links.php"; ?>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
@@ -422,13 +424,13 @@ $result = $stmt->get_result();
 
 <body class="crm_body_bg">
 
-    <?php include "header.php"; ?>
+    <?php include "includes/header.php"; ?>
     <section class="main_content dashboard_part large_header_bg">
 
         <div class="container-fluid g-0">
             <div class="row">
                 <div class="col-lg-12 p-0">
-                    <?php include "top_nav.php"; ?>
+                    <?php include "includes/top_nav.php"; ?>
                 </div>
             </div>
         </div>
@@ -717,7 +719,7 @@ $result = $stmt->get_result();
             </div>
         </div>
 
-        <?php include "footer.php"; ?>
+        <?php include "includes/footer.php"; ?>
     </section>
     
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
