@@ -2,53 +2,76 @@
 include_once "config/connect.php";
 include_once "util/function.php";
 
+// Get current category from slug
+$category_slug = $_GET['alias'] ?? '';
+$category = get_category_by_slug($category_slug);
+
+if (!$category) {
+    // Redirect to shop page if category not found
+    header("Location: " . $site . "shop/");
+    exit;
+}
+
+$category_id = $category['id'];
+$category_name = $category['categories'];
+
+// Get category hierarchy for breadcrumbs
+$category_hierarchy = get_category_hierarchy($category_id);
+
+// Get filter parameters
+$filters = [
+    'min_price' => $_GET['min_price'] ?? null,
+    'max_price' => $_GET['max_price'] ?? null,
+    'brands' => isset($_GET['brand']) ? (array)$_GET['brand'] : [],
+    'colors' => isset($_GET['color']) ? (array)$_GET['color'] : [],
+    'sizes' => isset($_GET['size']) ? (array)$_GET['size'] : [],
+    'materials' => isset($_GET['material']) ? (array)$_GET['material'] : [],
+    'sort' => $_GET['sort'] ?? 'newest'
+];
+
+// Get products with filters
+$products = get_filtered_products($category_id, $filters);
+
+// Get filter data
+$categories = get_categories_for_sidebar();
+$brands = get_brands_for_filter();
+$colors = get_colors_for_filter();
+$sizes = get_sizes_for_filter();
+$price_range = get_price_range($category_id);
+
 $contact = contact_us();
 ?>
+
 <!doctype html>
 <html class="no-js" lang="en">
-
 <head>
     <meta charset="utf-8">
     <meta http-equiv="x-ua-compatible" content="ie=edge">
-    <title>Shop | Beastline</title>
-    <meta name="description" content="">
+    <title><?= htmlspecialchars($category_name) ?> | Beastline</title>
+    <meta name="description" content="<?= htmlspecialchars($category['meta_description'] ?? '') ?>">
+    <meta name="keywords" content="<?= htmlspecialchars($category['meta_keywords'] ?? '') ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <!-- Favicon -->
     <link rel="shortcut icon" type="image/x-icon" href="<?= $site ?>assets/img/favicon/favicon.ico">
 
-    <!-- CSS 
-    ========================= -->
-    <!--bootstrap min css-->
+    <!-- CSS -->
     <link rel="stylesheet" href="<?= $site ?>assets/css/bootstrap.min.css">
-    <!--owl carousel min css-->
     <link rel="stylesheet" href="<?= $site ?>assets/css/owl.carousel.min.css">
-    <!--slick min css-->
     <link rel="stylesheet" href="<?= $site ?>assets/css/slick.css">
-    <!--magnific popup min css-->
     <link rel="stylesheet" href="<?= $site ?>assets/css/magnific-popup.css">
-    <!--font awesome css-->
     <link rel="stylesheet" href="<?= $site ?>assets/css/font.awesome.css">
-    <!--ionicons css-->
     <link rel="stylesheet" href="<?= $site ?>assets/css/ionicons.min.css">
-    <!--7 stroke icons css-->
     <link rel="stylesheet" href="<?= $site ?>assets/css/pe-icon-7-stroke.css">
-    <!--animate css-->
     <link rel="stylesheet" href="<?= $site ?>assets/css/animate.css">
-    <!--jquery ui min css-->
     <link rel="stylesheet" href="<?= $site ?>assets/css/jquery-ui.min.css">
-    <!--plugins css-->
     <link rel="stylesheet" href="<?= $site ?>assets/css/plugins.css">
-
-    <!-- Main Style CSS -->
     <link rel="stylesheet" href="<?= $site ?>assets/css/style.css">
 
-    <!--modernizr min js here-->
+    <!-- Modernizr -->
     <script src="<?= $site ?>assets/js/vendor/modernizr-3.7.1.min.js"></script>
-
 </head>
 
 <body>
-
 
     <!--header area start-->
     <?php include_once "includes/header.php" ?>
@@ -60,10 +83,10 @@ $contact = contact_us();
             <div class="row">
                 <div class="col-12">
                     <div class="breadcrumb_content">
-                        <h3>shop</h3>
+                        <h3><?= $category['categories'] ?? 'Shop' ?></h3>
                         <ul>
-                            <li><a href="index.html">home</a></li>
-                            <li>shop</li>
+                            <li><a href="<?= $site ?>">home</a></li>
+                            <li><?= $category['categories'] ?? 'shop' ?></li>
                         </ul>
                     </div>
                 </div>
@@ -72,7 +95,7 @@ $contact = contact_us();
     </div>
     <!--breadcrumbs area end-->
     
-    <!--shop  area start-->
+    <!--shop area start-->
     <div class="shop_area shop_reverse mb-80">
         <div class="container">
             <div class="row">
@@ -80,920 +103,561 @@ $contact = contact_us();
                    <!--sidebar widget start-->
                     <aside class="sidebar_widget">
                         <div class="widget_inner">
+                            <!-- Categories -->
                             <div class="widget_list widget_categories">
-                                <h3>Women</h3>
+                                <h3>Categories</h3>
                                 <ul>
-                                    <li class="widget_sub_categories sub_categories1"><a href="javascript:void(0)">Shoes</a>
-                                        <ul class="widget_dropdown_categories dropdown_categories1">
-                                            <li><a href="#">Document</a></li>
-                                            <li><a href="#">Dropcap</a></li>
-                                            <li><a href="#">Dummy Image</a></li>
-                                            <li><a href="#">Dummy Text</a></li>
-                                            <li><a href="#">Fancy Text</a></li>
+                                    <?php foreach($categories as $cat): ?>
+                                    <li class="widget_sub_categories sub_categories<?= $cat['id'] ?>">
+                                        <a href="javascript:void(0)"><?= htmlspecialchars($cat['categories']) ?> 
+                                            <span>(<?= $cat['product_count'] ?>)</span>
+                                        </a>
+                                        <?php 
+                                        $subcategories = get_subcategories($cat['id']);
+                                        if (!empty($subcategories)):
+                                        ?>
+                                        <ul class="widget_dropdown_categories dropdown_categories<?= $cat['id'] ?>">
+                                            <?php foreach($subcategories as $subcat): ?>
+                                            <li>
+                                                <a href="<?= $site ?>category/<?= $subcat['slug'] ?>">
+                                                    <?= htmlspecialchars($subcat['categories']) ?>
+                                                </a>
+                                            </li>
+                                            <?php endforeach; ?>
                                         </ul>
+                                        <?php endif; ?>
                                     </li>
-                                    <li class="widget_sub_categories sub_categories2"><a href="javascript:void(0)">Bags</a>
-                                        <ul class="widget_dropdown_categories dropdown_categories2">
-                                            <li><a href="#">Flickr</a></li>
-                                            <li><a href="#">Flip Box</a></li>
-                                            <li><a href="#">Cocktail</a></li>
-                                            <li><a href="#">Frame</a></li>
-                                            <li><a href="#">Flickrq</a></li>
-                                        </ul>
-                                    </li>
-                                    <li class="widget_sub_categories sub_categories3"><a href="javascript:void(0)">Clothing</a>
-                                        <ul class="widget_dropdown_categories dropdown_categories3">
-                                            <li><a href="#">Platform Beds</a></li>
-                                            <li><a href="#">Storage Beds</a></li>
-                                            <li><a href="#">Regular Beds</a></li>
-                                            <li><a href="#">Sleigh Beds</a></li>
-                                            <li><a href="#">Laundry</a></li>
-                                        </ul>
-                                    </li>
+                                    <?php endforeach; ?>
                                 </ul>
                             </div>
+                            
+                            <!-- Price Filter -->
                             <div class="widget_list widget_filter">
                                 <h3>Filter by price</h3>
-                                <form action="#"> 
-                                    <div id="slider-range"></div>   
-                                    <button type="submit">Filter</button>
-                                    <input type="text" name="text" id="amount" />   
+                                <form id="priceFilterForm">
+                                    <div id="slider-range" 
+                                         data-min="<?= $price_range['min_price'] ?? 0 ?>" 
+                                         data-max="<?= $price_range['max_price'] ?? 10000 ?>"></div>   
+                                    <button type="button" id="applyPriceFilter">Filter</button>
+                                    <input type="text" name="price_range" id="amount" readonly />   
                                 </form> 
                             </div>
+                            
+                            <!-- Color Filter -->
                             <div class="widget_list widget_color">
                                 <h3>Select By Color</h3>
                                 <ul>
+                                    <?php foreach($colors as $color): ?>
                                     <li>
-                                        <a href="#">Black  <span>(6)</span></a> 
+                                        <label class="color_filter">
+                                            <input type="checkbox" name="color" value="<?= htmlspecialchars($color['color']) ?>" 
+                                                   class="filter-checkbox" <?= in_array($color['color'], $filters['colors']) ? 'checked' : '' ?>>
+                                            <span class="color_dot" style="background-color: <?= strtolower($color['color']) ?>"></span>
+                                            <?= htmlspecialchars($color['color']) ?>  
+                                            <span>(<?= $color['product_count'] ?>)</span>
+                                        </label>
                                     </li>
-                                    <li>
-                                        <a href="#">White  <span>(4)</span></a> 
-                                    </li>
-                                    <li>
-                                        <a href="#"> Blue <span>(8)</span></a> 
-                                    </li>
-                                    <li>
-                                        <a href="#"> Green <span>(6)</span></a> 
-                                    </li>
-                                  
+                                    <?php endforeach; ?>
                                 </ul>
                             </div>
+                            
+                            <!-- Size Filter -->
                             <div class="widget_list widget_color">
-                                <h3>Select By SIze</h3>
+                                <h3>Select By Size</h3>
                                 <ul>
+                                    <?php foreach($sizes as $size): ?>
                                     <li>
-                                        <a href="#">S  <span>(6)</span></a> 
+                                        <label class="size_filter">
+                                            <input type="checkbox" name="size" value="<?= htmlspecialchars($size['size']) ?>" 
+                                                   class="filter-checkbox" <?= in_array($size['size'], $filters['sizes']) ? 'checked' : '' ?>>
+                                            <?= htmlspecialchars($size['size']) ?>  
+                                            <span>(<?= $size['product_count'] ?>)</span>
+                                        </label>
                                     </li>
-                                    <li>
-                                        <a href="#"> M <span>(8)</span></a> 
-                                    </li>
-                                    <li>
-                                        <a href="#">L <span>(10)</span></a> 
-                                    </li>
-                                    <li>
-                                        <a href="#"> XL <span>(6)</span></a> 
-                                    </li>
-                                  
+                                    <?php endforeach; ?>
                                 </ul>
                             </div>
-                             <div class="widget_list widget_brand">
+                            
+                            <!-- Brand Filter -->
+                            <div class="widget_list widget_brand">
                                 <h3>Brand</h3>
                                 <ul>
+                                    <?php foreach($brands as $brand): ?>
                                     <li>
-                                        <a href="#">Studio Design <span>(8)</span></a> 
+                                        <label class="brand_filter">
+                                            <input type="checkbox" name="brand" value="<?= $brand['id'] ?>" 
+                                                   class="filter-checkbox" <?= in_array($brand['id'], $filters['brands']) ? 'checked' : '' ?>>
+                                            <?= htmlspecialchars($brand['brand_name']) ?>
+                                            <span>(<?= $brand['product_count'] ?>)</span>
+                                        </label>
                                     </li>
-                                    <li>
-                                        <a href="#"> Graphic Corner<span>(5)</span></a> 
-                                    </li>
+                                    <?php endforeach; ?>
                                 </ul>
                             </div>
-                            <div class="widget_list widget_manu">
-                                <h3>Manufacturer</h3>
-                                <ul>
-                                    <li>
-                                        <a href="#">Cotton <span>(6)</span></a> 
-                                    </li>
-                                    <li>
-                                        <a href="#">Elastane <span>(10)</span></a> 
-                                    </li>
-                                    <li>
-                                        <a href="#">Polyester <span>(4)</span></a> 
-                                    </li>
-                                    <li>
-                                        <a href="#">Wool <span>(10)</span></a> 
-                                    </li>
-                                    <li>
-                                        <a href="#">Squarred <span>(3)</span></a> 
-                                    </li>
-                                
-                                </ul>
-                            </div>
+                            
+                            <!-- Tags -->
                             <div class="widget_list tags_widget">
                                 <h3>Product tags</h3>
                                 <div class="tag_cloud">
-                                    <a href="#">Men</a>
-                                    <a href="#">Women</a>
-                                    <a href="#">Watches</a>
-                                    <a href="#">Bags</a>
-                                    <a href="#">Dress</a>
+                                    <a href="#" class="tag-filter" data-tag="men">Men</a>
+                                    <a href="#" class="tag-filter" data-tag="women">Women</a>
+                                    <a href="#" class="tag-filter" data-tag="new">New</a>
+                                    <a href="#" class="tag-filter" data-tag="sale">Sale</a>
+                                    <a href="#" class="tag-filter" data-tag="trending">Trending</a>
                                 </div>
+                            </div>
+                            
+                            <!-- Clear Filters -->
+                            <div class="widget_list">
+                                <button type="button" id="clearFilters" class="btn btn-outline-secondary btn-sm">Clear All Filters</button>
                             </div>
                         </div>
                     </aside>
                     <!--sidebar widget end-->
                 </div>
+
                 <div class="col-lg-9 col-md-12">
-                    <!--shop wrapper start-->
-                    
                     <!--shop toolbar start-->
                     <div class="shop_toolbar_wrapper">
                         <div class="shop_toolbar_btn">
-                            <button data-role="grid_4" type="button"  class="active  btn-grid-4" data-bs-toggle="tooltip" title="4"></button>
-                            <button data-role="grid_3" type="button" class=" btn-grid-3" data-bs-toggle="tooltip" title="3"></button>
-                            <button data-role="grid_list" type="button"  class="btn-list" data-bs-toggle="tooltip" title="List"></button>
+                            <button data-role="grid_4" type="button" class="active btn-grid-4" data-bs-toggle="tooltip" title="4"></button>
+                            <button data-role="grid_3" type="button" class="btn-grid-3" data-bs-toggle="tooltip" title="3"></button>
+                            <button data-role="grid_list" type="button" class="btn-list" data-bs-toggle="tooltip" title="List"></button>
                         </div>
-                        <div class=" niceselect_option">
-                            <form class="select_option" action="#">
-                                <select name="orderby" id="short">
-
-                                    <option selected value="1">Sort by average rating</option>
-                                    <option  value="2">Sort by popularity</option>
-                                    <option value="3">Sort by newness</option>
-                                    <option value="4">Sort by price: low to high</option>
-                                    <option value="5">Sort by price: high to low</option>
-                                    <option value="6">Product Name: Z</option>
+                        <div class="niceselect_option">
+                            <form id="sortForm">
+                                <select name="sort" id="sortSelect" class="filter-select">
+                                    <option value="newest" <?= $filters['sort'] == 'newest' ? 'selected' : '' ?>>Sort by newness</option>
+                                    <option value="price_low_high" <?= $filters['sort'] == 'price_low_high' ? 'selected' : '' ?>>Sort by price: low to high</option>
+                                    <option value="price_high_low" <?= $filters['sort'] == 'price_high_low' ? 'selected' : '' ?>>Sort by price: high to low</option>
+                                    <option value="name_asc" <?= $filters['sort'] == 'name_asc' ? 'selected' : '' ?>>Sort by name: A-Z</option>
+                                    <option value="name_desc" <?= $filters['sort'] == 'name_desc' ? 'selected' : '' ?>>Sort by name: Z-A</option>
+                                    <option value="popular" <?= $filters['sort'] == 'popular' ? 'selected' : '' ?>>Sort by popularity</option>
                                 </select>
                             </form>
                         </div>
                         <div class="page_amount">
-                            <p>Showing 1–12 of 21 results</p>
-                        </div>
-                    </div>
-                     <!--shop toolbar end-->
-                     <div class="row shop_wrapper">
-                        <div class="col-lg-3 col-md-4 col-sm-6 col-12 ">
-                            <div class="single_product">
-                                <div class="product_thumb">
-                                    <a class="primary_img" href="product-details.html"><img src="assets/img/product/product1.jpg" alt=""></a>
-                                    <a class="secondary_img" href="product-details.html"><img src="assets/img/product/product2.jpg" alt=""></a>
-									<div class="label_product">
-										<span class="label_sale">Sale</span>
-									</div>
-									<div class="action_links">
-										<ul>
-											<li class="quick_button"><a href="#" data-bs-toggle="modal" data-bs-target="#modal_box"  title="quick view"> <span class="pe-7s-search"></span></a></li>
-											<li class="wishlist"><a href="wishlist.html" title="Add to Wishlist"><span class="pe-7s-like"></span></a></li>
-											<li class="compare"><a href="#" title="Add to Compare"><span class="pe-7s-edit"></span></a></li>                                                 
-										</ul>
-									</div>
-                                </div>
-                                <div class="product_content grid_content">
-                                    <div class="product_content_inner">
-										<h4 class="product_name"><a href="product-details.html">Duis pulvinar obortis eleifend elementum</a></h4>
-										<div class="price_box"> 
-											<span class="old_price">$84.00</span>
-											<span class="current_price">$79.00</span>
-										</div>
-									</div>
-									<div class="add_to_cart">
-										<a href="cart.html">Add to cart</a>
-									</div>
-                                </div>
-                                <div class="product_content list_content">
-                                    <h4 class="product_name"><a href="product-details.html">Duis pulvinar obortis eleifend elementum</a></h4>
-									<div class="price_box"> 
-										<span class="old_price">$84.00</span>
-										<span class="current_price">$79.00</span>
-									</div>
-                                    <div class="product_rating">
-                                        <ul>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                        </ul>
-                                    </div>
-                                    <div class="product_desc">
-                                        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce posuere metus vitae arcu imperdiet, id aliquet ante scelerisque. Sed sit amet sem vitae urna fringilla tempus.</p>
-                                    </div>
-                                    <div class="add_to_cart shop_list_cart">
-										<a href="cart.html">Add to cart</a>
-									</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-3 col-md-4 col-sm-6 col-12 ">
-                            <div class="single_product">
-                                <div class="product_thumb">
-                                    <a class="primary_img" href="product-details.html"><img src="assets/img/product/product3.jpg" alt=""></a>
-                                    <a class="secondary_img" href="product-details.html"><img src="assets/img/product/product4.jpg" alt=""></a>
-									<div class="label_product">
-										<span class="label_sale">Sale</span>
-									</div>
-									<div class="action_links">
-										<ul>
-											<li class="quick_button"><a href="#" data-bs-toggle="modal" data-bs-target="#modal_box"  title="quick view"> <span class="pe-7s-search"></span></a></li>
-											<li class="wishlist"><a href="wishlist.html" title="Add to Wishlist"><span class="pe-7s-like"></span></a></li>
-											<li class="compare"><a href="#" title="Add to Compare"><span class="pe-7s-edit"></span></a></li>                                                 
-										</ul>
-									</div>
-                                </div>
-                                <div class="product_content grid_content">
-                                    <div class="product_content_inner">
-										<h4 class="product_name"><a href="product-details.html">Epicuri per lobortis eleifend eget laoreet</a></h4>
-										<div class="price_box"> 
-											<span class="old_price">$86.00</span>
-											<span class="current_price">$81.00</span>
-										</div>
-									</div>
-									<div class="add_to_cart">
-										<a href="cart.html">Add to cart</a>
-									</div>
-                                </div>
-                                <div class="product_content list_content">
-                                    <h4 class="product_name"><a href="product-details.html">Epicuri per lobortis eleifend eget laoreet</a></h4>
-									<div class="price_box"> 
-										<span class="old_price">$86.00</span>
-										<span class="current_price">$81.00</span>
-									</div>
-                                    <div class="product_rating">
-                                        <ul>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                        </ul>
-                                    </div>
-                                    <div class="product_desc">
-                                        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce posuere metus vitae arcu imperdiet, id aliquet ante scelerisque. Sed sit amet sem vitae urna fringilla tempus.</p>
-                                    </div>
-                                    <div class="add_to_cart shop_list_cart">
-										<a href="cart.html">Add to cart</a>
-									</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-3 col-md-4 col-sm-6 col-12 ">
-                            <div class="single_product">
-                                <div class="product_thumb">
-                                    <a class="primary_img" href="product-details.html"><img src="assets/img/product/product5.jpg" alt=""></a>
-                                    <a class="secondary_img" href="product-details.html"><img src="assets/img/product/product6.jpg" alt=""></a>
-									<div class="label_product">
-										<span class="label_sale">Sale</span>
-									</div>
-									<div class="action_links">
-										<ul>
-											<li class="quick_button"><a href="#" data-bs-toggle="modal" data-bs-target="#modal_box"  title="quick view"> <span class="pe-7s-search"></span></a></li>
-											<li class="wishlist"><a href="wishlist.html" title="Add to Wishlist"><span class="pe-7s-like"></span></a></li>
-											<li class="compare"><a href="#" title="Add to Compare"><span class="pe-7s-edit"></span></a></li>                                                 
-										</ul>
-									</div>
-                                </div>
-                                <div class="product_content grid_content">
-                                    <div class="product_content_inner">
-										<h4 class="product_name"><a href="product-details.html">Kaoreet lobortis sagittis laoreet metus is</a></h4>
-										<div class="price_box"> 
-											<span class="old_price">$78.00</span>
-											<span class="current_price">$76.00</span>
-										</div>
-									</div>
-									<div class="add_to_cart">
-										<a href="cart.html">Add to cart</a>
-									</div>
-                                </div>
-                                <div class="product_content list_content">
-                                    <h4 class="product_name"><a href="product-details.html">Kaoreet lobortis sagittis laoreet metus is</a></h4>
-									<div class="price_box"> 
-										<span class="old_price">$78.00</span>
-										<span class="current_price">$76.00</span>
-									</div>
-                                    <div class="product_rating">
-                                        <ul>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                        </ul>
-                                    </div>
-                                    <div class="product_desc">
-                                        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce posuere metus vitae arcu imperdiet, id aliquet ante scelerisque. Sed sit amet sem vitae urna fringilla tempus.</p>
-                                    </div>
-                                    <div class="add_to_cart shop_list_cart">
-										<a href="cart.html">Add to cart</a>
-									</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-3 col-md-4 col-sm-6 col-12 ">
-                            <div class="single_product">
-                                <div class="product_thumb">
-                                    <a class="primary_img" href="product-details.html"><img src="assets/img/product/product7.jpg" alt=""></a>
-                                    <a class="secondary_img" href="product-details.html"><img src="assets/img/product/product8.jpg" alt=""></a>
-									<div class="label_product">
-										<span class="label_sale">Sale</span>
-									</div>
-									<div class="action_links">
-										<ul>
-											<li class="quick_button"><a href="#" data-bs-toggle="modal" data-bs-target="#modal_box"  title="quick view"> <span class="pe-7s-search"></span></a></li>
-											<li class="wishlist"><a href="wishlist.html" title="Add to Wishlist"><span class="pe-7s-like"></span></a></li>
-											<li class="compare"><a href="#" title="Add to Compare"><span class="pe-7s-edit"></span></a></li>                                                 
-										</ul>
-									</div>
-                                </div>
-                                <div class="product_content grid_content">
-                                    <div class="product_content_inner">
-										<h4 class="product_name"><a href="product-details.html">Ornare sed consequat nisl eget mi porttitor</a></h4>
-										<div class="price_box"> 
-											<span class="old_price">$88.00</span>
-											<span class="current_price">$86.00</span>
-										</div>
-									</div>
-									<div class="add_to_cart">
-										<a href="cart.html">Add to cart</a>
-									</div>
-                                </div>
-                                <div class="product_content list_content">
-                                    <h4 class="product_name"><a href="product-details.html">Ornare sed consequat nisl eget mi porttitor</a></h4>
-									<div class="price_box"> 
-										<span class="old_price">$88.00</span>
-										<span class="current_price">$86.00</span>
-									</div>
-                                    <div class="product_rating">
-                                        <ul>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                        </ul>
-                                    </div>
-                                    <div class="product_desc">
-                                        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce posuere metus vitae arcu imperdiet, id aliquet ante scelerisque. Sed sit amet sem vitae urna fringilla tempus.</p>
-                                    </div>
-                                    <div class="add_to_cart shop_list_cart">
-										<a href="cart.html">Add to cart</a>
-									</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-3 col-md-4 col-sm-6 col-12 ">
-                            <div class="single_product">
-                                <div class="product_thumb">
-                                    <a class="primary_img" href="product-details.html"><img src="assets/img/product/product9.jpg" alt=""></a>
-                                    <a class="secondary_img" href="product-details.html"><img src="assets/img/product/product10.jpg" alt=""></a>
-									<div class="label_product">
-										<span class="label_sale">Sale</span>
-									</div>
-									<div class="action_links">
-										<ul>
-											<li class="quick_button"><a href="#" data-bs-toggle="modal" data-bs-target="#modal_box"  title="quick view"> <span class="pe-7s-search"></span></a></li>
-											<li class="wishlist"><a href="wishlist.html" title="Add to Wishlist"><span class="pe-7s-like"></span></a></li>
-											<li class="compare"><a href="#" title="Add to Compare"><span class="pe-7s-edit"></span></a></li>                                                 
-										</ul>
-									</div>
-                                </div>
-                                <div class="product_content grid_content">
-                                    <div class="product_content_inner">
-										<h4 class="product_name"><a href="product-details.html">Aliquam lobortis pellentesque nisi lectus</a></h4>
-										<div class="price_box"> 
-											<span class="old_price">$76.00</span>
-											<span class="current_price">$72.00</span>
-										</div>
-									</div>
-									<div class="add_to_cart">
-										<a href="cart.html">Add to cart</a>
-									</div>
-                                </div>
-                                <div class="product_content list_content">
-                                    <h4 class="product_name"><a href="product-details.html">Aliquam lobortis pellentesque nisi lectus</a></h4>
-									<div class="price_box"> 
-										<span class="old_price">$76.00</span>
-										<span class="current_price">$72.00</span>
-									</div>
-                                    <div class="product_rating">
-                                        <ul>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                        </ul>
-                                    </div>
-                                    <div class="product_desc">
-                                        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce posuere metus vitae arcu imperdiet, id aliquet ante scelerisque. Sed sit amet sem vitae urna fringilla tempus.</p>
-                                    </div>
-                                    <div class="add_to_cart shop_list_cart">
-										<a href="cart.html">Add to cart</a>
-									</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-3 col-md-4 col-sm-6 col-12 ">
-                            <div class="single_product">
-                                <div class="product_thumb">
-                                    <a class="primary_img" href="product-details.html"><img src="assets/img/product/product11.jpg" alt=""></a>
-                                    <a class="secondary_img" href="product-details.html"><img src="assets/img/product/product12.jpg" alt=""></a>
-									<div class="label_product">
-										<span class="label_sale">Sale</span>
-									</div>
-									<div class="action_links">
-										<ul>
-											<li class="quick_button"><a href="#" data-bs-toggle="modal" data-bs-target="#modal_box"  title="quick view"> <span class="pe-7s-search"></span></a></li>
-											<li class="wishlist"><a href="wishlist.html" title="Add to Wishlist"><span class="pe-7s-like"></span></a></li>
-											<li class="compare"><a href="#" title="Add to Compare"><span class="pe-7s-edit"></span></a></li>                                                 
-										</ul>
-									</div>
-                                </div>
-                                <div class="product_content grid_content">
-                                    <div class="product_content_inner">
-										<h4 class="product_name"><a href="product-details.html">Eodem modo vels is mattis antes facilisis</a></h4>
-										<div class="price_box"> 
-											<span class="old_price">$70.00</span>
-											<span class="current_price">$65.00</span>
-										</div>
-									</div>
-									<div class="add_to_cart">
-										<a href="cart.html">Add to cart</a>
-									</div>
-                                </div>
-                                <div class="product_content list_content">
-                                    <h4 class="product_name"><a href="product-details.html">Eodem modo vels is mattis antes facilisis</a></h4>
-									<div class="price_box"> 
-										<span class="old_price">$70.00</span>
-										<span class="current_price">$65.00</span>
-									</div>
-                                    <div class="product_rating">
-                                        <ul>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                        </ul>
-                                    </div>
-                                    <div class="product_desc">
-                                        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce posuere metus vitae arcu imperdiet, id aliquet ante scelerisque. Sed sit amet sem vitae urna fringilla tempus.</p>
-                                    </div>
-                                    <div class="add_to_cart shop_list_cart">
-										<a href="cart.html">Add to cart</a>
-									</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-3 col-md-4 col-sm-6 col-12 ">
-                            <div class="single_product">
-                                <div class="product_thumb">
-                                    <a class="primary_img" href="product-details.html"><img src="assets/img/product/product13.jpg" alt=""></a>
-                                    <a class="secondary_img" href="product-details.html"><img src="assets/img/product/product14.jpg" alt=""></a>
-									<div class="label_product">
-										<span class="label_sale">Sale</span>
-									</div>
-									<div class="action_links">
-										<ul>
-											<li class="quick_button"><a href="#" data-bs-toggle="modal" data-bs-target="#modal_box"  title="quick view"> <span class="pe-7s-search"></span></a></li>
-											<li class="wishlist"><a href="wishlist.html" title="Add to Wishlist"><span class="pe-7s-like"></span></a></li>
-											<li class="compare"><a href="#" title="Add to Compare"><span class="pe-7s-edit"></span></a></li>                                                 
-										</ul>
-									</div>
-                                </div>
-                                <div class="product_content grid_content">
-                                    <div class="product_content_inner">
-										<h4 class="product_name"><a href="product-details.html">Fusce ultricies  dolor vitae tristique suscipit</a></h4>
-										<div class="price_box"> 
-											<span class="old_price">$68.00</span>
-											<span class="current_price">$82.00</span>
-										</div>
-									</div>
-									<div class="add_to_cart">
-										<a href="cart.html">Add to cart</a>
-									</div>
-                                </div>
-                                <div class="product_content list_content">
-                                    <h4 class="product_name"><a href="product-details.html">Fusce ultricies  dolor vitae tristique suscipit</a></h4>
-									<div class="price_box"> 
-										<span class="old_price">$68.00</span>
-										<span class="current_price">$82.00</span>
-									</div>
-                                    <div class="product_rating">
-                                        <ul>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                        </ul>
-                                    </div>
-                                    <div class="product_desc">
-                                        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce posuere metus vitae arcu imperdiet, id aliquet ante scelerisque. Sed sit amet sem vitae urna fringilla tempus.</p>
-                                    </div>
-                                    <div class="add_to_cart shop_list_cart">
-										<a href="cart.html">Add to cart</a>
-									</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-3 col-md-4 col-sm-6 col-12 ">
-                            <div class="single_product">
-                                <div class="product_thumb">
-                                    <a class="primary_img" href="product-details.html"><img src="assets/img/product/product15.jpg" alt=""></a>
-                                    <a class="secondary_img" href="product-details.html"><img src="assets/img/product/product12.jpg" alt=""></a>
-									<div class="label_product">
-										<span class="label_sale">Sale</span>
-									</div>
-									<div class="action_links">
-										<ul>
-											<li class="quick_button"><a href="#" data-bs-toggle="modal" data-bs-target="#modal_box"  title="quick view"> <span class="pe-7s-search"></span></a></li>
-											<li class="wishlist"><a href="wishlist.html" title="Add to Wishlist"><span class="pe-7s-like"></span></a></li>
-											<li class="compare"><a href="#" title="Add to Compare"><span class="pe-7s-edit"></span></a></li>                                                 
-										</ul>
-									</div>
-                                </div>
-                                <div class="product_content grid_content">
-                                    <div class="product_content_inner">
-										<h4 class="product_name"><a href="product-details.html">Nostrum exercitationem itae posuere nisl</a></h4>
-										<div class="price_box"> 
-											<span class="old_price">$65.00</span>
-											<span class="current_price">$62.00</span>
-										</div>
-									</div>
-									<div class="add_to_cart">
-										<a href="cart.html">Add to cart</a>
-									</div>
-                                </div>
-                                <div class="product_content list_content">
-                                    <h4 class="product_name"><a href="product-details.html">Nostrum exercitationem itae posuere nisl</a></h4>
-									<div class="price_box"> 
-										<span class="old_price">$65.00</span>
-										<span class="current_price">$62.00</span>
-									</div>
-                                    <div class="product_rating">
-                                        <ul>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                        </ul>
-                                    </div>
-                                    <div class="product_desc">
-                                        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce posuere metus vitae arcu imperdiet, id aliquet ante scelerisque. Sed sit amet sem vitae urna fringilla tempus.</p>
-                                    </div>
-                                    <div class="add_to_cart shop_list_cart">
-										<a href="cart.html">Add to cart</a>
-									</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-3 col-md-4 col-sm-6 col-12 ">
-                            <div class="single_product">
-                                <div class="product_thumb">
-                                    <a class="primary_img" href="product-details.html"><img src="assets/img/product/product2.jpg" alt=""></a>
-                                    <a class="secondary_img" href="product-details.html"><img src="assets/img/product/product1.jpg" alt=""></a>
-									<div class="label_product">
-										<span class="label_sale">Sale</span>
-									</div>
-									<div class="action_links">
-										<ul>
-											<li class="quick_button"><a href="#" data-bs-toggle="modal" data-bs-target="#modal_box"  title="quick view"> <span class="pe-7s-search"></span></a></li>
-											<li class="wishlist"><a href="wishlist.html" title="Add to Wishlist"><span class="pe-7s-like"></span></a></li>
-											<li class="compare"><a href="#" title="Add to Compare"><span class="pe-7s-edit"></span></a></li>                                                 
-										</ul>
-									</div>
-                                </div>
-                                <div class="product_content grid_content">
-                                    <div class="product_content_inner">
-										<h4 class="product_name"><a href="product-details.html">Pellentesque posuere hendrerit dui quis</a></h4>
-										<div class="price_box"> 
-											<span class="old_price">$60.00</span>
-											<span class="current_price">$55.00</span>
-										</div>
-									</div>
-									<div class="add_to_cart">
-										<a href="cart.html">Add to cart</a>
-									</div>
-                                </div>
-                                <div class="product_content list_content">
-                                    <h4 class="product_name"><a href="product-details.html">Pellentesque posuere hendrerit dui quis</a></h4>
-									<div class="price_box"> 
-										<span class="old_price">$60.00</span>
-										<span class="current_price">$55.00</span>
-									</div>
-                                    <div class="product_rating">
-                                        <ul>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                        </ul>
-                                    </div>
-                                    <div class="product_desc">
-                                        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce posuere metus vitae arcu imperdiet, id aliquet ante scelerisque. Sed sit amet sem vitae urna fringilla tempus.</p>
-                                    </div>
-                                    <div class="add_to_cart shop_list_cart">
-										<a href="cart.html">Add to cart</a>
-									</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-3 col-md-4 col-sm-6 col-12 ">
-                            <div class="single_product">
-                                <div class="product_thumb">
-                                    <a class="primary_img" href="product-details.html"><img src="assets/img/product/product4.jpg" alt=""></a>
-                                    <a class="secondary_img" href="product-details.html"><img src="assets/img/product/product3.jpg" alt=""></a>
-									<div class="label_product">
-										<span class="label_sale">Sale</span>
-									</div>
-									<div class="action_links">
-										<ul>
-											<li class="quick_button"><a href="#" data-bs-toggle="modal" data-bs-target="#modal_box"  title="quick view"> <span class="pe-7s-search"></span></a></li>
-											<li class="wishlist"><a href="wishlist.html" title="Add to Wishlist"><span class="pe-7s-like"></span></a></li>
-											<li class="compare"><a href="#" title="Add to Compare"><span class="pe-7s-edit"></span></a></li>                                                 
-										</ul>
-									</div>
-                                </div>
-                                <div class="product_content grid_content">
-                                    <div class="product_content_inner">
-										<h4 class="product_name"><a href="product-details.html">Donec eu libero ac dapibus urna placerat</a></h4>
-										<div class="price_box"> 
-											<span class="old_price">$78.00</span>
-											<span class="current_price">$76.00</span>
-										</div>
-									</div>
-									<div class="add_to_cart">
-										<a href="cart.html">Add to cart</a>
-									</div>
-                                </div>
-                                <div class="product_content list_content">
-                                    <h4 class="product_name"><a href="product-details.html">Donec eu libero ac dapibus urna placerat</a></h4>
-									<div class="price_box"> 
-										<span class="old_price">$78.00</span>
-										<span class="current_price">$76.00</span>
-									</div>
-                                    <div class="product_rating">
-                                        <ul>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                        </ul>
-                                    </div>
-                                    <div class="product_desc">
-                                        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce posuere metus vitae arcu imperdiet, id aliquet ante scelerisque. Sed sit amet sem vitae urna fringilla tempus.</p>
-                                    </div>
-                                    <div class="add_to_cart shop_list_cart">
-										<a href="cart.html">Add to cart</a>
-									</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-3 col-md-4 col-sm-6 col-12 ">
-                            <div class="single_product">
-                                <div class="product_thumb">
-                                    <a class="primary_img" href="product-details.html"><img src="assets/img/product/product6.jpg" alt=""></a>
-                                    <a class="secondary_img" href="product-details.html"><img src="assets/img/product/product5.jpg" alt=""></a>
-									<div class="label_product">
-										<span class="label_sale">Sale</span>
-									</div>
-									<div class="action_links">
-										<ul>
-											<li class="quick_button"><a href="#" data-bs-toggle="modal" data-bs-target="#modal_box"  title="quick view"> <span class="pe-7s-search"></span></a></li>
-											<li class="wishlist"><a href="wishlist.html" title="Add to Wishlist"><span class="pe-7s-like"></span></a></li>
-											<li class="compare"><a href="#" title="Add to Compare"><span class="pe-7s-edit"></span></a></li>                                                 
-										</ul>
-									</div>
-                                </div>
-                                <div class="product_content grid_content">
-                                    <div class="product_content_inner">
-										<h4 class="product_name"><a href="product-details.html">Duis pulvinar obortis eleifend elementum</a></h4>
-										<div class="price_box"> 
-											<span class="old_price">$84.00</span>
-											<span class="current_price">$79.00</span>
-										</div>
-									</div>
-									<div class="add_to_cart">
-										<a href="cart.html">Add to cart</a>
-									</div>
-                                </div>
-                                <div class="product_content list_content">
-                                    <h4 class="product_name"><a href="product-details.html">Duis pulvinar obortis eleifend elementum</a></h4>
-									<div class="price_box"> 
-										<span class="old_price">$84.00</span>
-										<span class="current_price">$79.00</span>
-									</div>
-                                    <div class="product_rating">
-                                        <ul>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                        </ul>
-                                    </div>
-                                    <div class="product_desc">
-                                        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce posuere metus vitae arcu imperdiet, id aliquet ante scelerisque. Sed sit amet sem vitae urna fringilla tempus.</p>
-                                    </div>
-                                    <div class="add_to_cart shop_list_cart">
-										<a href="cart.html">Add to cart</a>
-									</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-3 col-md-4 col-sm-6 col-12 ">
-                            <div class="single_product">
-                                <div class="product_thumb">
-                                    <a class="primary_img" href="product-details.html"><img src="assets/img/product/product8.jpg" alt=""></a>
-                                    <a class="secondary_img" href="product-details.html"><img src="assets/img/product/product7.jpg" alt=""></a>
-									<div class="label_product">
-										<span class="label_sale">Sale</span>
-									</div>
-									<div class="action_links">
-										<ul>
-											<li class="quick_button"><a href="#" data-bs-toggle="modal" data-bs-target="#modal_box"  title="quick view"> <span class="pe-7s-search"></span></a></li>
-											<li class="wishlist"><a href="wishlist.html" title="Add to Wishlist"><span class="pe-7s-like"></span></a></li>
-											<li class="compare"><a href="#" title="Add to Compare"><span class="pe-7s-edit"></span></a></li>                                                 
-										</ul>
-									</div>
-                                </div>
-                                <div class="product_content grid_content">
-                                    <div class="product_content_inner">
-										<h4 class="product_name"><a href="product-details.html">Pellentesque posuere hendrerit dui quis</a></h4>
-										<div class="price_box"> 
-											<span class="old_price">$69.00</span>
-											<span class="current_price">$67.00</span>
-										</div>
-									</div>
-									<div class="add_to_cart">
-										<a href="cart.html">Add to cart</a>
-									</div>
-                                </div>
-                                <div class="product_content list_content">
-                                    <h4 class="product_name"><a href="product-details.html">Pellentesque posuere hendrerit dui quis</a></h4>
-									<div class="price_box"> 
-										<span class="old_price">$69.00</span>
-										<span class="current_price">$67.00</span>
-									</div>
-                                    <div class="product_rating">
-                                        <ul>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                            <li><a href="#"><i class="ion-android-star"></i></a></li>
-                                        </ul>
-                                    </div>
-                                    <div class="product_desc">
-                                        <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce posuere metus vitae arcu imperdiet, id aliquet ante scelerisque. Sed sit amet sem vitae urna fringilla tempus.</p>
-                                    </div>
-                                    <div class="add_to_cart shop_list_cart">
-										<a href="cart.html">Add to cart</a>
-									</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="shop_toolbar t_bottom">
-                        <div class="pagination">
-                            <ul>
-                                <li class="current">1</li>
-                                <li><a href="#">2</a></li>
-                                <li><a href="#">3</a></li>
-                                <li class="next"><a href="#">next</a></li>
-                                <li><a href="#">>></a></li>
-                            </ul>
+                            <p>Showing <span id="productCount"><?= count($products) ?></span> results</p>
                         </div>
                     </div>
                     <!--shop toolbar end-->
-                    <!--shop wrapper end-->
+                    
+                    <!-- Products Grid -->
+                    <div id="productsContainer" class="row shop_wrapper">
+                        <?php if (empty($products)): ?>
+                            <div class="col-12">
+                                <div class="alert alert-info">No products found in this category.</div>
+                            </div>
+                        <?php else: ?>
+                            <?php foreach($products as $pro): 
+                                // Get product variants for quick view
+                                $variants_sql = "SELECT * FROM product_variants WHERE product_id = {$pro['pro_id']}";
+                                $variants_result = mysqli_query($conn, $variants_sql);
+                                $variants = [];
+                                while($variant = mysqli_fetch_assoc($variants_result)) {
+                                    $variants[] = $variant;
+                                }
+                            ?>
+                            <div class="col-lg-4 col-md-4 col-sm-6 col-12 ">
+                                <div class="single_product" data-product-id="<?= $pro['pro_id'] ?>">
+                                    <div class="product_thumb">
+                                        <a class="primary_img" href="<?= $site ?>product-details/<?= $pro['slug_url'] ?>">
+                                            <img src="<?= $site ?>admin/assets/img/uploads/<?= $pro['pro_img'] ?>" alt="<?= htmlspecialchars($pro['pro_name']) ?>">
+                                        </a>
+                                        <a class="secondary_img" href="<?= $site ?>product-details/<?= $pro['slug_url'] ?>">
+                                            <?php 
+                                            // Get secondary image
+                                            $secondary_img_sql = "SELECT image_url FROM product_images 
+                                                                 WHERE product_id = {$pro['pro_id']} AND is_main = 0 
+                                                                 ORDER BY display_order LIMIT 1";
+                                            $secondary_result = mysqli_query($conn, $secondary_img_sql);
+                                            if ($secondary_img = mysqli_fetch_assoc($secondary_result)): ?>
+                                                <img src="<?= $site ?>admin/assets/img/uploads/<?= $secondary_img['image_url'] ?>" alt="<?= htmlspecialchars($pro['pro_name']) ?>">
+                                            <?php else: ?>
+                                                <img src="<?= $site ?>assets/img/product/product2.jpg" alt="<?= htmlspecialchars($pro['pro_name']) ?>">
+                                            <?php endif; ?>
+                                        </a>
+                                        <?php if ($pro['mrp'] > $pro['selling_price']): ?>
+                                        <div class="label_product">
+                                            <span class="label_sale">Sale</span>
+                                            <?php 
+                                            $discount = round((($pro['mrp'] - $pro['selling_price']) / $pro['mrp']) * 100);
+                                            if ($discount > 0): ?>
+                                            <span class="label_discount">-<?= $discount ?>%</span>
+                                            <?php endif; ?>
+                                        </div>
+                                        <?php endif; ?>
+                                        <div class="action_links">
+                                            <ul>
+                                                <li class="quick_button">
+                                                    <a href="#" data-bs-toggle="modal" data-bs-target="#quickViewModal" 
+                                                       data-product-id="<?= $pro['pro_id'] ?>" title="quick view">
+                                                        <span class="pe-7s-search"></span>
+                                                    </a>
+                                                </li>
+                                                <li class="wishlist">
+                                                    <a href="#" class="add-to-wishlist" data-product-id="<?= $pro['pro_id'] ?>" title="Add to Wishlist">
+                                                        <span class="pe-7s-like"></span>
+                                                    </a>
+                                                </li>
+                                                <li class="compare">
+                                                    <a href="#" class="add-to-compare" data-product-id="<?= $pro['pro_id'] ?>" title="Add to Compare">
+                                                        <span class="pe-7s-edit"></span>
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                    <div class="product_content grid_content">
+                                        <div class="product_content_inner">
+                                            <h4 class="product_name">
+                                                <a href="<?= $site ?>product-details/<?= $pro['slug_url'] ?>">
+                                                    <?= htmlspecialchars($pro['pro_name']) ?>
+                                                </a>
+                                            </h4>
+                                            <div class="price_box"> 
+                                                <?php if ($pro['mrp'] > $pro['selling_price']): ?>
+                                                <span class="old_price">₹ <?= number_format($pro['mrp'], 2) ?></span>
+                                                <?php endif; ?>
+                                                <span class="current_price">₹ <?= number_format($pro['selling_price'], 2) ?></span>
+                                            </div>
+                                        </div>
+                                        <div class="add_to_cart">
+                                            <a href="#" class="add-to-cart-btn" data-product-id="<?= $pro['pro_id'] ?>">Add to cart</a>
+                                        </div>
+                                    </div>
+                                    <div class="product_content list_content">
+                                        <h4 class="product_name">
+                                            <a href="<?= $site ?>product-details/<?= $pro['slug_url'] ?>">
+                                                <?= htmlspecialchars($pro['pro_name']) ?>
+                                            </a>
+                                        </h4>
+                                        <div class="price_box"> 
+                                            <?php if ($pro['mrp'] > $pro['selling_price']): ?>
+                                            <span class="old_price">₹ <?= number_format($pro['mrp'], 2) ?></span>
+                                            <?php endif; ?>
+                                            <span class="current_price">₹ <?= number_format($pro['selling_price'], 2) ?></span>
+                                        </div>
+                                        <div class="product_rating">
+                                            <ul>
+                                                <!-- Add rating stars here -->
+                                            </ul>
+                                        </div>
+                                        <div class="product_desc">
+                                            <p><?= htmlspecialchars(substr($pro['short_desc'], 0, 150)) ?>...</p>
+                                        </div>
+                                        <div class="add_to_cart shop_list_cart">
+                                            <a href="#" class="add-to-cart-btn" data-product-id="<?= $pro['pro_id'] ?>">Add to cart</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
+                    
+                    <!-- Pagination -->
+                    <div class="shop_toolbar t_bottom">
+                        <div class="pagination">
+                            <ul id="pagination">
+                                <!-- Pagination will be loaded via JavaScript -->
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-    <!--shop  area end-->
+    <!--shop area end-->
     
-   <!--footer area start-->
-        <?php include_once "includes/footer.php"; ?>
-
+    <!--footer area start-->
+    <?php include_once "includes/footer.php"; ?>
+    
     <!--footer area end-->
-   
-    <!-- modal area start-->
-    <div class="modal fade" id="modal_box" tabindex="-1" role="dialog"  aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" role="document">
+    
+    <!-- Quick View Modal -->
+    <div class="modal fade" id="quickViewModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
             <div class="modal-content">
                 <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
-                  <span aria-hidden="true"><i class="ion-android-close"></i></span>
+                    <span aria-hidden="true"><i class="ion-android-close"></i></span>
                 </button>
                 <div class="modal_body">
                     <div class="container">
-                        <div class="row">
-                            <div class="col-lg-5 col-md-5 col-sm-12">
-                                <div class="modal_tab">  
-                                    <div class="tab-content product-details-large">
-                                        <div class="tab-pane fade show active" id="tab1" role="tabpanel" >
-                                            <div class="modal_tab_img">
-                                                <a href="#"><img src="assets/img/product/productbig1.jpg" alt=""></a>    
-                                            </div>
-                                        </div>
-                                        <div class="tab-pane fade" id="tab2" role="tabpanel">
-                                            <div class="modal_tab_img">
-                                                <a href="#"><img src="assets/img/product/productbig2.jpg" alt=""></a>    
-                                            </div>
-                                        </div>
-                                        <div class="tab-pane fade" id="tab3" role="tabpanel">
-                                            <div class="modal_tab_img">
-                                                <a href="#"><img src="assets/img/product/productbig3.jpg" alt=""></a>    
-                                            </div>
-                                        </div>
-                                        <div class="tab-pane fade" id="tab4" role="tabpanel">
-                                            <div class="modal_tab_img">
-                                                <a href="#"><img src="assets/img/product/productbig4.jpg" alt=""></a>    
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="modal_tab_button">    
-                                        <ul class="nav product_navactive owl-carousel" role="tablist">
-                                            <li >
-                                                <a class="nav-link active" data-bs-toggle="tab" href="#tab1" role="tab" aria-controls="tab1" aria-selected="false"><img src="assets/img/product/product3.jpg" alt=""></a>
-                                            </li>
-                                            <li>
-                                                 <a class="nav-link" data-bs-toggle="tab" href="#tab2" role="tab" aria-controls="tab2" aria-selected="false"><img src="assets/img/product/product8.jpg" alt=""></a>
-                                            </li>
-                                            <li>
-                                               <a class="nav-link button_three" data-bs-toggle="tab" href="#tab3" role="tab" aria-controls="tab3" aria-selected="false"><img src="assets/img/product/product1.jpg" alt=""></a>
-                                            </li>
-                                            <li>
-                                               <a class="nav-link" data-bs-toggle="tab" href="#tab4" role="tab" aria-controls="tab4" aria-selected="false"><img src="assets/img/product/product6.jpg" alt=""></a>
-                                            </li>
-
-                                        </ul>
-                                    </div>    
-                                </div>  
-                            </div> 
-                            <div class="col-lg-7 col-md-7 col-sm-12">
-                                <div class="modal_right">
-                                    <div class="modal_title mb-10">
-                                        <h2>Donec Ac Tempus</h2> 
-                                    </div>
-                                    <div class="modal_price mb-10">
-                                        <span class="new_price">$64.99</span>    
-                                        <span class="old_price" >$78.99</span>    
-                                    </div>
-                                    <div class="modal_description mb-15">
-                                        <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Mollitia iste laborum ad impedit pariatur esse optio tempora sint ullam autem deleniti nam in quos qui nemo ipsum numquam, reiciendis maiores quidem aperiam, rerum vel recusandae </p>    
-                                    </div> 
-                                    <div class="variants_selects">
-                                        <div class="variants_size">
-                                           <h2>size</h2>
-                                           <select class="select_option">
-                                               <option selected value="1">s</option>
-                                               <option value="1">m</option>
-                                               <option value="1">l</option>
-                                               <option value="1">xl</option>
-                                               <option value="1">xxl</option>
-                                           </select>
-                                        </div>
-                                        <div class="variants_color">
-                                           <h2>color</h2>
-                                           <select class="select_option">
-                                               <option selected value="1">purple</option>
-                                               <option value="1">violet</option>
-                                               <option value="1">black</option>
-                                               <option value="1">pink</option>
-                                               <option value="1">orange</option>
-                                           </select>
-                                        </div>
-                                        <div class="modal_add_to_cart">
-                                            <form action="#">
-                                                <input min="1" max="100" step="2" value="1" type="number">
-                                                <button type="submit">add to cart</button>
-                                            </form>
-                                        </div>   
-                                    </div>
-                                    <div class="modal_social">
-                                        <h2>Share this product</h2>
-                                        <ul>
-                                            <li class="facebook"><a href="#"><i class="fa fa-facebook"></i></a></li>
-                                            <li class="twitter"><a href="#"><i class="fa fa-twitter"></i></a></li>
-                                            <li class="pinterest"><a href="#"><i class="fa fa-pinterest"></i></a></li>
-                                            <li class="google-plus"><a href="#"><i class="fa fa-google-plus"></i></a></li>
-                                            <li class="linkedin"><a href="#"><i class="fa fa-linkedin"></i></a></li>
-                                        </ul>    
-                                    </div>      
-                                </div>    
-                            </div>    
-                        </div>     
+                        <div class="row" id="quickViewContent">
+                            <!-- Quick view content will be loaded via AJAX -->
+                        </div>
                     </div>
-                </div>    
+                </div>
             </div>
         </div>
     </div>
-    <!-- modal area end-->
 
+    <!-- Mini Cart Dropdown -->
+    <div class="mini_cart_wrapper" id="miniCartDropdown" style="display: none;">
+        <div class="mini_cart_inner">
+            <div class="mini_cart_header">
+                <h3>Shopping Cart</h3>
+            </div>
+            <div class="mini_cart_body" id="miniCartItems">
+                <!-- Cart items will be loaded here -->
+            </div>
+            <div class="mini_cart_footer">
+                <div class="cart_total">
+                    <span>Total:</span>
+                    <span class="price" id="cartTotal">₹0.00</span>
+                </div>
+                <div class="cart_buttons">
+                    <a href="<?= $site ?>cart/" class="btn btn-outline-dark">View Cart</a>
+                    <a href="<?= $site ?>checkout/" class="btn btn-dark">Checkout</a>
+                </div>
+            </div>
+        </div>
+    </div>
 
-<?php include_once "includes/footer-link.php"; ?>
+    <?php include_once "includes/footer-link.php"; ?>
+    <!-- JavaScript -->
+    <!-- <script src="<?= $site ?>assets/js/vendor/jquery-3.5.1.min.js"></script>
+    <script src="<?= $site ?>assets/js/bootstrap.bundle.min.js"></script>
+    <script src="<?= $site ?>assets/js/jquery-ui.min.js"></script>
+    <script src="<?= $site ?>assets/js/owl.carousel.min.js"></script>
+    <script src="<?= $site ?>assets/js/slick.min.js"></script>
+    <script src="<?= $site ?>assets/js/magnific-popup.js"></script>
+    <script src="<?= $site ?>assets/js/plugins.js"></script>
+    <script src="<?= $site ?>assets/js/main.js"></script> -->
+
+    <!-- Custom JavaScript for Filters and AJAX -->
+    <script>
+    $(document).ready(function() {
+        // Initialize price slider
+        var minPrice = <?= $price_range['min_price'] ?? 0 ?>;
+        var maxPrice = <?= $price_range['max_price'] ?? 10000 ?>;
+        
+        $("#slider-range").slider({
+            range: true,
+            min: minPrice,
+            max: maxPrice,
+            values: [<?= $filters['min_price'] ?? $price_range['min_price'] ?? 0 ?>, <?= $filters['max_price'] ?? $price_range['max_price'] ?? 10000 ?>],
+            slide: function(event, ui) {
+                $("#amount").val("₹" + ui.values[0] + " - ₹" + ui.values[1]);
+            }
+        });
+        $("#amount").val("₹" + $("#slider-range").slider("values", 0) + " - ₹" + $("#slider-range").slider("values", 1));
+        
+        // Cart count
+        function updateCartCount() {
+            $.ajax({
+                url: '<?= $site ?>ajax/get-cart-count.php',
+                method: 'GET',
+                success: function(response) {
+                    $('.item_count').text(response.count);
+                }
+            });
+        }
+        
+        // Initialize cart count
+        updateCartCount();
+        
+        // Apply filters
+        function applyFilters() {
+            var filters = {
+                min_price: $("#slider-range").slider("values", 0),
+                max_price: $("#slider-range").slider("values", 1),
+                brands: [],
+                colors: [],
+                sizes: [],
+                sort: $("#sortSelect").val()
+            };
+            
+            // Get selected brands
+            $('input[name="brand"]:checked').each(function() {
+                filters.brands.push($(this).val());
+            });
+            
+            // Get selected colors
+            $('input[name="color"]:checked').each(function() {
+                filters.colors.push($(this).val());
+            });
+            
+            // Get selected sizes
+            $('input[name="size"]:checked').each(function() {
+                filters.sizes.push($(this).val());
+            });
+            
+            // Update URL without reloading page
+            var url = new URL(window.location.href);
+            url.searchParams.set('min_price', filters.min_price);
+            url.searchParams.set('max_price', filters.max_price);
+            url.searchParams.delete('brand');
+            url.searchParams.delete('color');
+            url.searchParams.delete('size');
+            
+            filters.brands.forEach(function(brand) {
+                url.searchParams.append('brand', brand);
+            });
+            
+            filters.colors.forEach(function(color) {
+                url.searchParams.append('color', color);
+            });
+            
+            filters.sizes.forEach(function(size) {
+                url.searchParams.append('size', size);
+            });
+            
+            url.searchParams.set('sort', filters.sort);
+            
+            // Load products via AJAX
+            $.ajax({
+                url: '<?= $site ?>ajax/load-products.php?category_id=<?= $category_id ?>&' + url.searchParams.toString(),
+                method: 'GET',
+                beforeSend: function() {
+                    $('#productsContainer').html('<div class="col-12 text-center"><div class="spinner-border" role="status"></div></div>');
+                },
+                success: function(response) {
+                    $('#productsContainer').html(response);
+                    $('#productCount').text($('#productsContainer .single_product').length);
+                    updateURL(url.toString());
+                }
+            });
+        }
+        
+        // Update browser URL without reload
+        function updateURL(url) {
+            window.history.pushState({path: url}, '', url);
+        }
+        
+        // Event listeners for filters
+        $('.filter-checkbox').change(function() {
+            applyFilters();
+        });
+        
+        $('#sortSelect').change(function() {
+            applyFilters();
+        });
+        
+        $('#applyPriceFilter').click(function() {
+            applyFilters();
+        });
+        
+        $('#clearFilters').click(function() {
+            $('.filter-checkbox').prop('checked', false);
+            $("#slider-range").slider("values", [minPrice, maxPrice]);
+            $("#amount").val("₹" + minPrice + " - ₹" + maxPrice);
+            $("#sortSelect").val('newest');
+            applyFilters();
+        });
+        
+        // Add to cart AJAX
+        $(document).on('click', '.add-to-cart-btn', function(e) {
+            e.preventDefault();
+            var productId = $(this).data('product-id');
+            var button = $(this);
+            
+            $.ajax({
+                url: '<?= $site ?>ajax/add-to-cart.php',
+                method: 'POST',
+                data: {
+                    product_id: productId,
+                    quantity: 1,
+                    action: 'add_to_cart'
+                },
+                beforeSend: function() {
+                    button.html('<span class="spinner-border spinner-border-sm"></span> Adding...');
+                    button.prop('disabled', true);
+                },
+                success: function(response) {
+                    if (response.success) {
+                        button.html('<i class="fa fa-check"></i> Added');
+                        $('.item_count').text(response.cart_count);
+                        
+                        // Update mini cart
+                        updateMiniCart();
+                        
+                        setTimeout(function() {
+                            button.html('Add to cart');
+                            button.prop('disabled', false);
+                        }, 1500);
+                    } else {
+                        alert(response.message);
+                        button.html('Add to cart');
+                        button.prop('disabled', false);
+                    }
+                }
+            });
+        });
+        
+        // Add to wishlist AJAX
+        $(document).on('click', '.add-to-wishlist', function(e) {
+            e.preventDefault();
+            var productId = $(this).data('product-id');
+            var button = $(this);
+            
+            $.ajax({
+                url: '<?= $site ?>ajax/add-to-wishlist.php',
+                method: 'POST',
+                data: {
+                    product_id: productId,
+                    action: 'add_to_wishlist'
+                },
+                beforeSend: function() {
+                    button.find('span').addClass('text-danger');
+                },
+                success: function(response) {
+                    if (response.success) {
+                        button.find('span').removeClass('pe-7s-like').addClass('fa fa-heart text-danger');
+                        alert(response.message);
+                    } else {
+                        if (response.message.includes('login')) {
+                            window.location.href = '<?= $site ?>user-login/';
+                        } else {
+                            alert(response.message);
+                        }
+                    }
+                }
+            });
+        });
+        
+        // Quick view modal
+        $('#quickViewModal').on('show.bs.modal', function(event) {
+            var button = $(event.relatedTarget);
+            var productId = button.data('product-id');
+            
+            $.ajax({
+                url: '<?= $site ?>ajax/quick-view.php',
+                method: 'GET',
+                data: { product_id: productId },
+                success: function(response) {
+                    $('#quickViewContent').html(response);
+                }
+            });
+        });
+        
+        // Update mini cart dropdown
+        function updateMiniCart() {
+            $.ajax({
+                url: '<?= $site ?>ajax/get-mini-cart.php',
+                method: 'GET',
+                success: function(response) {
+                    $('#miniCartItems').html(response.items);
+                    $('#cartTotal').text('₹' + response.total);
+                }
+            });
+        }
+        
+        // Toggle mini cart dropdown
+        $('.mini_cart_wrapper_trigger').click(function(e) {
+            e.preventDefault();
+            updateMiniCart();
+            $('#miniCartDropdown').toggle();
+        });
+        
+        // Close dropdown when clicking outside
+        $(document).click(function(e) {
+            if (!$(e.target).closest('.header_account_area').length) {
+                $('#miniCartDropdown').hide();
+            }
+        });
+    });
+    </script>
 </body>
 </html>

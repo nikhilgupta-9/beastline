@@ -184,35 +184,40 @@ $contact = contact_us();
 						<!--main menu end-->
 					</div> 
 					<div class="col-lg-2 col-md-4 col-sm-4 col-4">
-						<div class="header_account_area">
-							<div class="header_account_list search_list">
-								<a href="javascript:void(0)"><span class="pe-7s-search"></span></a>
-								<div class="dropdown_search">
-									<form action="#">
-										<input placeholder="Search entire store here ..." type="text">
-										<button type="submit"><span class="pe-7s-search"></span></button>
-									</form>
-								</div>
-							</div>
-							<div class="header_account_list  mini_cart_wrapper">
-								<a href="javascript:void(0)"><span class="pe-7s-shopbag"></span>
-									<span class="item_count">0</span>
-								</a>
-								
-						   </div>
-						    <div class="language_currency header_account_list ">
-						        <a href="#"> <span class="pe-7s-user"></span></a>
-								<ul class="dropdown_currency">
-									<li><a href="<?= $site ?>user-login/">Login</a></li>
-									<li><a href="<?= $site ?>register/">Register</a></li>
-									<li><a href="<?= $site ?>my-account/">My account</a></li>
-									<li><a href="#">Order History</a></li>
-									<li><a href="<?= $site ?>wishlist/">Wishlist</a></li>
-									<li><a href="cart.html">Shipping</a></li>
-								</ul>
-							</div>
-						</div>
-					</div>               
+    <div class="header_account_area">
+        <div class="header_account_list search_list">
+            <a href="javascript:void(0)"><span class="pe-7s-search"></span></a>
+            <div class="dropdown_search">
+                <form action="<?= $site ?>search/" method="GET">
+                    <input name="q" placeholder="Search entire store here ..." type="text">
+                    <button type="submit"><span class="pe-7s-search"></span></button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="header_account_list mini_cart_wrapper_trigger">
+            <a href="javascript:void(0)" class="cart-trigger">
+                <span class="pe-7s-shopbag"></span>
+                <span class="item_count"><?= isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0 ?></span>
+            </a>
+        </div>
+        
+        <div class="language_currency header_account_list">
+            <a href="#"> <span class="pe-7s-user"></span></a>
+            <ul class="dropdown_currency">
+                <?php if (isset($_SESSION['user_id'])): ?>
+                <li><a href="<?= $site ?>my-account/">My Account</a></li>
+                <li><a href="<?= $site ?>orders/">Order History</a></li>
+                <li><a href="<?= $site ?>wishlist/">Wishlist</a></li>
+                <li><a href="<?= $site ?>logout/">Logout</a></li>
+                <?php else: ?>
+                <li><a href="<?= $site ?>user-login/">Login</a></li>
+                <li><a href="<?= $site ?>register/">Register</a></li>
+                <?php endif; ?>
+            </ul>
+        </div>
+    </div>
+</div>              
 				</div>
 			</div>
         </div> 

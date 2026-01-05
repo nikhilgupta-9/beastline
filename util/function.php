@@ -437,30 +437,6 @@ function faq_home()
     return $test;
 }
 
-function faq_courses()
-{
-    global $conn;
-
-    $sql_test = "SELECT * FROM `faqs` WHERE `page_name` = 'courses' AND `status` = 1";
-    $res_test = mysqli_query($conn, $sql_test);
-
-    $test = [];
-
-    if (!$res_test) {
-        header('Location: 500.php');
-    } else {
-        while ($row = mysqli_fetch_assoc($res_test)) {
-            if (!$row) {
-                header('Location: 404.php');
-            } else {
-                $test[] = $row;
-            }
-        }
-    }
-    return $test;
-}
-
-
 
 function faq_course_details()
 {
@@ -579,163 +555,89 @@ function get_course_details($slug)
 
 
 // course page related products 
-function related_course($id)
-{
+// Get category by slug
+function get_category_by_slug($slug) {
     global $conn;
-
-    $sql_brand = "SELECT * FROM `products` where `pro_sub_cate` = $id";
-    $res_brand = mysqli_query($conn, $sql_brand);
-
-    $brand = [];
-
-    if (!$res_brand) {
-        header('Location: 500.php');
-    } else {
-        while ($row = mysqli_fetch_assoc($res_brand)) {
-            if (!$row) {
-                header('Location: 404.php');
-            } else {
-                $brand[] = $row;
-            }
-        }
+    
+    if (empty($slug)) {
+        return null;
     }
-    return $brand;
+    
+    $slug = mysqli_real_escape_string($conn, $slug);
+    $sql = "SELECT * FROM categories WHERE slug_url = '$slug' AND status = 1 LIMIT 1";
+    $result = mysqli_query($conn, $sql);
+    
+    if ($result && mysqli_num_rows($result) > 0) {
+        return mysqli_fetch_assoc($result);
+    }
+    
+    return null;
 }
 
-
-// get course video on product detail page 
-function get_course_video($ids)
-{
+// Get products by category slug
+function get_products_by_category_slug($slug) {
     global $conn;
-
-    // Validate input
-    if (!is_numeric($ids)) {
-        header('Location: 404.php');
-        exit;
-    }
-
-    // Initialize empty array
-    $lessons = [];
-
-    // Use prepared statement to prevent SQL injection
-    $sql = "SELECT * FROM `lessons` WHERE `course_id` = ?";
-    $stmt = mysqli_prepare($conn, $sql);
-
-    if (!$stmt) {
-        header('Location: 500.php');
-        exit;
-    }
-
-    mysqli_stmt_bind_param($stmt, "i", $ids);
-    mysqli_stmt_execute($stmt);
-    $result = mysqli_stmt_get_result($stmt);
-
-    if (!$result) {
-        header('Location: 500.php');
-        exit;
-    }
-
-    // Fetch all lessons
-    while ($row = mysqli_fetch_assoc($result)) {
-        $lessons[] = $row;
-    }
-
-    // If no lessons found, you might want to handle this case
-    if (empty($lessons)) {
-        // Either return empty array or redirect - depends on your requirements
-        header('Location: 404.php');
-        exit;
-    }
-
-    mysqli_stmt_close($stmt);
-    return $lessons;
-}
-
-
-function course_detail_first_video($id)
-{
-    global $conn;
-
-    $sql_brand = "SELECT * FROM `lessons` WHERE `course_id` = $id";
-    $res_brand = mysqli_query($conn, $sql_brand);
-
-    $brand = [];
-
-    if (!$res_brand) {
-        header('Location: 500.php');
-        exit;
-    }
-
-    while ($row = mysqli_fetch_assoc($res_brand)) {
-        $brand[] = $row;
-    }
-
-    return $brand; // returns all lessons for this course_id
-}
-
-
-function course_detail_related_video($id)
-{
-    global $conn;
-
-    // Ensure id is integer
-    $id = (int)$id;
-
-    // Step 1: Get main product
-    $sql = "SELECT * FROM `products` WHERE `id` = $id LIMIT 1";
-    $res = mysqli_query($conn, $sql);
-
-    if (!$res) {
-        header('Location: 500.php');
-        exit;
-    }
-
-    $row = mysqli_fetch_assoc($res);
-
-    if (!$row) {
-        header('Location: 404.php');
-        exit;
-    }
-
-    // Step 2: Get sub category id
-    $course_id = (int)$row['pro_sub_cate'];
-
-    if (!$course_id) {
-        echo "No Related Video Found !";
+    
+    $category = get_category_by_slug($slug);
+    if (!$category) {
         return [];
     }
-
-    // Step 3: Get all related products (same sub category)
-    $sql = "SELECT id FROM `products` WHERE `pro_sub_cate` = $course_id";
-    $res = mysqli_query($conn, $sql);
-
-    if (!$res) {
-        header('Location: 500.php');
-        exit;
+    
+    $category_id = $category['id'];
+    $sql = "SELECT p.*, c.categories as category_name
+            FROM products p
+            LEFT JOIN categories c ON p.pro_cate = c.id
+            WHERE p.pro_cate = $category_id 
+            AND p.status = 1 
+            ORDER BY p.created_on DESC";
+    
+    $result = mysqli_query($conn, $sql);
+    $products = [];
+    
+    while ($row = mysqli_fetch_assoc($result)) {
+        $products[] = $row;
     }
+    
+    return $products;
+}
 
-    $allLessons = []; // store lessons of all related products
-    while ($row = mysqli_fetch_assoc($res)) {
-        $productId = $row['id'];
-
-        // 👇 Call first function here
-        $lessons = course_detail_first_video($productId);
-
-        if (!empty($lessons)) {
-            $allLessons[$productId] = $lessons; 
-        }
-    }
-
-    // Debug: print lessons
-    // echo "<pre>";
-    // print_r($allLessons);
-    // echo "</pre>";
-
-    return $allLessons; // returns all lessons grouped by product id
+// If you already have get_product_by_category function, update it like this:
+function get_product_by_category($slug) {
+    // For backward compatibility, call the new function
+    return get_products_by_category_slug($slug);
 }
 
 
 
+// Get category hierarchy for breadcrumbs
+function get_category_hierarchy($category_id) {
+    global $conn;
+    
+    $hierarchy = [];
+    $current_id = $category_id;
+    
+    while ($current_id > 0) {
+        $sql = "SELECT id, categories, slug_url, parent_id 
+                FROM categories 
+                WHERE id = $current_id AND status = 1";
+        $result = mysqli_query($conn, $sql);
+        
+        if ($result && mysqli_num_rows($result) > 0) {
+            $category = mysqli_fetch_assoc($result);
+            $hierarchy[] = [
+                'id' => $category['id'],
+                'name' => $category['categories'],
+                'slug' => $category['slug_url'],
+                'parent_id' => $category['parent_id']
+            ];
+            $current_id = $category['parent_id'];
+        } else {
+            break;
+        }
+    }
+    
+    return array_reverse($hierarchy);
+}
 
 // set limit words 
 function limit_words($string, $word_limit = 20) {
@@ -746,3 +648,259 @@ function limit_words($string, $word_limit = 20) {
     return $string;
 }
 
+// Get categories for sidebar
+function get_categories_for_sidebar() {
+    global $conn;
+    $sql = "SELECT c.*, COUNT(p.pro_id) as product_count 
+            FROM categories c 
+            LEFT JOIN products p ON c.id = p.pro_cate AND p.status = 1
+            WHERE c.parent_id = 0 AND c.status = 1 
+            GROUP BY c.id 
+            ORDER BY c.display_order";
+    $result = mysqli_query($conn, $sql);
+    $categories = [];
+    while($row = mysqli_fetch_assoc($result)) {
+        $categories[] = $row;
+    }
+    return $categories;
+}
+
+// Get subcategories for a parent category
+function get_subcategories($parent_id) {
+    global $conn;
+    $sql = "SELECT * FROM categories 
+            WHERE parent_id = $parent_id AND status = 1 
+            ORDER BY display_order";
+    $result = mysqli_query($conn, $sql);
+    $subcategories = [];
+    while($row = mysqli_fetch_assoc($result)) {
+        $subcategories[] = $row;
+    }
+    return $subcategories;
+}
+
+// Get brands for filter
+function get_brands_for_filter() {
+    global $conn;
+    $sql = "SELECT b.*, COUNT(p.pro_id) as product_count 
+            FROM pro_brands b 
+            LEFT JOIN products p ON b.id = p.brand_name AND p.status = 1
+            WHERE b.status = 1 
+            GROUP BY b.id 
+            ORDER BY b.brand_name";
+    $result = mysqli_query($conn, $sql);
+    $brands = [];
+    while($row = mysqli_fetch_assoc($result)) {
+        $brands[] = $row;
+    }
+    return $brands;
+}
+
+// Get colors for filter
+function get_colors_for_filter() {
+    global $conn;
+    $sql = "SELECT DISTINCT color, COUNT(*) as product_count 
+            FROM product_variants 
+            WHERE color != '' 
+            GROUP BY color 
+            ORDER BY color";
+    $result = mysqli_query($conn, $sql);
+    $colors = [];
+    while($row = mysqli_fetch_assoc($result)) {
+        $colors[] = $row;
+    }
+    return $colors;
+}
+
+// Get sizes for filter
+function get_sizes_for_filter() {
+    global $conn;
+    $sql = "SELECT DISTINCT size, COUNT(*) as product_count 
+            FROM product_variants 
+            WHERE size != '' 
+            GROUP BY size 
+            ORDER BY size";
+    $result = mysqli_query($conn, $sql);
+    $sizes = [];
+    while($row = mysqli_fetch_assoc($result)) {
+        $sizes[] = $row;
+    }
+    return $sizes;
+}
+
+// Get product by category with filters
+function get_filtered_products($category_id = null, $filters = []) {
+    global $conn;
+    
+    $where_conditions = ["p.status = 1"];
+    $join_sql = "";
+    $having_sql = "";
+    
+    // Category filter
+    if ($category_id) {
+        $where_conditions[] = "p.pro_cate = $category_id";
+    }
+    
+    // Price filter
+    if (!empty($filters['min_price']) && !empty($filters['max_price'])) {
+        $min_price = floatval($filters['min_price']);
+        $max_price = floatval($filters['max_price']);
+        $where_conditions[] = "p.selling_price BETWEEN $min_price AND $max_price";
+    }
+    
+    // Brand filter
+    if (!empty($filters['brands'])) {
+        $brand_ids = implode(',', array_map('intval', $filters['brands']));
+        $where_conditions[] = "p.brand_name IN ($brand_ids)";
+    }
+    
+    // Color filter
+    if (!empty($filters['colors'])) {
+        $colors = array_map(function($color) use ($conn) {
+            return "'" . mysqli_real_escape_string($conn, $color) . "'";
+        }, $filters['colors']);
+        $color_list = implode(',', $colors);
+        $join_sql .= " LEFT JOIN product_variants pv ON p.pro_id = pv.product_id";
+        $where_conditions[] = "pv.color IN ($color_list)";
+        $having_sql = " GROUP BY p.pro_id";
+    }
+    
+    // Size filter
+    if (!empty($filters['sizes'])) {
+        $sizes = array_map(function($size) use ($conn) {
+            return "'" . mysqli_real_escape_string($conn, $size) . "'";
+        }, $filters['sizes']);
+        $size_list = implode(',', $sizes);
+        if (!strpos($join_sql, "product_variants")) {
+            $join_sql .= " LEFT JOIN product_variants pv ON p.pro_id = pv.product_id";
+        }
+        $where_conditions[] = "pv.size IN ($size_list)";
+        $having_sql = " GROUP BY p.pro_id";
+    }
+    
+    // Material filter
+    if (!empty($filters['materials'])) {
+        $materials = array_map(function($mat) use ($conn) {
+            return "'" . mysqli_real_escape_string($conn, $mat) . "'";
+        }, $filters['materials']);
+        $material_list = implode(',', $materials);
+        $where_conditions[] = "p.material IN ($material_list)";
+    }
+    
+    $where_sql = implode(' AND ', $where_conditions);
+    $where_sql = $where_sql ? "WHERE $where_sql" : "";
+    
+    // Sorting
+    $order_by = "p.created_on DESC";
+    if (!empty($filters['sort'])) {
+        switch($filters['sort']) {
+            case 'price_low_high':
+                $order_by = "p.selling_price ASC";
+                break;
+            case 'price_high_low':
+                $order_by = "p.selling_price DESC";
+                break;
+            case 'name_asc':
+                $order_by = "p.pro_name ASC";
+                break;
+            case 'name_desc':
+                $order_by = "p.pro_name DESC";
+                break;
+            case 'newest':
+                $order_by = "p.added_on DESC";
+                break;
+            case 'popular':
+                $order_by = "p.view_count DESC";
+                break;
+        }
+    }
+    
+    $sql = "SELECT DISTINCT p.*, 
+                   c.categories as category_name,
+                   b.brand_name as brand_display
+            FROM products p
+            LEFT JOIN categories c ON p.pro_cate = c.id
+            LEFT JOIN pro_brands b ON p.brand_name = b.id
+            $join_sql
+            $where_sql
+            $having_sql
+            ORDER BY $order_by";
+    
+    $result = mysqli_query($conn, $sql);
+    $products = [];
+    while($row = mysqli_fetch_assoc($result)) {
+        $products[] = $row;
+    }
+    return $products;
+}
+
+// Get min and max price for price filter
+function get_price_range($category_id = null) {
+    global $conn;
+    
+    $where = $category_id ? "WHERE pro_cate = $category_id AND status = 1" : "WHERE status = 1";
+    
+    $sql = "SELECT MIN(selling_price) as min_price, MAX(selling_price) as max_price 
+            FROM products $where";
+    $result = mysqli_query($conn, $sql);
+    return mysqli_fetch_assoc($result);
+}
+
+// Add to cart function
+function add_to_cart($product_id, $quantity = 1, $variant_id = null) {
+    if (!isset($_SESSION['cart'])) {
+        $_SESSION['cart'] = [];
+    }
+    
+    $cart_item_key = $variant_id ? "{$product_id}_{$variant_id}" : $product_id;
+    
+    if (isset($_SESSION['cart'][$cart_item_key])) {
+        $_SESSION['cart'][$cart_item_key]['quantity'] += $quantity;
+    } else {
+        $_SESSION['cart'][$cart_item_key] = [
+            'product_id' => $product_id,
+            'variant_id' => $variant_id,
+            'quantity' => $quantity
+        ];
+    }
+    
+    return count($_SESSION['cart']);
+}
+
+// Get cart items
+function get_cart_items() {
+    if (!isset($_SESSION['cart']) || empty($_SESSION['cart'])) {
+        return [];
+    }
+    
+    global $conn;
+    $cart_items = [];
+    $total = 0;
+    
+    foreach ($_SESSION['cart'] as $key => $item) {
+        $sql = "SELECT p.*, pv.price as variant_price, pv.sku as variant_sku, 
+                       pv.color, pv.size, pv.image as variant_image
+                FROM products p
+                LEFT JOIN product_variants pv ON pv.id = " . ($item['variant_id'] ? intval($item['variant_id']) : 'NULL') . "
+                WHERE p.pro_id = " . intval($item['product_id']);
+        $result = mysqli_query($conn, $sql);
+        
+        if ($product = mysqli_fetch_assoc($result)) {
+            $price = $item['variant_id'] ? $product['variant_price'] : $product['selling_price'];
+            $subtotal = $price * $item['quantity'];
+            
+            $cart_items[] = [
+                'key' => $key,
+                'product' => $product,
+                'quantity' => $item['quantity'],
+                'price' => $price,
+                'subtotal' => $subtotal,
+                'variant_id' => $item['variant_id']
+            ];
+            
+            $total += $subtotal;
+        }
+    }
+    
+    return ['items' => $cart_items, 'total' => $total];
+} 

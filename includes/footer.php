@@ -132,10 +132,10 @@ $setting = new Setting($conn);
                             <h3 class="footer_title mb-3" style="color: #ffffff; font-size: 16px; font-weight: 600; text-transform: uppercase;">DOWNLOAD OUR APP</h3>
                             <div class="app_links d-flex flex-column">
                                 <a href="#" class="app_store mb-2">
-                                    <img src="<?= $site ?>assets/img/app-store.png" alt="App Store" style="max-width: 120px;">
+                                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Download_on_the_App_Store_RGB_blk.svg/1024px-Download_on_the_App_Store_RGB_blk.svg.png" alt="App Store" style="max-width: 120px;">
                                 </a>
                                 <a href="#" class="play_store">
-                                    <img src="https://c.clc2l.com/t/g/o/google-playstore-Iauj7q.png" alt="Google Play" style="max-width: 80px;">
+                                    <img src="https://c.clc2l.com/t/g/o/google-playstore-Iauj7q.png" alt="Google Play" style="max-width: 50px;">
                                 </a>
                             </div>
                         </div>
