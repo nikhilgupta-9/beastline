@@ -1,4 +1,4 @@
-<?php 
+<?php
 require_once __DIR__ . '/config/db-conn.php';
 require_once __DIR__ . '/auth/admin-auth.php';
 require_once __DIR__ . '/models/Setting.php';
@@ -15,10 +15,10 @@ $product_id = intval($_GET['edit_product_details']);
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update-product'])) {
     $pro_id = intval($_POST['pro_id']);
-    
+
     // Start transaction
     mysqli_begin_transaction($conn);
-    
+
     try {
         // Update main products table
         $pro_name = mysqli_real_escape_string($conn, $_POST['pro_name']);
@@ -50,17 +50,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update-product'])) {
         $care_instructions = mysqli_real_escape_string($conn, $_POST['care_instructions'] ?? '');
         $video_url = mysqli_real_escape_string($conn, $_POST['video_url'] ?? '');
         $tags = mysqli_real_escape_string($conn, $_POST['tags'] ?? '');
-        
+
         // Generate slug URL
         $slug_url = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $pro_name)));
-        
+
         // Handle main image upload
         $pro_img = $product['pro_img'] ?? '';
         if (isset($_FILES['main_image']) && $_FILES['main_image']['error'] === 0) {
             $upload_dir = 'assets/img/uploads/';
             $file_name = 'product-' . time() . '-' . $_FILES['main_image']['name'];
             $target_path = $upload_dir . $file_name;
-            
+
             if (move_uploaded_file($_FILES['main_image']['tmp_name'], $target_path)) {
                 // Delete old main image if exists
                 if (!empty($product['pro_img']) && file_exists($upload_dir . $product['pro_img'])) {
@@ -69,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update-product'])) {
                 $pro_img = $file_name;
             }
         }
-        
+
         // Update products table
         $update_sql = "UPDATE products SET 
             pro_name = '$pro_name',
@@ -105,17 +105,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update-product'])) {
             tags = '$tags',
             updated_on = NOW()
             WHERE pro_id = $pro_id";
-        
+
         if (!mysqli_query($conn, $update_sql)) {
             throw new Exception("Error updating product: " . mysqli_error($conn));
         }
-        
+
         // Handle product attributes
         $attributes = json_decode($_POST['attributes_json'] ?? '[]', true);
-        
+
         // Delete existing attributes
         mysqli_query($conn, "DELETE FROM product_attributes WHERE product_id = $pro_id");
-        
+
         // Insert new attributes
         if (!empty($attributes)) {
             $display_order = 1;
@@ -128,13 +128,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update-product'])) {
                 $display_order++;
             }
         }
-        
+
         // Handle product variants
         $variants = json_decode($_POST['variants_json'] ?? '[]', true);
-        
+
         // Delete existing variants
         mysqli_query($conn, "DELETE FROM product_variants WHERE product_id = $pro_id");
-        
+
         // Insert new variants
         if (!empty($variants)) {
             foreach ($variants as $variant) {
@@ -144,33 +144,33 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update-product'])) {
                 $price = floatval($variant['price'] ?? 0);
                 $compare_at_price = floatval($variant['compare_at_price'] ?? 0);
                 $quantity = intval($variant['quantity'] ?? 0);
-                
+
                 $variant_sql = "INSERT INTO product_variants (product_id, color, size, sku, price, compare_at_price, quantity, status) 
                                VALUES ($pro_id, '$color', '$size', '$variant_sku', $price, $compare_at_price, $quantity, 1)";
                 mysqli_query($conn, $variant_sql);
-                
+
                 $variant_id = mysqli_insert_id($conn);
-                
+
                 // Handle variant images
                 if (isset($_FILES['variant_images'][$variant['id']]) && $_FILES['variant_images'][$variant['id']]['error'] === 0) {
                     $upload_dir = 'assets/img/uploads/variants/';
                     if (!is_dir($upload_dir)) {
                         mkdir($upload_dir, 0755, true);
                     }
-                    
+
                     $file_name = 'variant-' . time() . '-' . $_FILES['variant_images'][$variant['id']]['name'];
                     $target_path = $upload_dir . $file_name;
-                    
+
                     if (move_uploaded_file($_FILES['variant_images'][$variant['id']]['tmp_name'], $target_path)) {
                         mysqli_query($conn, "UPDATE product_variants SET image = '$file_name' WHERE id = $variant_id");
                     }
                 }
             }
         }
-        
+
         // Handle product images
         $upload_dir = 'assets/img/uploads/';
-        
+
         // Handle main product image in product_images table
         mysqli_query($conn, "DELETE FROM product_images WHERE product_id = $pro_id AND is_main = 1");
         if (!empty($pro_img)) {
@@ -178,7 +178,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update-product'])) {
                             VALUES ($pro_id, '$pro_img', 1, 0)";
             mysqli_query($conn, $main_img_sql);
         }
-        
+
         // Handle additional images
         $additional_images = [];
         if (isset($_FILES['additional_images']) && count($_FILES['additional_images']['name']) > 0) {
@@ -187,7 +187,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update-product'])) {
                 if ($_FILES['additional_images']['error'][$key] === 0) {
                     $file_name = 'product-' . time() . '-' . $key . '-' . $name;
                     $target_path = $upload_dir . $file_name;
-                    
+
                     if (move_uploaded_file($_FILES['additional_images']['tmp_name'][$key], $target_path)) {
                         $additional_images[] = $file_name;
                         $img_sql = "INSERT INTO product_images (product_id, image_url, is_main, display_order) 
@@ -198,12 +198,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update-product'])) {
                 }
             }
         }
-        
+
         // Commit transaction
         mysqli_commit($conn);
-        
+
         echo "<script>alert('Product updated successfully!'); window.location.href='view-product-details.php?id=" . $pro_id . "';</script>";
-        
     } catch (Exception $e) {
         // Rollback transaction on error
         mysqli_rollback($conn);
@@ -240,22 +239,63 @@ while ($attr = mysqli_fetch_assoc($attributes_result)) {
     ];
 }
 
-// Fetch product variants
-$variants_sql = "SELECT * FROM product_variants WHERE product_id = $product_id ORDER BY id";
-$variants_result = mysqli_query($conn, $variants_sql);
-$variants = [];
-while ($variant = mysqli_fetch_assoc($variants_result)) {
-    $variants[] = [
-        'id' => $variant['id'],
-        'color' => $variant['color'],
-        'size' => $variant['size'],
-        'sku' => $variant['sku'],
-        'price' => $variant['price'],
-        'compare_at_price' => $variant['compare_at_price'],
-        'quantity' => $variant['quantity'],
-        'image' => $variant['image']
-    ];
+// Handle product variants
+$variants = json_decode($_POST['variants_json'] ?? '[]', true);
+
+// Delete existing variants
+mysqli_query($conn, "DELETE FROM product_variants WHERE product_id = $product_id");
+
+// Insert new variants
+if (!empty($variants)) {
+    foreach ($variants as $index => $variant) {
+        $color = mysqli_real_escape_string($conn, $variant['color'] ?? '');
+        $size = mysqli_real_escape_string($conn, $variant['size'] ?? '');
+        $variant_sku = mysqli_real_escape_string($conn, $variant['sku'] ?? '');
+        $price = floatval($variant['price'] ?? 0);
+        $compare_at_price = floatval($variant['compare_at_price'] ?? 0);
+        $quantity = intval($variant['quantity'] ?? 0);
+
+        // Initialize image variable
+        $variant_image = '';
+
+        // Handle variant image upload
+        if (
+            isset($_FILES['variant_images']) &&
+            isset($_FILES['variant_images']['name'][$index]) &&
+            $_FILES['variant_images']['error'][$index] === 0
+        ) {
+
+            $upload_dir = 'assets/img/uploads/variants/';
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0755, true);
+            }
+
+            $file_name = 'variant-' . $pro_id . '-' . time() . '-' . $index . '-' .
+                preg_replace('/[^a-zA-Z0-9._-]/', '', $_FILES['variant_images']['name'][$index]);
+            $target_path = $upload_dir . $file_name;
+
+            if (move_uploaded_file($_FILES['variant_images']['tmp_name'][$index], $target_path)) {
+                $variant_image = $file_name;
+            }
+        }
+
+        // If no new image uploaded, check if we should keep existing image
+        if (empty($variant_image) && isset($variant['existing_image'])) {
+            $variant_image = mysqli_real_escape_string($conn, $variant['existing_image']);
+        }
+
+        // Insert variant with image
+        $variant_sql = "INSERT INTO product_variants 
+                       (product_id, color, size, sku, price, compare_at_price, quantity, image, status) 
+                       VALUES ($pro_id, '$color', '$size', '$variant_sku', $price, 
+                               $compare_at_price, $quantity, '$variant_image', 1)";
+
+        if (!mysqli_query($conn, $variant_sql)) {
+            throw new Exception("Error inserting variant: " . mysqli_error($conn));
+        }
+    }
 }
+
 
 // Fetch product images
 $images_sql = "SELECT * FROM product_images WHERE product_id = $product_id ORDER BY display_order";
@@ -304,14 +344,14 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
     <title>Edit Product | Beastline Clothing & Shoes</title>
     <link rel="icon" href="<?php echo htmlspecialchars($setting->get('favicon', 'assets/img/logo.png')); ?>" type="image/png">
     <?php include "links.php"; ?>
-    
+
     <!-- Include CKEditor -->
     <script src="https://cdn.ckeditor.com/4.21.0/standard/ckeditor.js"></script>
 </head>
 
 <body class="crm_body_bg">
     <?php include "includes/header.php"; ?>
-    
+
     <section class="main_content dashboard_part large_header_bg">
         <div class="container-fluid g-0">
             <div class="row">
@@ -329,7 +369,7 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
                             <div class="white_card_header">
                                 <div class="box_header m-0">
                                     <div class="main-title">
-                                        <h3 class="m-0">Edit Product</h3>
+                                        <h2 class="m-0">Edit Product</h2>
                                         <p class="text-muted mb-0">Update product details for your clothing or shoe item</p>
                                     </div>
                                     <div class="action-buttons">
@@ -345,7 +385,7 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
                             <div class="white_card_body">
                                 <form id="productForm" action="" method="post" enctype="multipart/form-data">
                                     <input type="hidden" name="pro_id" value="<?= $product['pro_id'] ?>">
-                                    
+
                                     <!-- Tab Navigation -->
                                     <ul class="nav nav-tabs mb-3" id="productTab" role="tablist">
                                         <li class="nav-item" role="presentation">
@@ -367,9 +407,9 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
                                             <button class="nav-link" id="seo-tab" data-bs-toggle="tab" data-bs-target="#seo" type="button" role="tab">SEO & Status</button>
                                         </li>
                                     </ul>
-                                    
+
                                     <div class="tab-content" id="productTabContent">
-                                        
+
                                         <!-- Basic Information Tab -->
                                         <div class="tab-pane fade show active" id="basic" role="tabpanel" aria-labelledby="basic-tab">
                                             <div class="row">
@@ -377,24 +417,24 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
                                                     <label class="form-label">Product Name *</label>
                                                     <input type="text" class="form-control" name="pro_name" required value="<?= htmlspecialchars($product['pro_name']) ?>">
                                                 </div>
-                                                
+
                                                 <div class="col-md-6 mb-3">
                                                     <label class="form-label">SKU *</label>
                                                     <input type="text" class="form-control" name="sku" required value="<?= htmlspecialchars($product['sku'] ?? '') ?>">
                                                 </div>
-                                                
+
                                                 <div class="col-md-6 mb-3">
                                                     <label class="form-label">Brand *</label>
                                                     <select class="form-control" name="brand_name" required>
                                                         <option value="">Select Brand</option>
-                                                        <?php while($brand = mysqli_fetch_assoc($brands)): ?>
+                                                        <?php while ($brand = mysqli_fetch_assoc($brands)): ?>
                                                             <option value="<?= $brand['id'] ?>" <?= $brand['id'] == $product['brand_name'] ? 'selected' : '' ?>>
                                                                 <?= htmlspecialchars($brand['brand_name']) ?>
                                                             </option>
                                                         <?php endwhile; ?>
                                                     </select>
                                                 </div>
-                                                
+
                                                 <div class="col-md-6 mb-3">
                                                     <label class="form-label">Product Type *</label>
                                                     <select class="form-control" name="product_type" id="productType" required>
@@ -404,43 +444,43 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
                                                         <option value="accessories" <?= ($product['product_type'] ?? '') == 'accessories' ? 'selected' : '' ?>>Accessories</option>
                                                     </select>
                                                 </div>
-                                                
+
                                                 <div class="col-md-6 mb-3">
                                                     <label class="form-label">Category *</label>
                                                     <select class="form-control" name="pro_cate" id="mainCategory" required onchange="getSubcategories(this.value)">
                                                         <option value="">Select Category</option>
-                                                        <?php while($category = mysqli_fetch_assoc($categories)): ?>
+                                                        <?php while ($category = mysqli_fetch_assoc($categories)): ?>
                                                             <option value="<?= $category['id'] ?>" <?= $category['id'] == $product['pro_cate'] ? 'selected' : '' ?>>
                                                                 <?= htmlspecialchars($category['categories']) ?>
                                                             </option>
                                                         <?php endwhile; ?>
                                                     </select>
                                                 </div>
-                                                
+
                                                 <div class="col-md-6 mb-3">
                                                     <label class="form-label">Sub Category</label>
                                                     <select class="form-control" name="pro_sub_cate" id="subCategory">
                                                         <option value="">Select Sub Category</option>
-                                                        <?php while($subcat = mysqli_fetch_assoc($subcategories)): ?>
+                                                        <?php while ($subcat = mysqli_fetch_assoc($subcategories)): ?>
                                                             <option value="<?= $subcat['id'] ?>" <?= $subcat['id'] == $product['pro_sub_cate'] ? 'selected' : '' ?>>
                                                                 <?= htmlspecialchars($subcat['categories']) ?>
                                                             </option>
                                                         <?php endwhile; ?>
                                                     </select>
                                                 </div>
-                                                
+
                                                 <div class="col-md-12 mb-3">
                                                     <label class="form-label">Short Description *</label>
                                                     <textarea class="form-control" name="short_desc" id="short_desc" rows="3" required><?= htmlspecialchars($product['short_desc']) ?></textarea>
                                                 </div>
-                                                
+
                                                 <div class="col-md-12 mb-3">
                                                     <label class="form-label">Full Description *</label>
                                                     <textarea class="form-control" name="pro_desc" id="pro_desc" rows="6" required><?= htmlspecialchars($product['description']) ?></textarea>
                                                 </div>
                                             </div>
                                         </div>
-                                        
+
                                         <!-- Pricing & Inventory Tab -->
                                         <div class="tab-pane fade" id="pricing" role="tabpanel" aria-labelledby="pricing-tab">
                                             <div class="row">
@@ -451,7 +491,7 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
                                                         <input type="number" class="form-control" name="mrp" step="0.01" required value="<?= $product['mrp'] ?>">
                                                     </div>
                                                 </div>
-                                                
+
                                                 <div class="col-md-4 mb-3">
                                                     <label class="form-label">Selling Price *</label>
                                                     <div class="input-group">
@@ -459,7 +499,7 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
                                                         <input type="number" class="form-control" name="selling_price" step="0.01" required value="<?= $product['selling_price'] ?>">
                                                     </div>
                                                 </div>
-                                                
+
                                                 <div class="col-md-4 mb-3">
                                                     <label class="form-label">Wholesale Price</label>
                                                     <div class="input-group">
@@ -467,35 +507,36 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
                                                         <input type="number" class="form-control" name="whole_sale_selling_price" step="0.01" value="<?= $product['whole_sale_selling_price'] ?>">
                                                     </div>
                                                 </div>
-                                                
+
                                                 <div class="col-md-4 mb-3">
                                                     <label class="form-label">Weight (kg)</label>
                                                     <input type="number" class="form-control" name="weight" step="0.01" value="<?= $product['weight'] ?? 0 ?>">
                                                 </div>
-                                                
+
                                                 <div class="col-md-4 mb-3">
                                                     <label class="form-label">Stock Status *</label>
-                                                    <select class="form-control" name="stock" required>
+                                                    <input type="number" class="form-control" name="stock" value="<?= $product['stock'] ?? 0 ?>">
+                                                    <!-- <select class="form-control" name="stock" required>
                                                         <option value="in_stock" <?= $product['stock'] == 'in_stock' ? 'selected' : '' ?>>In Stock</option>
                                                         <option value="low_stock" <?= $product['stock'] == 'low_stock' ? 'selected' : '' ?>>Low Stock</option>
                                                         <option value="out_of_stock" <?= $product['stock'] == 'out_of_stock' ? 'selected' : '' ?>>Out of Stock</option>
-                                                    </select>
+                                                    </select> -->
                                                 </div>
-                                                
+
                                                 <div class="col-md-4 mb-3">
                                                     <label class="form-label">Quantity</label>
                                                     <input type="number" class="form-control" name="qty" min="0" value="<?= $product['qty'] ?>">
                                                 </div>
                                             </div>
                                         </div>
-                                        
+
                                         <!-- Attributes Tab -->
                                         <div class="tab-pane fade" id="attributes" role="tabpanel" aria-labelledby="attributes-tab">
                                             <div class="row">
                                                 <div class="col-md-6 mb-3">
                                                     <label class="form-label">Available Colors</label>
                                                     <div class="checkbox-group" id="colorOptions">
-                                                        <?php foreach($colors_list as $color): ?>
+                                                        <?php foreach ($colors_list as $color): ?>
                                                             <label class="form-check form-check-inline">
                                                                 <input class="form-check-input" type="checkbox" name="colors[]" value="<?= $color ?>">
                                                                 <span class="form-check-label"><?= $color ?></span>
@@ -503,49 +544,49 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
                                                         <?php endforeach; ?>
                                                     </div>
                                                 </div>
-                                                
+
                                                 <div class="col-md-6 mb-3">
                                                     <label class="form-label">Available Sizes</label>
                                                     <div id="sizeOptionsContainer">
                                                         <!-- Sizes will be loaded based on product type -->
                                                     </div>
                                                 </div>
-                                                
+
                                                 <div class="col-md-6 mb-3">
                                                     <label class="form-label">Material/Fabric</label>
                                                     <select class="form-control" name="material">
                                                         <option value="">Select Material</option>
-                                                        <?php foreach($material_options as $material): ?>
+                                                        <?php foreach ($material_options as $material): ?>
                                                             <option value="<?= $material ?>" <?= ($product['material'] ?? '') == $material ? 'selected' : '' ?>><?= $material ?></option>
                                                         <?php endforeach; ?>
                                                     </select>
                                                 </div>
-                                                
+
                                                 <div class="col-md-6 mb-3">
                                                     <label class="form-label">Fit Type</label>
                                                     <select class="form-control" name="fit_type">
                                                         <option value="">Select Fit</option>
-                                                        <?php foreach($fit_options as $fit): ?>
+                                                        <?php foreach ($fit_options as $fit): ?>
                                                             <option value="<?= $fit ?>" <?= ($product['fit_type'] ?? '') == $fit ? 'selected' : '' ?>><?= $fit ?></option>
                                                         <?php endforeach; ?>
                                                     </select>
                                                 </div>
-                                                
+
                                                 <div class="col-md-6 mb-3">
                                                     <label class="form-label">Season</label>
                                                     <select class="form-control" name="season">
                                                         <option value="">Select Season</option>
-                                                        <?php foreach($season_options as $season): ?>
+                                                        <?php foreach ($season_options as $season): ?>
                                                             <option value="<?= $season ?>" <?= ($product['season'] ?? '') == $season ? 'selected' : '' ?>><?= $season ?></option>
                                                         <?php endforeach; ?>
                                                     </select>
                                                 </div>
-                                                
+
                                                 <div class="col-md-6 mb-3">
                                                     <label class="form-label">Care Instructions</label>
                                                     <input type="text" class="form-control" name="care_instructions" value="<?= htmlspecialchars($product['care_instructions'] ?? '') ?>">
                                                 </div>
-                                                
+
                                                 <div class="col-12 mb-3">
                                                     <label class="form-label">Additional Attributes</label>
                                                     <div class="input-group mb-2">
@@ -565,7 +606,7 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
                                                 </div>
                                             </div>
                                         </div>
-                                        
+
                                         <!-- Variants Tab -->
                                         <div class="tab-pane fade" id="variants" role="tabpanel" aria-labelledby="variants-tab">
                                             <div class="row">
@@ -575,12 +616,12 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
                                                         Select colors and sizes in Attributes tab, then click "Generate Variants"
                                                     </div>
                                                 </div>
-                                                
+
                                                 <div class="col-12">
                                                     <button type="button" class="btn btn-success mb-3" onclick="generateVariants()">
                                                         <i class="fas fa-sync-alt me-2"></i> Generate Variants
                                                     </button>
-                                                    
+
                                                     <div id="variantsContainer">
                                                         <?php if (!empty($variants)): ?>
                                                             <div class="table-responsive">
@@ -598,8 +639,16 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
                                                                     <tbody>
                                                                         <?php foreach ($variants as $index => $variant): ?>
                                                                             <tr>
-                                                                                <td><?= htmlspecialchars($variant['color']) ?></td>
-                                                                                <td><?= htmlspecialchars($variant['size']) ?></td>
+                                                                                <td>
+                                                                                    <input type="hidden" name="variants[<?= $index ?>][color]"
+                                                                                        value="<?= htmlspecialchars($variant['color']) ?>">
+                                                                                    <?= htmlspecialchars($variant['color']) ?>
+                                                                                </td>
+                                                                                <td>
+                                                                                    <input type="hidden" name="variants[<?= $index ?>][size]"
+                                                                                        value="<?= htmlspecialchars($variant['size']) ?>">
+                                                                                    <?= htmlspecialchars($variant['size']) ?>
+                                                                                </td>
                                                                                 <td>
                                                                                     <input type="text" class="form-control form-control-sm"
                                                                                         name="variants[<?= $index ?>][sku]"
@@ -617,11 +666,18 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
                                                                                 </td>
                                                                                 <td>
                                                                                     <?php if (!empty($variant['image'])): ?>
-                                                                                        <img src="assets/img/uploads/variants/<?= htmlspecialchars($variant['image']) ?>" 
-                                                                                             style="width: 50px; height: 50px; object-fit: cover;" class="img-thumbnail">
+                                                                                        <div class="mb-1">
+                                                                                            <img src="assets/img/uploads/variants/<?= htmlspecialchars($variant['image']) ?>"
+                                                                                                style="width: 50px; height: 50px; object-fit: cover;"
+                                                                                                class="img-thumbnail">
+                                                                                            <input type="hidden"
+                                                                                                name="variants[<?= $index ?>][existing_image]"
+                                                                                                value="<?= htmlspecialchars($variant['image']) ?>">
+                                                                                            <small class="d-block">Current image</small>
+                                                                                        </div>
                                                                                     <?php endif; ?>
-                                                                                    <input type="file" class="form-control form-control-sm mt-1"
-                                                                                           name="variant_images[<?= $index ?>]" accept="image/*">
+                                                                                    <input type="file" class="form-control form-control-sm"
+                                                                                        name="variant_images[<?= $index ?>]" accept="image/*">
                                                                                 </td>
                                                                             </tr>
                                                                         <?php endforeach; ?>
@@ -636,7 +692,7 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
                                                 </div>
                                             </div>
                                         </div>
-                                        
+
                                         <!-- Media Tab -->
                                         <div class="tab-pane fade" id="media" role="tabpanel" aria-labelledby="media-tab">
                                             <div class="row">
@@ -746,55 +802,55 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
 
         <?php include "includes/footer.php"; ?>
     </section>
-<!-- jQuery -->
+    <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!-- Bootstrap Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Color Picker -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-colorpicker/3.4.0/js/bootstrap-colorpicker.min.js"></script>
     <!-- JavaScript -->
-    
+
     <script>
         // Initialize CKEditor
         document.addEventListener('DOMContentLoaded', function() {
             CKEDITOR.replace('short_desc');
             CKEDITOR.replace('pro_desc');
-            
+
             // Load size options based on current product type
             const productType = document.getElementById('productType').value;
             if (productType) {
                 loadSizeOptions(productType);
             }
         });
-        
+
         // Function to get subcategories
         function getSubcategories(categoryId) {
             if (!categoryId) {
                 document.getElementById('subCategory').innerHTML = '<option value="">Select Sub Category</option>';
                 return;
             }
-            
+
             fetch('functions.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: 'action=get_sub_category_by_id&category_id=' + categoryId
-            })
-            .then(response => response.text())
-            .then(data => {
-                document.getElementById('subCategory').innerHTML = data;
-            })
-            .catch(error => console.error('Error:', error));
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: 'action=get_sub_category_by_id&category_id=' + categoryId
+                })
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById('subCategory').innerHTML = data;
+                })
+                .catch(error => console.error('Error:', error));
         }
-        
+
         // Load size options based on product type
         function loadSizeOptions(productType) {
             const container = document.getElementById('sizeOptionsContainer');
             let sizeOptions = '';
-            
+
             if (productType === 'clothing') {
-                <?php foreach($sizes_clothing as $size): ?>
+                <?php foreach ($sizes_clothing as $size): ?>
                     sizeOptions += `
                         <div class="form-check form-check-inline">
                             <input class="form-check-input" type="checkbox" name="sizes[]" value="<?= $size ?>">
@@ -802,7 +858,7 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
                         </div>`;
                 <?php endforeach; ?>
             } else if (productType === 'shoes') {
-                <?php foreach($sizes_shoes as $size): ?>
+                <?php foreach ($sizes_shoes as $size): ?>
                     sizeOptions += `
                         <div class="form-check form-check-inline">
                             <input class="form-check-input" type="checkbox" name="sizes[]" value="<?= $size ?>">
@@ -810,34 +866,37 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
                         </div>`;
                 <?php endforeach; ?>
             }
-            
+
             container.innerHTML = sizeOptions;
         }
-        
+
         // Event listener for product type change
         document.getElementById('productType').addEventListener('change', function() {
             loadSizeOptions(this.value);
         });
-        
+
         // Attributes management
         let attributes = <?= json_encode($attributes) ?>;
-        
+
         function addAttribute() {
             const name = document.getElementById('attrName').value.trim();
             const value = document.getElementById('attrValue').value.trim();
-            
+
             if (name && value) {
-                attributes.push({ name, value });
+                attributes.push({
+                    name,
+                    value
+                });
                 updateAttributeTags();
                 document.getElementById('attrName').value = '';
                 document.getElementById('attrValue').value = '';
             }
         }
-        
+
         function updateAttributeTags() {
             const container = document.getElementById('attributeTags');
             container.innerHTML = '';
-            
+
             attributes.forEach((attr, index) => {
                 const tag = document.createElement('span');
                 tag.className = 'badge bg-light text-dark p-2 me-2 mb-2';
@@ -847,117 +906,134 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
                 `;
                 container.appendChild(tag);
             });
-            
+
             document.getElementById('attributesJson').value = JSON.stringify(attributes);
         }
-        
+
         function removeAttribute(index) {
             attributes.splice(index, 1);
             updateAttributeTags();
         }
-        
+
         // Generate variants
         function generateVariants() {
-            const selectedColors = Array.from(document.querySelectorAll('input[name="colors[]"]:checked')).map(cb => cb.value);
-            const selectedSizes = Array.from(document.querySelectorAll('input[name="sizes[]"]:checked')).map(cb => cb.value);
-            
+            const selectedColors = Array.from(document.querySelectorAll('input[name="colors[]"]:checked'))
+                .map(cb => cb.value);
+            const selectedSizes = Array.from(document.querySelectorAll('input[name="sizes[]"]:checked'))
+                .map(cb => cb.value);
+
             if (selectedColors.length === 0 || selectedSizes.length === 0) {
-                alert('Please select at least one color and one size');
+                alert('Please select at least one color and one size in Attributes tab');
                 return;
             }
-            
-            let variants = [];
-            let variantsHtml = `
-                <div class="table-responsive">
-                    <table class="table table-bordered">
-                        <thead>
-                            <tr>
-                                <th>Color</th>
-                                <th>Size</th>
-                                <th>SKU</th>
-                                <th>Price</th>
-                                <th>Quantity</th>
-                                <th>Image</th>
-                            </tr>
-                        </thead>
-                        <tbody>`;
-            
-            selectedColors.forEach((color, colorIndex) => {
-                selectedSizes.forEach((size, sizeIndex) => {
-                    const variantIndex = variants.length;
-                    const baseSku = document.querySelector('input[name="sku"]').value || 'BL';
-                    const variantSku = `${baseSku}-${color.substr(0,3).toUpperCase()}-${size}`;
-                    const sellingPrice = document.querySelector('input[name="selling_price"]').value || 0;
-                    
+
+            const variants = [];
+            let index = 0;
+
+            selectedColors.forEach(color => {
+                selectedSizes.forEach(size => {
+                    // Generate SKU based on product SKU, color and size
+                    const baseSku = document.querySelector('input[name="sku"]').value;
+                    const variantSku = `${baseSku}-${color.substring(0, 3).toUpperCase()}-${size.toUpperCase()}`;
+
                     variants.push({
-                        id: variantIndex,
+                        id: index,
                         color: color,
                         size: size,
                         sku: variantSku,
-                        price: sellingPrice,
-                        quantity: 0
+                        price: document.querySelector('input[name="selling_price"]').value || 0,
+                        compare_at_price: document.querySelector('input[name="mrp"]').value || 0,
+                        quantity: document.querySelector('input[name="qty"]').value || 0,
+                        existing_image: '' // For existing images on edit
                     });
-                    
-                    variantsHtml += `
-                        <tr>
-                            <td>${color}</td>
-                            <td>${size}</td>
-                            <td>
-                                <input type="text" class="form-control form-control-sm" 
-                                       name="variants[${variantIndex}][sku]" 
-                                       value="${variantSku}">
-                            </td>
-                            <td>
-                                <input type="number" class="form-control form-control-sm" 
-                                       name="variants[${variantIndex}][price]" 
-                                       value="${sellingPrice}" step="0.01">
-                            </td>
-                            <td>
-                                <input type="number" class="form-control form-control-sm" 
-                                       name="variants[${variantIndex}][quantity]" 
-                                       value="0" min="0">
-                            </td>
-                            <td>
-                                <input type="file" class="form-control form-control-sm"
-                                       name="variant_images[${variantIndex}]" accept="image/*">
-                            </td>
-                        </tr>`;
+
+                    index++;
                 });
             });
-            
-            variantsHtml += `</tbody></table></div>`;
-            document.getElementById('variantsContainer').innerHTML = variantsHtml;
+
+            // Update variants JSON
             document.getElementById('variantsJson').value = JSON.stringify(variants);
+
+            // Generate HTML table
+            let html = `
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Color</th>
+                        <th>Size</th>
+                        <th>SKU</th>
+                        <th>Price</th>
+                        <th>Quantity</th>
+                        <th>Image</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+            variants.forEach((variant, idx) => {
+                html += `
+            <tr>
+                <td>
+                    <input type="hidden" name="variants[${idx}][color]" value="${variant.color}">
+                    ${variant.color}
+                </td>
+                <td>
+                    <input type="hidden" name="variants[${idx}][size]" value="${variant.size}">
+                    ${variant.size}
+                </td>
+                <td>
+                    <input type="text" class="form-control form-control-sm" 
+                           name="variants[${idx}][sku]" value="${variant.sku}">
+                </td>
+                <td>
+                    <input type="number" class="form-control form-control-sm" 
+                           name="variants[${idx}][price]" value="${variant.price}" step="0.01">
+                </td>
+                <td>
+                    <input type="number" class="form-control form-control-sm" 
+                           name="variants[${idx}][quantity]" value="${variant.quantity}" min="0">
+                </td>
+                <td>
+                    <input type="file" class="form-control form-control-sm" 
+                           name="variant_images[${idx}]" accept="image/*">
+                </td>
+            </tr>`;
+            });
+
+            html += `</tbody></table></div>`;
+
+            document.getElementById('variantsContainer').innerHTML = html;
         }
-        
+
         // Form validation
         document.getElementById('productForm').addEventListener('submit', function(e) {
             const productName = document.querySelector('input[name="pro_name"]').value.trim();
             const sku = document.querySelector('input[name="sku"]').value.trim();
             const sellingPrice = parseFloat(document.querySelector('input[name="selling_price"]').value);
             const mrp = parseFloat(document.querySelector('input[name="mrp"]').value);
-            
+
             if (!productName) {
                 alert('Product name is required');
                 e.preventDefault();
                 return false;
             }
-            
+
             if (!sku) {
                 alert('SKU is required');
                 e.preventDefault();
                 return false;
             }
-            
+
             if (sellingPrice > mrp) {
                 if (!confirm('Selling price is higher than MRP. Continue anyway?')) {
                     e.preventDefault();
                     return false;
                 }
             }
-            
+
             return true;
         });
     </script>
 </body>
+
 </html>

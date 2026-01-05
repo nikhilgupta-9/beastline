@@ -63,14 +63,14 @@ $banners = get_banner();
 	}
 
 	/* Text Overlay */
-	.banner_text1 {
+	/* .banner_text1 {
 		position: absolute;
 		inset: 0;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		background: rgba(0, 0, 0, 0.35);
-	}
+	} */
 
 	.banner_text1_inner {
 		text-align: center;
@@ -238,7 +238,7 @@ $banners = get_banner();
 							</a>
 							<div class="banner_text1">
 								<div class="banner_text1_inner">
-									<h3>Men’s <br> Collections</h3>
+									<h3>Shirt <br> Collections</h3>
 									<a href="shop.html">shop now</a>
 								</div>
 							</div>
@@ -257,7 +257,7 @@ $banners = get_banner();
 							</a>
 							<div class="banner_text1">
 								<div class="banner_text1_inner">
-									<h3>Women’s <br> Collections</h3>
+									<h3>Pant <br> Collections</h3>
 									<a href="shop.html">shop now</a>
 								</div>
 							</div>
@@ -276,7 +276,7 @@ $banners = get_banner();
 							</a>
 							<div class="banner_text1">
 								<div class="banner_text1_inner">
-									<h3>Accessories <br> Collection</h3>
+									<h3>Shoes <br> Collection</h3>
 									<a href="shop.html">shop now</a>
 								</div>
 							</div>
@@ -416,398 +416,141 @@ $banners = get_banner();
 				</div>
 			</div>
 			<div class="row">
-				<div class="product_carousel product_column5 owl-carousel">
-					<div class="col-lg-3">
-						<div class="product_items">
-							<article class="single_product">
-								<figure>
-									<div class="product_thumb">
-										<a class="primary_img" href="product-details.html"><img src="assets/img/product/product1.jpg" alt=""></a>
-										<a class="secondary_img" href="product-details.html"><img src="assets/img/product/product2.jpg" alt=""></a>
-										<div class="label_product">
-											<span class="label_sale">Sale</span>
-										</div>
-										<div class="action_links">
-											<ul>
-												<li class="quick_button"><a href="#" data-bs-toggle="modal" data-bs-target="#modal_box" title="quick view"> <span class="pe-7s-search"></span></a></li>
-												<li class="wishlist"><a href="wishlist.html" title="Add to Wishlist"><span class="pe-7s-like"></span></a></li>
-												<li class="compare"><a href="#" title="Add to Compare"><span class="pe-7s-edit"></span></a></li>
-											</ul>
-										</div>
-									</div>
-									<figcaption class="product_content">
-										<div class="product_content_inner">
-											<h4 class="product_name"><a href="product-details.html">Duis pulvinar obortis eleifend elementum</a></h4>
-											<div class="price_box">
-												<span class="old_price">$84.00</span>
-												<span class="current_price">$79.00</span>
-											</div>
-										</div>
-										<div class="add_to_cart">
-											<a href="cart.html">Add to cart</a>
-										</div>
-									</figcaption>
-								</figure>
-							</article>
-							<article class="single_product">
-								<figure>
-									<div class="product_thumb">
-										<a class="primary_img" href="product-details.html"><img src="assets/img/product/product3.jpg" alt=""></a>
-										<a class="secondary_img" href="product-details.html"><img src="assets/img/product/product4.jpg" alt=""></a>
-										<div class="label_product">
-											<span class="label_sale">Sale</span>
-										</div>
-										<div class="action_links">
-											<ul>
-												<li class="quick_button"><a href="#" data-bs-toggle="modal" data-bs-target="#modal_box" title="quick view"> <span class="pe-7s-search"></span></a></li>
-												<li class="wishlist"><a href="wishlist.html" title="Add to Wishlist"><span class="pe-7s-like"></span></a></li>
-												<li class="compare"><a href="#" title="Add to Compare"><span class="pe-7s-edit"></span></a></li>
-											</ul>
-										</div>
-									</div>
-									<figcaption class="product_content">
-										<div class="product_content_inner">
-											<h4 class="product_name"><a href="product-details.html">Eodem modo vels is mattis antes facilisis</a></h4>
-											<div class="price_box">
-												<span class="old_price">$86.00</span>
-												<span class="current_price">$82.00</span>
-											</div>
-										</div>
-										<div class="add_to_cart">
-											<a href="cart.html">Add to cart</a>
-										</div>
-									</figcaption>
-								</figure>
-							</article>
-						</div>
-					</div>
-					<div class="col-lg-3">
-						<div class="product_items">
-							<article class="single_product">
-								<figure>
-									<div class="product_thumb">
-										<a class="primary_img" href="product-details.html"><img src="assets/img/product/product5.jpg" alt=""></a>
-										<a class="secondary_img" href="product-details.html"><img src="assets/img/product/product6.jpg" alt=""></a>
-										<div class="label_product">
-											<span class="label_sale">Sale</span>
-										</div>
-										<div class="action_links">
-											<ul>
-												<li class="quick_button"><a href="#" data-bs-toggle="modal" data-bs-target="#modal_box" title="quick view"> <span class="pe-7s-search"></span></a></li>
-												<li class="wishlist"><a href="wishlist.html" title="Add to Wishlist"><span class="pe-7s-like"></span></a></li>
-												<li class="compare"><a href="#" title="Add to Compare"><span class="pe-7s-edit"></span></a></li>
-											</ul>
-										</div>
-									</div>
-									<figcaption class="product_content">
-										<div class="product_content_inner">
-											<h4 class="product_name"><a href="product-details.html">Epicuri per lobortis eleifend eget laoreet</a></h4>
-											<div class="price_box">
-												<span class="old_price">$82.00</span>
-												<span class="current_price">$77.00</span>
-											</div>
-										</div>
-										<div class="add_to_cart">
-											<a href="cart.html">Add to cart</a>
-										</div>
-									</figcaption>
-								</figure>
-							</article>
-							<article class="single_product">
-								<figure>
-									<div class="product_thumb">
-										<a class="primary_img" href="product-details.html"><img src="assets/img/product/product7.jpg" alt=""></a>
-										<a class="secondary_img" href="product-details.html"><img src="assets/img/product/product8.jpg" alt=""></a>
-										<div class="label_product">
-											<span class="label_sale">Sale</span>
-										</div>
-										<div class="action_links">
-											<ul>
-												<li class="quick_button"><a href="#" data-bs-toggle="modal" data-bs-target="#modal_box" title="quick view"> <span class="pe-7s-search"></span></a></li>
-												<li class="wishlist"><a href="wishlist.html" title="Add to Wishlist"><span class="pe-7s-like"></span></a></li>
-												<li class="compare"><a href="#" title="Add to Compare"><span class="pe-7s-edit"></span></a></li>
-											</ul>
-										</div>
-									</div>
-									<figcaption class="product_content">
-										<div class="product_content_inner">
-											<h4 class="product_name"><a href="product-details.html">Fusce ultricies dolor vitae tristique suscipit</a></h4>
-											<div class="price_box">
-												<span class="old_price">$90.00</span>
-												<span class="current_price">$88.00</span>
-											</div>
-										</div>
-										<div class="add_to_cart">
-											<a href="cart.html">Add to cart</a>
-										</div>
-									</figcaption>
-								</figure>
-							</article>
-
-						</div>
-					</div>
-					<div class="col-lg-3">
-						<div class="product_items">
-							<article class="single_product">
-								<figure>
-									<div class="product_thumb">
-										<a class="primary_img" href="product-details.html"><img src="assets/img/product/product9.jpg" alt=""></a>
-										<a class="secondary_img" href="product-details.html"><img src="assets/img/product/product10.jpg" alt=""></a>
-										<div class="label_product">
-											<span class="label_sale">Sale</span>
-										</div>
-										<div class="action_links">
-											<ul>
-												<li class="quick_button"><a href="#" data-bs-toggle="modal" data-bs-target="#modal_box" title="quick view"> <span class="pe-7s-search"></span></a></li>
-												<li class="wishlist"><a href="wishlist.html" title="Add to Wishlist"><span class="pe-7s-like"></span></a></li>
-												<li class="compare"><a href="#" title="Add to Compare"><span class="pe-7s-edit"></span></a></li>
-											</ul>
-										</div>
-									</div>
-									<figcaption class="product_content">
-										<div class="product_content_inner">
-											<h4 class="product_name"><a href="product-details.html">Kaoreet lobortis sagittis laoreet metus is</a></h4>
-											<div class="price_box">
-												<span class="old_price">$94.00</span>
-												<span class="current_price">$92.00</span>
-											</div>
-										</div>
-										<div class="add_to_cart">
-											<a href="cart.html">Add to cart</a>
-										</div>
-									</figcaption>
-								</figure>
-							</article>
-							<article class="single_product">
-								<figure>
-									<div class="product_thumb">
-										<a class="primary_img" href="product-details.html"><img src="assets/img/product/product11.jpg" alt=""></a>
-										<a class="secondary_img" href="product-details.html"><img src="assets/img/product/product12.jpg" alt=""></a>
-										<div class="label_product">
-											<span class="label_sale">Sale</span>
-										</div>
-										<div class="action_links">
-											<ul>
-												<li class="quick_button"><a href="#" data-bs-toggle="modal" data-bs-target="#modal_box" title="quick view"> <span class="pe-7s-search"></span></a></li>
-												<li class="wishlist"><a href="wishlist.html" title="Add to Wishlist"><span class="pe-7s-like"></span></a></li>
-												<li class="compare"><a href="#" title="Add to Compare"><span class="pe-7s-edit"></span></a></li>
-											</ul>
-										</div>
-									</div>
-									<figcaption class="product_content">
-										<div class="product_content_inner">
-											<h4 class="product_name"><a href="product-details.html">Nostrum exercitationem itae posuere nisl</a></h4>
-											<div class="price_box">
-												<span class="old_price">$98.00</span>
-												<span class="current_price">$94.00</span>
-											</div>
-										</div>
-										<div class="add_to_cart">
-											<a href="cart.html">Add to cart</a>
-										</div>
-									</figcaption>
-								</figure>
-							</article>
-
-						</div>
-					</div>
-					<div class="col-lg-3">
-						<div class="product_items">
-							<article class="single_product">
-								<figure>
-									<div class="product_thumb">
-										<a class="primary_img" href="product-details.html"><img src="assets/img/product/product13.jpg" alt=""></a>
-										<a class="secondary_img" href="product-details.html"><img src="assets/img/product/product14.jpg" alt=""></a>
-										<div class="label_product">
-											<span class="label_sale">Sale</span>
-										</div>
-										<div class="action_links">
-											<ul>
-												<li class="quick_button"><a href="#" data-bs-toggle="modal" data-bs-target="#modal_box" title="quick view"> <span class="pe-7s-search"></span></a></li>
-												<li class="wishlist"><a href="wishlist.html" title="Add to Wishlist"><span class="pe-7s-like"></span></a></li>
-												<li class="compare"><a href="#" title="Add to Compare"><span class="pe-7s-edit"></span></a></li>
-											</ul>
-										</div>
-									</div>
-									<figcaption class="product_content">
-										<div class="product_content_inner">
-											<h4 class="product_name"><a href="product-details.html">Ornare sed consequat nisl eget mi porttitor</a></h4>
-											<div class="price_box">
-												<span class="old_price">$76.00</span>
-												<span class="current_price">$73.00</span>
-											</div>
-										</div>
-										<div class="add_to_cart">
-											<a href="cart.html">Add to cart</a>
-										</div>
-									</figcaption>
-								</figure>
-							</article>
-							<article class="single_product">
-								<figure>
-									<div class="product_thumb">
-										<a class="primary_img" href="product-details.html"><img src="assets/img/product/product15.jpg" alt=""></a>
-										<a class="secondary_img" href="product-details.html"><img src="assets/img/product/product14.jpg" alt=""></a>
-										<div class="label_product">
-											<span class="label_sale">Sale</span>
-										</div>
-										<div class="action_links">
-											<ul>
-												<li class="quick_button"><a href="#" data-bs-toggle="modal" data-bs-target="#modal_box" title="quick view"> <span class="pe-7s-search"></span></a></li>
-												<li class="wishlist"><a href="wishlist.html" title="Add to Wishlist"><span class="pe-7s-like"></span></a></li>
-												<li class="compare"><a href="#" title="Add to Compare"><span class="pe-7s-edit"></span></a></li>
-											</ul>
-										</div>
-									</div>
-									<figcaption class="product_content">
-										<div class="product_content_inner">
-											<h4 class="product_name"><a href="product-details.html">Pellentesque posuere hendrerit dui quis</a></h4>
-											<div class="price_box">
-												<span class="old_price">$70.00</span>
-												<span class="current_price">$66.00</span>
-											</div>
-										</div>
-										<div class="add_to_cart">
-											<a href="cart.html">Add to cart</a>
-										</div>
-									</figcaption>
-								</figure>
-							</article>
-
-						</div>
-					</div>
-					<div class="col-lg-3">
-						<div class="product_items">
-							<article class="single_product">
-								<figure>
-									<div class="product_thumb">
-										<a class="primary_img" href="product-details.html"><img src="assets/img/product/product2.jpg" alt=""></a>
-										<a class="secondary_img" href="product-details.html"><img src="assets/img/product/product1.jpg" alt=""></a>
-										<div class="label_product">
-											<span class="label_sale">Sale</span>
-										</div>
-										<div class="action_links">
-											<ul>
-												<li class="quick_button"><a href="#" data-bs-toggle="modal" data-bs-target="#modal_box" title="quick view"> <span class="pe-7s-search"></span></a></li>
-												<li class="wishlist"><a href="wishlist.html" title="Add to Wishlist"><span class="pe-7s-like"></span></a></li>
-												<li class="compare"><a href="#" title="Add to Compare"><span class="pe-7s-edit"></span></a></li>
-											</ul>
-										</div>
-									</div>
-									<figcaption class="product_content">
-										<div class="product_content_inner">
-											<h4 class="product_name"><a href="product-details.html">Aliquam lobortis pellentesque nisi lectus</a></h4>
-											<div class="price_box">
-												<span class="old_price">$66.00</span>
-												<span class="current_price">$62.00</span>
-											</div>
-										</div>
-										<div class="add_to_cart">
-											<a href="cart.html">Add to cart</a>
-										</div>
-									</figcaption>
-								</figure>
-							</article>
-							<article class="single_product">
-								<figure>
-									<div class="product_thumb">
-										<a class="primary_img" href="product-details.html"><img src="assets/img/product/product4.jpg" alt=""></a>
-										<a class="secondary_img" href="product-details.html"><img src="assets/img/product/product3.jpg" alt=""></a>
-										<div class="label_product">
-											<span class="label_sale">Sale</span>
-										</div>
-										<div class="action_links">
-											<ul>
-												<li class="quick_button"><a href="#" data-bs-toggle="modal" data-bs-target="#modal_box" title="quick view"> <span class="pe-7s-search"></span></a></li>
-												<li class="wishlist"><a href="wishlist.html" title="Add to Wishlist"><span class="pe-7s-like"></span></a></li>
-												<li class="compare"><a href="#" title="Add to Compare"><span class="pe-7s-edit"></span></a></li>
-											</ul>
-										</div>
-									</div>
-									<figcaption class="product_content">
-										<div class="product_content_inner">
-											<h4 class="product_name"><a href="product-details.html">Donec eu libero ac dapibus urna placerat</a></h4>
-											<div class="price_box">
-												<span class="old_price">$87.00</span>
-												<span class="current_price">$78.00</span>
-											</div>
-										</div>
-										<div class="add_to_cart">
-											<a href="cart.html">Add to cart</a>
-										</div>
-									</figcaption>
-								</figure>
-							</article>
-
-						</div>
-					</div>
-					<div class="col-lg-3">
-						<div class="product_items">
-							<article class="single_product">
-								<figure>
-									<div class="product_thumb">
-										<a class="primary_img" href="product-details.html"><img src="assets/img/product/product6.jpg" alt=""></a>
-										<a class="secondary_img" href="product-details.html"><img src="assets/img/product/product5.jpg" alt=""></a>
-										<div class="label_product">
-											<span class="label_sale">Sale</span>
-										</div>
-										<div class="action_links">
-											<ul>
-												<li class="quick_button"><a href="#" data-bs-toggle="modal" data-bs-target="#modal_box" title="quick view"> <span class="pe-7s-search"></span></a></li>
-												<li class="wishlist"><a href="wishlist.html" title="Add to Wishlist"><span class="pe-7s-like"></span></a></li>
-												<li class="compare"><a href="#" title="Add to Compare"><span class="pe-7s-edit"></span></a></li>
-											</ul>
-										</div>
-									</div>
-									<figcaption class="product_content">
-										<div class="product_content_inner">
-											<h4 class="product_name"><a href="product-details.html">Kaoreet lobortis sagittis laoreet metus is</a></h4>
-											<div class="price_box">
-												<span class="old_price">$74.00</span>
-												<span class="current_price">$72.00</span>
-											</div>
-										</div>
-										<div class="add_to_cart">
-											<a href="cart.html">Add to cart</a>
-										</div>
-									</figcaption>
-								</figure>
-							</article>
-							<article class="single_product">
-								<figure>
-									<div class="product_thumb">
-										<a class="primary_img" href="product-details.html"><img src="assets/img/product/product8.jpg" alt=""></a>
-										<a class="secondary_img" href="product-details.html"><img src="assets/img/product/product7.jpg" alt=""></a>
-										<div class="label_product">
-											<span class="label_sale">Sale</span>
-										</div>
-										<div class="action_links">
-											<ul>
-												<li class="quick_button"><a href="#" data-bs-toggle="modal" data-bs-target="#modal_box" title="quick view"> <span class="pe-7s-search"></span></a></li>
-												<li class="wishlist"><a href="wishlist.html" title="Add to Wishlist"><span class="pe-7s-like"></span></a></li>
-												<li class="compare"><a href="#" title="Add to Compare"><span class="pe-7s-edit"></span></a></li>
-											</ul>
-										</div>
-									</div>
-									<figcaption class="product_content">
-										<div class="product_content_inner">
-											<h4 class="product_name"><a href="product-details.html">Eodem modo vel mattis ante facilisis</a></h4>
-											<div class="price_box">
-												<span class="old_price">$86.00</span>
-												<span class="current_price">$82.00</span>
-											</div>
-										</div>
-										<div class="add_to_cart">
-											<a href="cart.html">Add to cart</a>
-										</div>
-									</figcaption>
-								</figure>
-							</article>
-
-						</div>
-					</div>
-				</div>
-			</div>
+    <div class="product_carousel product_column5 owl-carousel">
+        <?php 
+        $fetaured_products = get_featured_product();
+        
+        // If no featured products, create placeholder array
+        if (empty($fetaured_products)) {
+            $fetaured_products = [
+                [
+                    'pro_id' => 1,
+                    'pro_name' => 'Eodem modo vels is mattis antes facilisis',
+                    'pro_img' => 'product3.jpg',
+                    'mrp' => 86.00,
+                    'selling_price' => 82.00,
+                    'is_on_sale' => true
+                ],
+                [
+                    'pro_id' => 2,
+                    'pro_name' => 'Epicuri per lobortis eleifend eget laoreet',
+                    'pro_img' => 'product5.jpg',
+                    'mrp' => 82.00,
+                    'selling_price' => 77.00,
+                    'is_on_sale' => true
+                ],
+                [
+                    'pro_id' => 3,
+                    'pro_name' => 'Fusce ultricies dolor vitae tristique suscipit',
+                    'pro_img' => 'product7.jpg',
+                    'mrp' => 90.00,
+                    'selling_price' => 88.00,
+                    'is_on_sale' => true
+                ],
+                [
+                    'pro_id' => 4,
+                    'pro_name' => 'Product Name 4',
+                    'pro_img' => 'product2.jpg',
+                    'mrp' => 84.00,
+                    'selling_price' => 79.00,
+                    'is_on_sale' => true
+                ]
+            ];
+        }
+        
+        foreach ($fetaured_products as $index => $f_p):
+            // Determine secondary image
+            $secondary_img_num = ($index % 4) + 2; // This will cycle through 2, 3, 4, 5, etc.
+            
+            // Calculate discount if available
+            $show_sale = isset($f_p['mrp']) && isset($f_p['selling_price']) && 
+                        $f_p['mrp'] > $f_p['selling_price'];
+            
+            // Format prices
+            $old_price = isset($f_p['mrp']) ? '$' . number_format($f_p['mrp'], 2) : '$0.00';
+            $current_price = isset($f_p['selling_price']) ? '$' . number_format($f_p['selling_price'], 2) : '$0.00';
+            
+            // Product link
+            $product_link = isset($f_p['pro_id']) ? "product-details.php?id={$f_p['pro_id']}" : "product-details.html";
+            
+            // Primary image path
+            if (isset($f_p['pro_img']) && strpos($f_p['pro_img'], 'assets/') === false) {
+                $primary_img = $site . 'admin/assets/img/uploads/' . $f_p['pro_img'];
+            } else {
+                $primary_img = isset($f_p['pro_img']) ? $f_p['pro_img'] : "assets/img/product/product" . (($index * 2) + 1) . ".jpg";
+            }
+        ?>
+        
+        <!-- Each carousel item should be a single product -->
+        <article class="single_product">
+            <figure>
+                <div class="product_thumb">
+                    <a class="primary_img" href="<?= $product_link ?>">
+                        <img src="<?= $primary_img ?>" alt="<?= htmlspecialchars($f_p['pro_name']) ?>">
+                    </a>
+                    <a class="secondary_img" href="<?= $product_link ?>">
+                        <img src="assets/img/product/product<?= $secondary_img_num ?>.jpg" alt="<?= htmlspecialchars($f_p['pro_name']) ?>">
+                    </a>
+                    
+                    <?php if ($show_sale): ?>
+                    <div class="label_product">
+                        <span class="label_sale">Sale</span>
+                        <?php 
+                        $discount = round((($f_p['mrp'] - $f_p['selling_price']) / $f_p['mrp']) * 100);
+                        if ($discount > 0): ?>
+                        <span class="label_discount">-<?= $discount ?>%</span>
+                        <?php endif; ?>
+                    </div>
+                    <?php endif; ?>
+                    
+                    <div class="action_links">
+                        <ul>
+                            <li class="quick_button">
+                                <a href="#" data-bs-toggle="modal" 
+                                   data-bs-target="#modal_box_<?= $f_p['pro_id'] ?? $index ?>" 
+                                   title="quick view">
+                                    <span class="pe-7s-search"></span>
+                                </a>
+                            </li>
+                            <li class="wishlist">
+                                <a href="wishlist.php?add_to_wishlist=<?= $f_p['pro_id'] ?? $index ?>" 
+                                   title="Add to Wishlist">
+                                    <span class="pe-7s-like"></span>
+                                </a>
+                            </li>
+                            <li class="compare">
+                                <a href="compare.php?add_to_compare=<?= $f_p['pro_id'] ?? $index ?>" 
+                                   title="Add to Compare">
+                                    <span class="pe-7s-edit"></span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                <figcaption class="product_content">
+                    <div class="product_content_inner">
+                        <h4 class="product_name">
+                            <a href="<?= $product_link ?>">
+                                <?= htmlspecialchars($f_p['pro_name']) ?>
+                            </a>
+                        </h4>
+                        <div class="price_box">
+                            <?php if ($show_sale): ?>
+                            <span class="old_price"><?= $old_price ?></span>
+                            <?php endif; ?>
+                            <span class="current_price"><?= $current_price ?></span>
+                        </div>
+                    </div>
+                    <div class="add_to_cart">
+                        <a href="cart.php?add_to_cart=<?= $f_p['pro_id'] ?? $index ?>">Add to cart</a>
+                    </div>
+                </figcaption>
+            </figure>
+        </article>
+        
+        <?php endforeach; ?>
+    </div>
+</div>
 		</div>
 	</div>
 	<!--product area end-->

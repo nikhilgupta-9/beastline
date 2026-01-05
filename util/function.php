@@ -202,7 +202,7 @@ function get_sub_category()
 }
 
 // fetching trending product 
-function get_trending_product()
+function get_featured_product()
 {
     global $conn;
 

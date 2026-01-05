@@ -33,7 +33,7 @@ RewriteRule ^blogs/([^/]+)/?$ blog-details.php?alias=$1 [L,QSA]
 # Products
 # -------------------------------
 RewriteRule ^product-details/([^/]+)/?$ product-details.php?alias=$1 [L,QSA]
-RewriteRule ^products/([^/]+)/?$ products.php?alias=$1 [L,QSA]
+RewriteRule ^shop/([^/]+)/?$ shop.php?alias=$1 [L,QSA]
 
 # -------------------------------
 # Brand Search

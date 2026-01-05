@@ -397,7 +397,7 @@ $updated_at = !empty($product['updated_on']) ? date('d M Y, h:i A', strtotime($p
                                            class="btn btn-primary">
                                             <i class="fas fa-edit me-2"></i>Edit Product
                                         </a>
-                                        <a href="products.php" class="btn btn-outline-secondary">
+                                        <a href="view-products.php" class="btn btn-outline-secondary">
                                             <i class="fas fa-arrow-left me-2"></i>Back to List
                                         </a>
                                         <button onclick="window.print()" class="btn btn-print">
