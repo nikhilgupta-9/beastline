@@ -7556,7 +7556,7 @@ input:-ms-input-placeholder, textarea:-ms-input-placeholder {
   max-width: 100%;
   padding: 0 20px;
   background: none;
-  width: 100%;
+  /* width: 100%; */
 }
 .account_form button {
   background: #ff4545;
