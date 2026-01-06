@@ -44,6 +44,7 @@ $contact = contact_us();
 
 <!doctype html>
 <html class="no-js" lang="en">
+
 <head>
     <meta charset="utf-8">
     <meta http-equiv="x-ua-compatible" content="ie=edge">
@@ -55,19 +56,33 @@ $contact = contact_us();
     <link rel="shortcut icon" type="image/x-icon" href="<?= $site ?>assets/img/favicon/favicon.ico">
 
     <!-- CSS -->
+    <!-- CSS 
+    ========================= -->
+    <!--bootstrap min css-->
     <link rel="stylesheet" href="<?= $site ?>assets/css/bootstrap.min.css">
+    <!--owl carousel min css-->
     <link rel="stylesheet" href="<?= $site ?>assets/css/owl.carousel.min.css">
+    <!--slick min css-->
     <link rel="stylesheet" href="<?= $site ?>assets/css/slick.css">
+    <!--magnific popup min css-->
     <link rel="stylesheet" href="<?= $site ?>assets/css/magnific-popup.css">
+    <!--font awesome css-->
     <link rel="stylesheet" href="<?= $site ?>assets/css/font.awesome.css">
+    <!--ionicons css-->
     <link rel="stylesheet" href="<?= $site ?>assets/css/ionicons.min.css">
+    <!--7 stroke icons css-->
     <link rel="stylesheet" href="<?= $site ?>assets/css/pe-icon-7-stroke.css">
+    <!--animate css-->
     <link rel="stylesheet" href="<?= $site ?>assets/css/animate.css">
+    <!--jquery ui min css-->
     <link rel="stylesheet" href="<?= $site ?>assets/css/jquery-ui.min.css">
+    <!--plugins css-->
     <link rel="stylesheet" href="<?= $site ?>assets/css/plugins.css">
+
+    <!-- Main Style CSS -->
     <link rel="stylesheet" href="<?= $site ?>assets/css/style.css">
 
-    <!-- Modernizr -->
+    <!--modernizr min js here-->
     <script src="<?= $site ?>assets/js/vendor/modernizr-3.7.1.min.js"></script>
 </head>
 
@@ -79,7 +94,7 @@ $contact = contact_us();
 
     <!--breadcrumbs area start-->
     <div class="breadcrumbs_area">
-        <div class="container">   
+        <div class="container">
             <div class="row">
                 <div class="col-12">
                     <div class="breadcrumb_content">
@@ -91,110 +106,110 @@ $contact = contact_us();
                     </div>
                 </div>
             </div>
-        </div>         
+        </div>
     </div>
     <!--breadcrumbs area end-->
-    
+
     <!--shop area start-->
     <div class="shop_area shop_reverse mb-80">
         <div class="container">
             <div class="row">
                 <div class="col-lg-3 col-md-12">
-                   <!--sidebar widget start-->
+                    <!--sidebar widget start-->
                     <aside class="sidebar_widget">
                         <div class="widget_inner">
                             <!-- Categories -->
                             <div class="widget_list widget_categories">
                                 <h3>Categories</h3>
                                 <ul>
-                                    <?php foreach($categories as $cat): ?>
-                                    <li class="widget_sub_categories sub_categories<?= $cat['id'] ?>">
-                                        <a href="javascript:void(0)"><?= htmlspecialchars($cat['categories']) ?> 
-                                            <span>(<?= $cat['product_count'] ?>)</span>
-                                        </a>
-                                        <?php 
-                                        $subcategories = get_subcategories($cat['id']);
-                                        if (!empty($subcategories)):
-                                        ?>
-                                        <ul class="widget_dropdown_categories dropdown_categories<?= $cat['id'] ?>">
-                                            <?php foreach($subcategories as $subcat): ?>
-                                            <li>
-                                                <a href="<?= $site ?>category/<?= $subcat['slug'] ?>">
-                                                    <?= htmlspecialchars($subcat['categories']) ?>
-                                                </a>
-                                            </li>
-                                            <?php endforeach; ?>
-                                        </ul>
-                                        <?php endif; ?>
-                                    </li>
+                                    <?php foreach ($categories as $cat): ?>
+                                        <li class="widget_sub_categories sub_categories<?= $cat['id'] ?>">
+                                            <a href="javascript:void(0)"><?= htmlspecialchars($cat['categories']) ?>
+                                                <span>(<?= $cat['product_count'] ?>)</span>
+                                            </a>
+                                            <?php
+                                            $subcategories = get_subcategories($cat['id']);
+                                            if (!empty($subcategories)):
+                                            ?>
+                                                <ul class="widget_dropdown_categories dropdown_categories<?= $cat['id'] ?>">
+                                                    <?php foreach ($subcategories as $subcat): ?>
+                                                        <li>
+                                                            <a href="<?= $site ?>category/<?= $subcat['slug'] ?>">
+                                                                <?= htmlspecialchars($subcat['categories']) ?>
+                                                            </a>
+                                                        </li>
+                                                    <?php endforeach; ?>
+                                                </ul>
+                                            <?php endif; ?>
+                                        </li>
                                     <?php endforeach; ?>
                                 </ul>
                             </div>
-                            
+
                             <!-- Price Filter -->
                             <div class="widget_list widget_filter">
                                 <h3>Filter by price</h3>
                                 <form id="priceFilterForm">
-                                    <div id="slider-range" 
-                                         data-min="<?= $price_range['min_price'] ?? 0 ?>" 
-                                         data-max="<?= $price_range['max_price'] ?? 10000 ?>"></div>   
+                                    <div id="slider-range"
+                                        data-min="<?= $price_range['min_price'] ?? 0 ?>"
+                                        data-max="<?= $price_range['max_price'] ?? 10000 ?>"></div>
                                     <button type="button" id="applyPriceFilter">Filter</button>
-                                    <input type="text" name="price_range" id="amount" readonly />   
-                                </form> 
+                                    <input type="text" name="price_range" id="amount" readonly />
+                                </form>
                             </div>
-                            
+
                             <!-- Color Filter -->
                             <div class="widget_list widget_color">
                                 <h3>Select By Color</h3>
                                 <ul>
-                                    <?php foreach($colors as $color): ?>
-                                    <li>
-                                        <label class="color_filter">
-                                            <input type="checkbox" name="color" value="<?= htmlspecialchars($color['color']) ?>" 
-                                                   class="filter-checkbox" <?= in_array($color['color'], $filters['colors']) ? 'checked' : '' ?>>
-                                            <span class="color_dot" style="background-color: <?= strtolower($color['color']) ?>"></span>
-                                            <?= htmlspecialchars($color['color']) ?>  
-                                            <span>(<?= $color['product_count'] ?>)</span>
-                                        </label>
-                                    </li>
+                                    <?php foreach ($colors as $color): ?>
+                                        <li>
+                                            <label class="color_filter">
+                                                <input type="checkbox" name="color" value="<?= htmlspecialchars($color['color']) ?>"
+                                                    class="filter-checkbox" <?= in_array($color['color'], $filters['colors']) ? 'checked' : '' ?>>
+                                                <span class="color_dot" style="background-color: <?= strtolower($color['color']) ?>"></span>
+                                                <?= htmlspecialchars($color['color']) ?>
+                                                <span>(<?= $color['product_count'] ?>)</span>
+                                            </label>
+                                        </li>
                                     <?php endforeach; ?>
                                 </ul>
                             </div>
-                            
+
                             <!-- Size Filter -->
                             <div class="widget_list widget_color">
                                 <h3>Select By Size</h3>
                                 <ul>
-                                    <?php foreach($sizes as $size): ?>
-                                    <li>
-                                        <label class="size_filter">
-                                            <input type="checkbox" name="size" value="<?= htmlspecialchars($size['size']) ?>" 
-                                                   class="filter-checkbox" <?= in_array($size['size'], $filters['sizes']) ? 'checked' : '' ?>>
-                                            <?= htmlspecialchars($size['size']) ?>  
-                                            <span>(<?= $size['product_count'] ?>)</span>
-                                        </label>
-                                    </li>
+                                    <?php foreach ($sizes as $size): ?>
+                                        <li>
+                                            <label class="size_filter">
+                                                <input type="checkbox" name="size" value="<?= htmlspecialchars($size['size']) ?>"
+                                                    class="filter-checkbox" <?= in_array($size['size'], $filters['sizes']) ? 'checked' : '' ?>>
+                                                <?= htmlspecialchars($size['size']) ?>
+                                                <span>(<?= $size['product_count'] ?>)</span>
+                                            </label>
+                                        </li>
                                     <?php endforeach; ?>
                                 </ul>
                             </div>
-                            
+
                             <!-- Brand Filter -->
                             <div class="widget_list widget_brand">
                                 <h3>Brand</h3>
                                 <ul>
-                                    <?php foreach($brands as $brand): ?>
-                                    <li>
-                                        <label class="brand_filter">
-                                            <input type="checkbox" name="brand" value="<?= $brand['id'] ?>" 
-                                                   class="filter-checkbox" <?= in_array($brand['id'], $filters['brands']) ? 'checked' : '' ?>>
-                                            <?= htmlspecialchars($brand['brand_name']) ?>
-                                            <span>(<?= $brand['product_count'] ?>)</span>
-                                        </label>
-                                    </li>
+                                    <?php foreach ($brands as $brand): ?>
+                                        <li>
+                                            <label class="brand_filter">
+                                                <input type="checkbox" name="brand" value="<?= $brand['id'] ?>"
+                                                    class="filter-checkbox" <?= in_array($brand['id'], $filters['brands']) ? 'checked' : '' ?>>
+                                                <?= htmlspecialchars($brand['brand_name']) ?>
+                                                <span>(<?= $brand['product_count'] ?>)</span>
+                                            </label>
+                                        </li>
                                     <?php endforeach; ?>
                                 </ul>
                             </div>
-                            
+
                             <!-- Tags -->
                             <div class="widget_list tags_widget">
                                 <h3>Product tags</h3>
@@ -206,7 +221,7 @@ $contact = contact_us();
                                     <a href="#" class="tag-filter" data-tag="trending">Trending</a>
                                 </div>
                             </div>
-                            
+
                             <!-- Clear Filters -->
                             <div class="widget_list">
                                 <button type="button" id="clearFilters" class="btn btn-outline-secondary btn-sm">Clear All Filters</button>
@@ -241,7 +256,7 @@ $contact = contact_us();
                         </div>
                     </div>
                     <!--shop toolbar end-->
-                    
+
                     <!-- Products Grid -->
                     <div id="productsContainer" class="row shop_wrapper">
                         <?php if (empty($products)): ?>
@@ -249,113 +264,113 @@ $contact = contact_us();
                                 <div class="alert alert-info">No products found in this category.</div>
                             </div>
                         <?php else: ?>
-                            <?php foreach($products as $pro): 
+                            <?php foreach ($products as $pro):
                                 // Get product variants for quick view
                                 $variants_sql = "SELECT * FROM product_variants WHERE product_id = {$pro['pro_id']}";
                                 $variants_result = mysqli_query($conn, $variants_sql);
                                 $variants = [];
-                                while($variant = mysqli_fetch_assoc($variants_result)) {
+                                while ($variant = mysqli_fetch_assoc($variants_result)) {
                                     $variants[] = $variant;
                                 }
                             ?>
-                            <div class="col-lg-4 col-md-4 col-sm-6 col-12 ">
-                                <div class="single_product" data-product-id="<?= $pro['pro_id'] ?>">
-                                    <div class="product_thumb">
-                                        <a class="primary_img" href="<?= $site ?>product-details/<?= $pro['slug_url'] ?>">
-                                            <img src="<?= $site ?>admin/assets/img/uploads/<?= $pro['pro_img'] ?>" alt="<?= htmlspecialchars($pro['pro_name']) ?>">
-                                        </a>
-                                        <a class="secondary_img" href="<?= $site ?>product-details/<?= $pro['slug_url'] ?>">
-                                            <?php 
-                                            // Get secondary image
-                                            $secondary_img_sql = "SELECT image_url FROM product_images 
+                                <div class="col-lg-4 col-md-4 col-sm-6 col-12 ">
+                                    <div class="single_product" data-product-id="<?= $pro['pro_id'] ?>">
+                                        <div class="product_thumb">
+                                            <a class="primary_img" href="<?= $site ?>product-details/<?= $pro['slug_url'] ?>">
+                                                <img src="<?= $site ?>admin/assets/img/uploads/<?= $pro['pro_img'] ?>" alt="<?= htmlspecialchars($pro['pro_name']) ?>">
+                                            </a>
+                                            <a class="secondary_img" href="<?= $site ?>product-details/<?= $pro['slug_url'] ?>">
+                                                <?php
+                                                // Get secondary image
+                                                $secondary_img_sql = "SELECT image_url FROM product_images 
                                                                  WHERE product_id = {$pro['pro_id']} AND is_main = 0 
                                                                  ORDER BY display_order LIMIT 1";
-                                            $secondary_result = mysqli_query($conn, $secondary_img_sql);
-                                            if ($secondary_img = mysqli_fetch_assoc($secondary_result)): ?>
-                                                <img src="<?= $site ?>admin/assets/img/uploads/<?= $secondary_img['image_url'] ?>" alt="<?= htmlspecialchars($pro['pro_name']) ?>">
-                                            <?php else: ?>
-                                                <img src="<?= $site ?>assets/img/product/product2.jpg" alt="<?= htmlspecialchars($pro['pro_name']) ?>">
+                                                $secondary_result = mysqli_query($conn, $secondary_img_sql);
+                                                if ($secondary_img = mysqli_fetch_assoc($secondary_result)): ?>
+                                                    <img src="<?= $site ?>admin/assets/img/uploads/<?= $secondary_img['image_url'] ?>" alt="<?= htmlspecialchars($pro['pro_name']) ?>">
+                                                <?php else: ?>
+                                                    <img src="<?= $site ?>assets/img/product/product2.jpg" alt="<?= htmlspecialchars($pro['pro_name']) ?>">
+                                                <?php endif; ?>
+                                            </a>
+                                            <?php if ($pro['mrp'] > $pro['selling_price']): ?>
+                                                <div class="label_product">
+                                                    <span class="label_sale">Sale</span>
+                                                    <?php
+                                                    $discount = round((($pro['mrp'] - $pro['selling_price']) / $pro['mrp']) * 100);
+                                                    if ($discount > 0): ?>
+                                                        <span class="label_discount">-<?= $discount ?>%</span>
+                                                    <?php endif; ?>
+                                                </div>
                                             <?php endif; ?>
-                                        </a>
-                                        <?php if ($pro['mrp'] > $pro['selling_price']): ?>
-                                        <div class="label_product">
-                                            <span class="label_sale">Sale</span>
-                                            <?php 
-                                            $discount = round((($pro['mrp'] - $pro['selling_price']) / $pro['mrp']) * 100);
-                                            if ($discount > 0): ?>
-                                            <span class="label_discount">-<?= $discount ?>%</span>
-                                            <?php endif; ?>
+                                            <div class="action_links">
+                                                <ul>
+                                                    <li class="quick_button">
+                                                        <a href="#" data-bs-toggle="modal" data-bs-target="#quickViewModal"
+                                                            data-product-id="<?= $pro['pro_id'] ?>" title="quick view">
+                                                            <span class="pe-7s-search"></span>
+                                                        </a>
+                                                    </li>
+                                                    <li class="wishlist">
+                                                        <a href="#" class="add-to-wishlist" data-product-id="<?= $pro['pro_id'] ?>" title="Add to Wishlist">
+                                                            <span class="pe-7s-like"></span>
+                                                        </a>
+                                                    </li>
+                                                    <li class="compare">
+                                                        <a href="#" class="add-to-compare" data-product-id="<?= $pro['pro_id'] ?>" title="Add to Compare">
+                                                            <span class="pe-7s-edit"></span>
+                                                        </a>
+                                                    </li>
+                                                </ul>
+                                            </div>
                                         </div>
-                                        <?php endif; ?>
-                                        <div class="action_links">
-                                            <ul>
-                                                <li class="quick_button">
-                                                    <a href="#" data-bs-toggle="modal" data-bs-target="#quickViewModal" 
-                                                       data-product-id="<?= $pro['pro_id'] ?>" title="quick view">
-                                                        <span class="pe-7s-search"></span>
+                                        <div class="product_content grid_content">
+                                            <div class="product_content_inner">
+                                                <h4 class="product_name">
+                                                    <a href="<?= $site ?>product-details/<?= $pro['slug_url'] ?>">
+                                                        <?= htmlspecialchars($pro['pro_name']) ?>
                                                     </a>
-                                                </li>
-                                                <li class="wishlist">
-                                                    <a href="#" class="add-to-wishlist" data-product-id="<?= $pro['pro_id'] ?>" title="Add to Wishlist">
-                                                        <span class="pe-7s-like"></span>
-                                                    </a>
-                                                </li>
-                                                <li class="compare">
-                                                    <a href="#" class="add-to-compare" data-product-id="<?= $pro['pro_id'] ?>" title="Add to Compare">
-                                                        <span class="pe-7s-edit"></span>
-                                                    </a>
-                                                </li>
-                                            </ul>
+                                                </h4>
+                                                <div class="price_box">
+                                                    <?php if ($pro['mrp'] > $pro['selling_price']): ?>
+                                                        <span class="old_price">₹ <?= number_format($pro['mrp'], 2) ?></span>
+                                                    <?php endif; ?>
+                                                    <span class="current_price">₹ <?= number_format($pro['selling_price'], 2) ?></span>
+                                                </div>
+                                            </div>
+                                            <div class="add_to_cart">
+                                                <a href="#" class="add-to-cart-btn" data-product-id="<?= $pro['pro_id'] ?>">Add to cart</a>
+                                            </div>
                                         </div>
-                                    </div>
-                                    <div class="product_content grid_content">
-                                        <div class="product_content_inner">
+                                        <div class="product_content list_content">
                                             <h4 class="product_name">
                                                 <a href="<?= $site ?>product-details/<?= $pro['slug_url'] ?>">
                                                     <?= htmlspecialchars($pro['pro_name']) ?>
                                                 </a>
                                             </h4>
-                                            <div class="price_box"> 
+                                            <div class="price_box">
                                                 <?php if ($pro['mrp'] > $pro['selling_price']): ?>
-                                                <span class="old_price">₹ <?= number_format($pro['mrp'], 2) ?></span>
+                                                    <span class="old_price">₹ <?= number_format($pro['mrp'], 2) ?></span>
                                                 <?php endif; ?>
                                                 <span class="current_price">₹ <?= number_format($pro['selling_price'], 2) ?></span>
                                             </div>
-                                        </div>
-                                        <div class="add_to_cart">
-                                            <a href="#" class="add-to-cart-btn" data-product-id="<?= $pro['pro_id'] ?>">Add to cart</a>
-                                        </div>
-                                    </div>
-                                    <div class="product_content list_content">
-                                        <h4 class="product_name">
-                                            <a href="<?= $site ?>product-details/<?= $pro['slug_url'] ?>">
-                                                <?= htmlspecialchars($pro['pro_name']) ?>
-                                            </a>
-                                        </h4>
-                                        <div class="price_box"> 
-                                            <?php if ($pro['mrp'] > $pro['selling_price']): ?>
-                                            <span class="old_price">₹ <?= number_format($pro['mrp'], 2) ?></span>
-                                            <?php endif; ?>
-                                            <span class="current_price">₹ <?= number_format($pro['selling_price'], 2) ?></span>
-                                        </div>
-                                        <div class="product_rating">
-                                            <ul>
-                                                <!-- Add rating stars here -->
-                                            </ul>
-                                        </div>
-                                        <div class="product_desc">
-                                            <p><?= htmlspecialchars(substr($pro['short_desc'], 0, 150)) ?>...</p>
-                                        </div>
-                                        <div class="add_to_cart shop_list_cart">
-                                            <a href="#" class="add-to-cart-btn" data-product-id="<?= $pro['pro_id'] ?>">Add to cart</a>
+                                            <div class="product_rating">
+                                                <ul>
+                                                    <!-- Add rating stars here -->
+                                                </ul>
+                                            </div>
+                                            <div class="product_desc">
+                                                <p><?= htmlspecialchars(substr($pro['short_desc'], 0, 150)) ?>...</p>
+                                            </div>
+                                            <div class="add_to_cart shop_list_cart">
+                                                <a href="#" class="add-to-cart-btn" data-product-id="<?= $pro['pro_id'] ?>">Add to cart</a>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
                             <?php endforeach; ?>
                         <?php endif; ?>
                     </div>
-                    
+
                     <!-- Pagination -->
                     <div class="shop_toolbar t_bottom">
                         <div class="pagination">
@@ -369,12 +384,12 @@ $contact = contact_us();
         </div>
     </div>
     <!--shop area end-->
-    
+
     <!--footer area start-->
     <?php include_once "includes/footer.php"; ?>
-    
+
     <!--footer area end-->
-    
+
     <!-- Quick View Modal -->
     <div class="modal fade" id="quickViewModal" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
@@ -416,248 +431,260 @@ $contact = contact_us();
     </div>
 
     <?php include_once "includes/footer-link.php"; ?>
-    <!-- JavaScript -->
-    <!-- <script src="<?= $site ?>assets/js/vendor/jquery-3.5.1.min.js"></script>
-    <script src="<?= $site ?>assets/js/bootstrap.bundle.min.js"></script>
-    <script src="<?= $site ?>assets/js/jquery-ui.min.js"></script>
-    <script src="<?= $site ?>assets/js/owl.carousel.min.js"></script>
-    <script src="<?= $site ?>assets/js/slick.min.js"></script>
-    <script src="<?= $site ?>assets/js/magnific-popup.js"></script>
-    <script src="<?= $site ?>assets/js/plugins.js"></script>
-    <script src="<?= $site ?>assets/js/main.js"></script> -->
 
-    <!-- Custom JavaScript for Filters and AJAX -->
+
     <script>
-    $(document).ready(function() {
-        // Initialize price slider
-        var minPrice = <?= $price_range['min_price'] ?? 0 ?>;
-        var maxPrice = <?= $price_range['max_price'] ?? 10000 ?>;
-        
-        $("#slider-range").slider({
-            range: true,
-            min: minPrice,
-            max: maxPrice,
-            values: [<?= $filters['min_price'] ?? $price_range['min_price'] ?? 0 ?>, <?= $filters['max_price'] ?? $price_range['max_price'] ?? 10000 ?>],
-            slide: function(event, ui) {
-                $("#amount").val("₹" + ui.values[0] + " - ₹" + ui.values[1]);
+        $(document).ready(function() {
+            // Initialize price slider
+            var minPrice = <?= $price_range['min_price'] ?? 0 ?>;
+            var maxPrice = <?= $price_range['max_price'] ?? 10000 ?>;
+
+            $("#slider-range").slider({
+                range: true,
+                min: minPrice,
+                max: maxPrice,
+                values: [<?= $filters['min_price'] ?? $price_range['min_price'] ?? 0 ?>, <?= $filters['max_price'] ?? $price_range['max_price'] ?? 10000 ?>],
+                slide: function(event, ui) {
+                    $("#amount").val("₹" + ui.values[0] + " - ₹" + ui.values[1]);
+                }
+            });
+            $("#amount").val("₹" + $("#slider-range").slider("values", 0) + " - ₹" + $("#slider-range").slider("values", 1));
+
+            // Cart count
+            function updateCartCount() {
+                $.ajax({
+                    url: '<?= $site ?>ajax/get-cart-count.php',
+                    method: 'GET',
+                    success: function(response) {
+                        $('.item_count').text(response.count);
+                    }
+                });
             }
-        });
-        $("#amount").val("₹" + $("#slider-range").slider("values", 0) + " - ₹" + $("#slider-range").slider("values", 1));
-        
-        // Cart count
-        function updateCartCount() {
-            $.ajax({
-                url: '<?= $site ?>ajax/get-cart-count.php',
-                method: 'GET',
-                success: function(response) {
-                    $('.item_count').text(response.count);
+
+            // Initialize cart count
+            updateCartCount();
+
+            // Apply filters
+            function applyFilters() {
+                var filters = {
+                    min_price: $("#slider-range").slider("values", 0),
+                    max_price: $("#slider-range").slider("values", 1),
+                    brands: [],
+                    colors: [],
+                    sizes: [],
+                    sort: $("#sortSelect").val()
+                };
+
+                // Get selected brands
+                $('input[name="brand"]:checked').each(function() {
+                    filters.brands.push($(this).val());
+                });
+
+                // Get selected colors
+                $('input[name="color"]:checked').each(function() {
+                    filters.colors.push($(this).val());
+                });
+
+                // Get selected sizes
+                $('input[name="size"]:checked').each(function() {
+                    filters.sizes.push($(this).val());
+                });
+
+                // Update URL without reloading page
+                var url = new URL(window.location.href);
+                url.searchParams.set('min_price', filters.min_price);
+                url.searchParams.set('max_price', filters.max_price);
+                url.searchParams.delete('brand');
+                url.searchParams.delete('color');
+                url.searchParams.delete('size');
+
+                filters.brands.forEach(function(brand) {
+                    url.searchParams.append('brand', brand);
+                });
+
+                filters.colors.forEach(function(color) {
+                    url.searchParams.append('color', color);
+                });
+
+                filters.sizes.forEach(function(size) {
+                    url.searchParams.append('size', size);
+                });
+
+                url.searchParams.set('sort', filters.sort);
+
+                // Load products via AJAX
+                $.ajax({
+                    url: '<?= $site ?>ajax/load-products.php?category_id=<?= $category_id ?>&' + url.searchParams.toString(),
+                    method: 'GET',
+                    beforeSend: function() {
+                        $('#productsContainer').html('<div class="col-12 text-center"><div class="spinner-border" role="status"></div></div>');
+                    },
+                    success: function(response) {
+                        $('#productsContainer').html(response);
+                        $('#productCount').text($('#productsContainer .single_product').length);
+                        updateURL(url.toString());
+                    }
+                });
+            }
+
+            // Update browser URL without reload
+            function updateURL(url) {
+                window.history.pushState({
+                    path: url
+                }, '', url);
+            }
+
+            // Event listeners for filters
+            $('.filter-checkbox').change(function() {
+                applyFilters();
+            });
+
+            $('#sortSelect').change(function() {
+                applyFilters();
+            });
+
+            $('#applyPriceFilter').click(function() {
+                applyFilters();
+            });
+
+            $('#clearFilters').click(function() {
+                $('.filter-checkbox').prop('checked', false);
+                $("#slider-range").slider("values", [minPrice, maxPrice]);
+                $("#amount").val("₹" + minPrice + " - ₹" + maxPrice);
+                $("#sortSelect").val('newest');
+                applyFilters();
+            });
+
+            // Add to cart AJAX
+            $(document).on('click', '.add-to-cart-btn', function(e) {
+                e.preventDefault();
+
+                var productId = $(this).data('product-id');
+                var hasVariants = $(this).data('has-variants');
+                var button = $(this);
+
+                // If product has variants, redirect to product page
+                if (hasVariants == 1) {
+                    window.location.href = '<?= $site ?>product-details/' + $(this).data('product-slug');
+                    return;
                 }
-            });
-        }
-        
-        // Initialize cart count
-        updateCartCount();
-        
-        // Apply filters
-        function applyFilters() {
-            var filters = {
-                min_price: $("#slider-range").slider("values", 0),
-                max_price: $("#slider-range").slider("values", 1),
-                brands: [],
-                colors: [],
-                sizes: [],
-                sort: $("#sortSelect").val()
-            };
-            
-            // Get selected brands
-            $('input[name="brand"]:checked').each(function() {
-                filters.brands.push($(this).val());
-            });
-            
-            // Get selected colors
-            $('input[name="color"]:checked').each(function() {
-                filters.colors.push($(this).val());
-            });
-            
-            // Get selected sizes
-            $('input[name="size"]:checked').each(function() {
-                filters.sizes.push($(this).val());
-            });
-            
-            // Update URL without reloading page
-            var url = new URL(window.location.href);
-            url.searchParams.set('min_price', filters.min_price);
-            url.searchParams.set('max_price', filters.max_price);
-            url.searchParams.delete('brand');
-            url.searchParams.delete('color');
-            url.searchParams.delete('size');
-            
-            filters.brands.forEach(function(brand) {
-                url.searchParams.append('brand', brand);
-            });
-            
-            filters.colors.forEach(function(color) {
-                url.searchParams.append('color', color);
-            });
-            
-            filters.sizes.forEach(function(size) {
-                url.searchParams.append('size', size);
-            });
-            
-            url.searchParams.set('sort', filters.sort);
-            
-            // Load products via AJAX
-            $.ajax({
-                url: '<?= $site ?>ajax/load-products.php?category_id=<?= $category_id ?>&' + url.searchParams.toString(),
-                method: 'GET',
-                beforeSend: function() {
-                    $('#productsContainer').html('<div class="col-12 text-center"><div class="spinner-border" role="status"></div></div>');
-                },
-                success: function(response) {
-                    $('#productsContainer').html(response);
-                    $('#productCount').text($('#productsContainer .single_product').length);
-                    updateURL(url.toString());
-                }
-            });
-        }
-        
-        // Update browser URL without reload
-        function updateURL(url) {
-            window.history.pushState({path: url}, '', url);
-        }
-        
-        // Event listeners for filters
-        $('.filter-checkbox').change(function() {
-            applyFilters();
-        });
-        
-        $('#sortSelect').change(function() {
-            applyFilters();
-        });
-        
-        $('#applyPriceFilter').click(function() {
-            applyFilters();
-        });
-        
-        $('#clearFilters').click(function() {
-            $('.filter-checkbox').prop('checked', false);
-            $("#slider-range").slider("values", [minPrice, maxPrice]);
-            $("#amount").val("₹" + minPrice + " - ₹" + maxPrice);
-            $("#sortSelect").val('newest');
-            applyFilters();
-        });
-        
-        // Add to cart AJAX
-        $(document).on('click', '.add-to-cart-btn', function(e) {
-            e.preventDefault();
-            var productId = $(this).data('product-id');
-            var button = $(this);
-            
-            $.ajax({
-                url: '<?= $site ?>ajax/add-to-cart.php',
-                method: 'POST',
-                data: {
-                    product_id: productId,
-                    quantity: 1,
-                    action: 'add_to_cart'
-                },
-                beforeSend: function() {
-                    button.html('<span class="spinner-border spinner-border-sm"></span> Adding...');
-                    button.prop('disabled', true);
-                },
-                success: function(response) {
-                    if (response.success) {
-                        button.html('<i class="fa fa-check"></i> Added');
-                        $('.item_count').text(response.cart_count);
-                        
-                        // Update mini cart
-                        updateMiniCart();
-                        
-                        setTimeout(function() {
+
+                $.ajax({
+                    url: '<?= $site ?>ajax/add-to-cart.php',
+                    method: 'POST',
+                    data: {
+                        product_id: productId,
+                        quantity: 1,
+                        action: 'add_to_cart'
+                    },
+                    beforeSend: function() {
+                        button.html('<span class="spinner-border spinner-border-sm"></span> Adding...');
+                        button.prop('disabled', true);
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            button.html('<i class="fa fa-check"></i> Added');
+                            $('.item_count').text(response.cart_count);
+
+                            // Show success toast/notification
+                            showNotification(response.message, 'success');
+
+                            // Update mini cart
+                            updateMiniCart();
+
+                            setTimeout(function() {
+                                button.html('Add to cart');
+                                button.prop('disabled', false);
+                            }, 1500);
+                        } else {
+                            showNotification(response.message, 'error');
                             button.html('Add to cart');
                             button.prop('disabled', false);
-                        }, 1500);
-                    } else {
-                        alert(response.message);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        showNotification('Error adding to cart. Please try again.', 'error');
                         button.html('Add to cart');
                         button.prop('disabled', false);
                     }
-                }
+                });
             });
-        });
-        
-        // Add to wishlist AJAX
-        $(document).on('click', '.add-to-wishlist', function(e) {
-            e.preventDefault();
-            var productId = $(this).data('product-id');
-            var button = $(this);
-            
-            $.ajax({
-                url: '<?= $site ?>ajax/add-to-wishlist.php',
-                method: 'POST',
-                data: {
-                    product_id: productId,
-                    action: 'add_to_wishlist'
-                },
-                beforeSend: function() {
-                    button.find('span').addClass('text-danger');
-                },
-                success: function(response) {
-                    if (response.success) {
-                        button.find('span').removeClass('pe-7s-like').addClass('fa fa-heart text-danger');
-                        alert(response.message);
-                    } else {
-                        if (response.message.includes('login')) {
-                            window.location.href = '<?= $site ?>user-login/';
-                        } else {
+
+            // Add to wishlist AJAX
+            $(document).on('click', '.add-to-wishlist', function(e) {
+                e.preventDefault();
+                var productId = $(this).data('product-id');
+                var button = $(this);
+
+                $.ajax({
+                    url: '<?= $site ?>ajax/add-to-wishlist.php',
+                    method: 'POST',
+                    data: {
+                        product_id: productId,
+                        action: 'add_to_wishlist'
+                    },
+                    beforeSend: function() {
+                        button.find('span').addClass('text-danger');
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            button.find('span').removeClass('pe-7s-like').addClass('fa fa-heart text-danger');
                             alert(response.message);
+                        } else {
+                            if (response.message.includes('login')) {
+                                window.location.href = '<?= $site ?>user-login/';
+                            } else {
+                                alert(response.message);
+                            }
                         }
                     }
-                }
+                });
             });
-        });
-        
-        // Quick view modal
-        $('#quickViewModal').on('show.bs.modal', function(event) {
-            var button = $(event.relatedTarget);
-            var productId = button.data('product-id');
-            
-            $.ajax({
-                url: '<?= $site ?>ajax/quick-view.php',
-                method: 'GET',
-                data: { product_id: productId },
-                success: function(response) {
-                    $('#quickViewContent').html(response);
-                }
+
+            // Quick view modal
+            $('#quickViewModal').on('show.bs.modal', function(event) {
+                var button = $(event.relatedTarget);
+                var productId = button.data('product-id');
+
+                $.ajax({
+                    url: '<?= $site ?>ajax/quick-view.php',
+                    method: 'GET',
+                    data: {
+                        product_id: productId
+                    },
+                    success: function(response) {
+                        $('#quickViewContent').html(response);
+                    }
+                });
             });
-        });
-        
-        // Update mini cart dropdown
-        function updateMiniCart() {
-            $.ajax({
-                url: '<?= $site ?>ajax/get-mini-cart.php',
-                method: 'GET',
-                success: function(response) {
-                    $('#miniCartItems').html(response.items);
-                    $('#cartTotal').text('₹' + response.total);
-                }
-            });
-        }
-        
-        // Toggle mini cart dropdown
-        $('.mini_cart_wrapper_trigger').click(function(e) {
-            e.preventDefault();
-            updateMiniCart();
-            $('#miniCartDropdown').toggle();
-        });
-        
-        // Close dropdown when clicking outside
-        $(document).click(function(e) {
-            if (!$(e.target).closest('.header_account_area').length) {
-                $('#miniCartDropdown').hide();
+
+            // Update mini cart dropdown
+            function updateMiniCart() {
+                $.ajax({
+                    url: '<?= $site ?>ajax/get-mini-cart.php',
+                    method: 'GET',
+                    success: function(response) {
+                        $('#miniCartItems').html(response.items);
+                        $('#cartTotal').text('₹' + response.total);
+                    }
+                });
             }
+
+            // Toggle mini cart dropdown
+            $('.mini_cart_wrapper_trigger').click(function(e) {
+                e.preventDefault();
+                updateMiniCart();
+                $('#miniCartDropdown').toggle();
+            });
+
+            // Close dropdown when clicking outside
+            $(document).click(function(e) {
+                if (!$(e.target).closest('.header_account_area').length) {
+                    $('#miniCartDropdown').hide();
+                }
+            });
         });
-    });
     </script>
 </body>
+
 </html>

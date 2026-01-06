@@ -470,7 +470,7 @@ $totalPages = ceil($totalRows / $perPage);
                                                             <?php endif; ?>
                                                         </div>
                                                     </td>
-                                                    <td>
+                                                    <!-- <td>
                                                         <?php if($row['stock'] == 'in_stock'): ?>
                                                             <span class="stock-badge stock-in-stock">In Stock</span>
                                                         <?php elseif($row['stock'] == 'low_stock'): ?>
@@ -479,6 +479,8 @@ $totalPages = ceil($totalRows / $perPage);
                                                             <span class="stock-badge stock-out">Out of Stock</span>
                                                         <?php endif; ?>
                                                     </td>
+                                                     -->
+                                                    <td><span class="stock-badge stock-in-stock"><?= htmlspecialchars($row['stock'] ?? 'N/A') ?></span></td>
                                                     <td>
                                                         <div class="d-flex gap-1">
                                                             <?php if($row['new_arrival'] == '1'): ?>
@@ -500,11 +502,11 @@ $totalPages = ceil($totalRows / $perPage);
                                                     <td>
                                                         <div class="action-buttons">
                                                             <a href="view-product-details.php?id=<?= $row['pro_id'] ?>" 
-                                                               class="action-btn view" title="View">
+                                                               class="action-btn view text-info" title="View">
                                                                 <i class="fas fa-eye"></i>
                                                             </a>
                                                             <a href="edit_products.php?edit_product_details=<?= $row['pro_id'] ?>" 
-                                                               class="action-btn edit" title="Edit">
+                                                               class="action-btn edit text-warning" title="Edit">
                                                                 <i class="fas fa-edit"></i>
                                                             </a>
                                                             <!-- <a href="add-product-page-banner.php?id=<?= $row['pro_id'] ?>" 
@@ -516,7 +518,7 @@ $totalPages = ceil($totalRows / $perPage);
                                                                 <i class="fas fa-images"></i>
                                                             </a> -->
                                                             <a href="ajax/product_delete.php?delete=<?= $row['pro_id'] ?>" 
-                                                               class="action-btn delete" 
+                                                               class="action-btn delete text-danger" 
                                                                onclick="return confirm('Are you sure you want to delete this product?')"
                                                                title="Delete">
                                                                 <i class="fas fa-trash-alt"></i>

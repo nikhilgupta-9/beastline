@@ -631,6 +631,55 @@
     });
     
     /*---product dl column3 activation---*/
+
+    $(document).on('click', '.remove-cart-item', function(e) {
+    e.preventDefault();
+    var key = $(this).data('key');
+    var button = $(this);
+    
+    $.ajax({
+        url: '<?= $site ?>ajax/remove-cart-item.php',
+        method: 'POST',
+        data: { cart_key: key },
+        beforeSend: function() {
+            button.html('<span class="spinner-border spinner-border-sm"></span>');
+        },
+        success: function(response) {
+            if (response.success) {
+                // Reload mini cart
+                loadMiniCart();
+                // Update cart count
+                $('.item_count').text(response.cart_count);
+                // Show notification
+                showNotification('Item removed from cart', 'success');
+            } else {
+                button.html('<i class="ion-ios-close-outline"></i>');
+                showNotification(response.message, 'error');
+            }
+        }
+    });
+});
+
+// Update cart quantity
+$(document).on('change', '.cart-quantity-input', function() {
+    var key = $(this).data('key');
+    var quantity = $(this).val();
+    
+    $.ajax({
+        url: '<?= $site ?>ajax/update-cart-quantity.php',
+        method: 'POST',
+        data: { 
+            cart_key: key,
+            quantity: quantity
+        },
+        success: function(response) {
+            if (response.success) {
+                loadMiniCart();
+                $('.item_count').text(response.cart_count);
+            }
+        }
+    });
+});
     
     
 
