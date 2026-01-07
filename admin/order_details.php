@@ -1,89 +1,123 @@
 <?php
-session_start();
-include "db-conn.php";
+require_once __DIR__ . '/config/db-conn.php';
+require_once __DIR__ . '/auth/admin-auth.php';
+require_once __DIR__ . '/models/PaymentSmtpSetting.php';
+require_once __DIR__ . '/models/Setting.php';
 
-$id = $_GET['id'] ?? null;
+// Initialize Settings
+$setting = new Setting($conn);
+
+
+$order_id = $_GET['id'] ?? null;
 $errors = [];
 
-if ($id === null) {
+if ($order_id === null) {
     header("Location: orders.php");
     exit;
 } else {
-    $stmt = $conn->prepare("SELECT * FROM `orders_new` WHERE `id` = ?");
-    $stmt->bind_param("i", $id);
+    // Query to get order details with user information
+    $stmt = $conn->prepare("
+        SELECT o.*, 
+               u.first_name, u.last_name, u.email, u.mobile
+        FROM `orders` o
+        LEFT JOIN `users` u ON o.user_id = u.id
+        WHERE o.order_id = ?
+    ");
+    $stmt->bind_param("s", $order_id);
     $stmt->execute();
     $result = $stmt->get_result();
+    
     if ($result->num_rows === 0) {
         $_SESSION['error'] = "Order not found!";
         header("Location: orders.php");
         exit;
     } else {
         $order = $result->fetch_assoc();
-
-        // Handle different product data formats
-        $products = [];
-        $products_data = $order['products'];
         
-        // Check if it's JSON format
-        if (is_string($products_data)) {
-            $decoded = json_decode($products_data, true);
-            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                // It's valid JSON array
-                $products = $decoded;
-            } else {
-                // It's a string format like "Product Name (x1)"
-                $products = parseProductString($products_data);
+        // Get order items
+        $stmt_items = $conn->prepare("
+            SELECT oi.*, p.image as product_image
+            FROM `order_items` oi
+            LEFT JOIN `products` p ON oi.product_id = p.id
+            WHERE oi.order_id = ?
+            ORDER BY oi.id
+        ");
+        $stmt_items->bind_param("s", $order_id);
+        $stmt_items->execute();
+        $items_result = $stmt_items->get_result();
+        $order_items = [];
+        $items_total = 0;
+        
+        while ($item = $items_result->fetch_assoc()) {
+            $order_items[] = $item;
+            $items_total += $item['total_price'];
+        }
+        
+        // Parse shipping address (assuming JSON)
+        $shipping_address = json_decode($order['shipping_address'], true);
+        if (!is_array($shipping_address)) {
+            $shipping_address = [
+                'address' => $order['shipping_address'],
+                'city' => '',
+                'state' => '',
+                'postal_code' => '',
+                'country' => ''
+            ];
+        }
+        
+        // Parse billing address if exists
+        $billing_address = [];
+        if (!empty($order['billing_address'])) {
+            $billing_address = json_decode($order['billing_address'], true);
+            if (!is_array($billing_address)) {
+                $billing_address = [
+                    'address' => $order['billing_address'],
+                    'city' => '',
+                    'state' => '',
+                    'postal_code' => '',
+                    'country' => ''
+                ];
             }
-        } elseif (is_array($products_data)) {
-            // It's already an array
-            $products = $products_data;
         }
     }
-}
-
-// Function to parse product string like "Hair Growth Serum (x1)"
-function parseProductString($productString) {
-    $products = [];
-    
-    // If it's a single product string
-    if (preg_match('/(.+)\s\(x(\d+)\)/', $productString, $matches)) {
-        $products[] = [
-            'name' => trim($matches[1]),
-            'quantity' => intval($matches[2]),
-            'price' => 0, // You might need to get this from another source
-            'image' => '' // You might need to get this from another source
-        ];
-    } else {
-        // If it's just a product name without quantity
-        $products[] = [
-            'name' => trim($productString),
-            'quantity' => 1,
-            'price' => 0,
-            'image' => ''
-        ];
-    }
-    
-    return $products;
 }
 ?>
 
 <!DOCTYPE html>
-<html lang="zxx">
+<html lang="en">
 
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <title>Order #<?= htmlspecialchars($order['order_id']) ?> | Admin Panel</title>
-    <link rel="icon" href="assets/img/logo.png" type="image/png">
+    <title>Order #<?= htmlspecialchars($order['order_number']) ?> | Admin Panel</title>
+    <link rel="icon" href="<?php echo htmlspecialchars($setting->get('favicon')); ?>" type="image/png">
 
     <?php include "links.php"; ?>
 
     <style>
+        :root {
+            --primary-color: #4e73df;
+            --primary-light: #5d7ce0;
+            --success-color: #1cc88a;
+            --warning-color: #f6c23e;
+            --danger-color: #e74a3b;
+            --info-color: #36b9cc;
+            --light-bg: #f8f9fc;
+            --dark-text: #5a5c69;
+            --muted-text: #858796;
+        }
+
+        body {
+            background-color: #f5f7fb;
+            color: var(--dark-text);
+            font-family: 'Nunito', sans-serif;
+        }
+
         .order-avatar {
             width: 50px;
             height: 50px;
             border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -93,101 +127,145 @@ function parseProductString($productString) {
         }
 
         .status-badge {
-            padding: 6px 15px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
+            padding: 0.35rem 0.75rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .badge-pending {
-            background: #fff3cd;
-            color: #856404;
+            background-color: rgba(246, 194, 62, 0.2);
+            color: var(--warning-color);
         }
 
         .badge-processing {
-            background: #cce7ff;
-            color: #004085;
+            background-color: rgba(54, 185, 204, 0.2);
+            color: var(--info-color);
         }
 
         .badge-completed {
-            background: #d4edda;
-            color: #155724;
+            background-color: rgba(28, 200, 138, 0.2);
+            color: var(--success-color);
         }
 
         .badge-cancelled {
-            background: #f8d7da;
-            color: #721c24;
+            background-color: rgba(231, 74, 59, 0.2);
+            color: var(--danger-color);
         }
 
-        .badge-razorpay {
-            background: #4361ee;
-            color: white;
+        .badge-refunded {
+            background-color: rgba(108, 117, 125, 0.2);
+            color: #6c757d;
         }
 
-        .badge-cod {
-            background: #6c757d;
-            color: white;
+        .badge-on-hold {
+            background-color: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+        }
+
+        .badge-payment-pending {
+            background-color: rgba(220, 53, 69, 0.2);
+            color: #dc3545;
+        }
+
+        .badge-payment-completed {
+            background-color: rgba(25, 135, 84, 0.2);
+            color: #198754;
         }
 
         .stats-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-radius: 10px;
-            padding: 20px;
+            background: white;
+            border-radius: 0.35rem;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
+            padding: 1.5rem;
+            height: 100%;
+        }
+
+        .stats-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 0.35rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .icon-primary {
+            background: rgba(78, 115, 223, 0.1);
+            color: var(--primary-color);
+        }
+
+        .icon-success {
+            background: rgba(28, 200, 138, 0.1);
+            color: var(--success-color);
+        }
+
+        .icon-info {
+            background: rgba(54, 185, 204, 0.1);
+            color: var(--info-color);
+        }
+
+        .icon-warning {
+            background: rgba(246, 194, 62, 0.1);
+            color: var(--warning-color);
         }
 
         .detail-card {
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            background: white;
+            border-radius: 0.35rem;
+            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
             border: none;
-            margin-bottom: 20px;
+            margin-bottom: 1.5rem;
+            height: 100%;
+        }
+
+        .card-header-light {
+            background-color: #f8f9fc;
+            border-bottom: 1px solid #e3e6f0;
+            padding: 1rem 1.35rem;
+            border-radius: 0.35rem 0.35rem 0 0 !important;
         }
 
         .product-card {
-            border: 1px solid #eaeaea;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 15px;
+            border: 1px solid #e3e6f0;
+            border-radius: 0.35rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
             transition: all 0.3s ease;
         }
 
         .product-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border-color: var(--primary-light);
+            box-shadow: 0 0.125rem 0.25rem rgba(78, 115, 223, 0.1);
         }
 
         .product-image {
-            width: 60px;
-            height: 60px;
+            width: 70px;
+            height: 70px;
             object-fit: cover;
-            border-radius: 6px;
-        }
-
-        .action-btn {
-            padding: 8px 15px;
-            border: none;
-            border-radius: 6px;
-            margin: 2px;
-            transition: all 0.3s ease;
-        }
-
-        .action-btn:hover {
-            transform: translateY(-1px);
+            border-radius: 0.25rem;
+            background-color: #f8f9fc;
         }
 
         .section-title {
-            font-size: 1.1rem;
+            font-size: 0.9rem;
             font-weight: 600;
-            margin-bottom: 15px;
-            color: #495057;
-            border-left: 3px solid #667eea;
-            padding-left: 10px;
+            color: var(--muted-text);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #e3e6f0;
         }
 
         .detail-item {
             display: flex;
             justify-content: space-between;
-            padding: 8px 0;
+            padding: 0.75rem 0;
             border-bottom: 1px solid #f8f9fa;
         }
 
@@ -196,18 +274,103 @@ function parseProductString($productString) {
         }
 
         .detail-label {
-            font-weight: 500;
-            color: #6c757d;
+            font-weight: 600;
+            color: var(--muted-text);
+            min-width: 140px;
         }
-        
-        .debug-info {
-            background: #f8f9fa;
-            border-left: 4px solid #dc3545;
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 4px;
-            font-family: monospace;
-            font-size: 12px;
+
+        .detail-value {
+            color: var(--dark-text);
+            text-align: right;
+            flex: 1;
+        }
+
+        .amount-cell {
+            font-weight: 700;
+            color: var(--dark-text);
+        }
+
+        .customer-name {
+            font-weight: 600;
+            color: var(--dark-text);
+        }
+
+        .customer-email {
+            color: var(--primary-color);
+            font-size: 0.85rem;
+            word-break: break-all;
+        }
+
+        .address-box {
+            background: #f8f9fc;
+            border-radius: 0.25rem;
+            padding: 1rem;
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .timeline {
+            position: relative;
+            padding-left: 2rem;
+        }
+
+        .timeline:before {
+            content: '';
+            position: absolute;
+            left: 7px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #e3e6f0;
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+
+        .timeline-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .timeline-dot {
+            position: absolute;
+            left: -2rem;
+            top: 0;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            border: 3px solid white;
+            box-shadow: 0 0 0 3px rgba(78, 115, 223, 0.2);
+        }
+
+        .timeline-content {
+            padding-bottom: 0.5rem;
+        }
+
+        .timeline-date {
+            font-size: 0.75rem;
+            color: var(--muted-text);
+            margin-bottom: 0.25rem;
+        }
+
+        @media (max-width: 768px) {
+            .detail-item {
+                flex-direction: column;
+            }
+            
+            .detail-label {
+                margin-bottom: 0.25rem;
+            }
+            
+            .detail-value {
+                text-align: left;
+            }
+            
+            .stats-card {
+                margin-bottom: 1rem;
+            }
         }
     </style>
 </head>
@@ -239,73 +402,56 @@ function parseProductString($productString) {
                             </div>
                         <?php endif; ?>
 
-                        <!-- Debug Information (Remove in production) -->
-                        <?php if (false): // Set to true to see debug info ?>
-                        <div class="debug-info">
-                            <strong>Products Data Debug:</strong><br>
-                            Raw: <?= htmlspecialchars($order['products']) ?><br>
-                            Type: <?= gettype($order['products']) ?><br>
-                            Parsed Count: <?= count($products) ?><br>
-                            Parsed: <?= print_r($products, true) ?>
-                        </div>
-                        <?php endif; ?>
-
                         <!-- Statistics Cards -->
                         <div class="row mb-4">
                             <div class="col-xl-3 col-md-6">
                                 <div class="stats-card">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h4 class="mb-1">#<?= htmlspecialchars($order['order_id']) ?></h4>
-                                            <p class="mb-0 opacity-75">Order ID</p>
-                                        </div>
-                                        <div class="fs-1 opacity-50">
+                                    <div class="d-flex align-items-start">
+                                        <div class="stats-icon icon-primary">
                                             <i class="fas fa-receipt"></i>
                                         </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-xl-3 col-md-6">
-                                <div class="card bg-success text-white">
-                                    <div class="card-body">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <h4 class="mb-1">₹<?= number_format($order['order_total'], 2) ?></h4>
-                                                <p class="mb-0 opacity-75">Order Total</p>
-                                            </div>
-                                            <div class="fs-1 opacity-50">
-                                                <i class="fas fa-rupee-sign"></i>
-                                            </div>
+                                        <div class="ms-3">
+                                            <h5 class="mb-1">Order #<?= htmlspecialchars($order['order_number']) ?></h5>
+                                            <p class="text-muted mb-0">Order Number</p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                             <div class="col-xl-3 col-md-6">
-                                <div class="card bg-info text-white">
-                                    <div class="card-body">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <h4 class="mb-1"><?= count($products) ?></h4>
-                                                <p class="mb-0 opacity-75">Items</p>
-                                            </div>
-                                            <div class="fs-1 opacity-50">
-                                                <i class="fas fa-cube"></i>
-                                            </div>
+                                <div class="stats-card">
+                                    <div class="d-flex align-items-start">
+                                        <div class="stats-icon icon-success">
+                                            <i class="fas fa-rupee-sign"></i>
+                                        </div>
+                                        <div class="ms-3">
+                                            <h5 class="mb-1">₹<?= number_format($order['final_amount'], 2) ?></h5>
+                                            <p class="text-muted mb-0">Final Amount</p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                             <div class="col-xl-3 col-md-6">
-                                <div class="card bg-warning text-white">
-                                    <div class="card-body">
-                                        <div class="d-flex justify-content-between align-items-center">
-                                            <div>
-                                                <h4 class="mb-1"><?= date('M d, Y', strtotime($order['created_at'])) ?></h4>
-                                                <p class="mb-0 opacity-75">Order Date</p>
-                                            </div>
-                                            <div class="fs-1 opacity-50">
-                                                <i class="fas fa-calendar"></i>
-                                            </div>
+                                <div class="stats-card">
+                                    <div class="d-flex align-items-start">
+                                        <div class="stats-icon icon-info">
+                                            <i class="fas fa-cube"></i>
+                                        </div>
+                                        <div class="ms-3">
+                                            <h5 class="mb-1"><?= count($order_items) ?></h5>
+                                            <p class="text-muted mb-0">Items</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-xl-3 col-md-6">
+                                <div class="stats-card">
+                                    <div class="d-flex align-items-start">
+                                        <div class="stats-icon icon-warning">
+                                            <i class="fas fa-calendar"></i>
+                                        </div>
+                                        <div class="ms-3">
+                                            <h5 class="mb-1"><?= date('M d, Y', strtotime($order['created_at'])) ?></h5>
+                                            <p class="text-muted mb-0">Order Date</p>
                                         </div>
                                     </div>
                                 </div>
@@ -313,20 +459,20 @@ function parseProductString($productString) {
                         </div>
 
                         <div class="white_card card_height_100 mb_30">
-                            <div class="card-header bg-white border-0 py-3">
+                            <div class="card-header card-header-light">
                                 <div class="d-flex justify-content-between align-items-center flex-wrap">
                                     <div class="mb-2 mb-md-0">
-                                        <h2 class="mb-0 fw-bold">Order Details</h2>
-                                        <p class="text-muted mb-0">Complete information for order #<?= htmlspecialchars($order['order_id']) ?></p>
+                                        <h3 class="mb-0 fw-bold">Order Details</h3>
+                                        <p class="text-muted mb-0">Complete information for order #<?= htmlspecialchars($order['order_number']) ?></p>
                                     </div>
                                     <div class="d-flex gap-2 flex-wrap">
-                                        <a href="orders.php" class="btn btn-outline-primary">
+                                        <a href="orders.php" class="btn btn-outline-primary btn-sm">
                                             <i class="fas fa-arrow-left me-2"></i>Back to Orders
                                         </a>
-                                        <a href="edit_order.php?id=<?= $order['id'] ?>" class="btn btn-primary">
-                                            <i class="fas fa-edit me-2"></i>Update Status
+                                        <a href="edit_order.php?id=<?= $order['order_id'] ?>" class="btn btn-primary btn-sm">
+                                            <i class="fas fa-edit me-2"></i>Edit Order
                                         </a>
-                                        <a href="generate_invoice.php?order_id=<?= $order['order_id'] ?>" class="btn btn-success">
+                                        <a href="generate_invoice.php?order_id=<?= $order['order_id'] ?>" class="btn btn-success btn-sm">
                                             <i class="fas fa-print me-2"></i>Print Invoice
                                         </a>
                                     </div>
@@ -335,24 +481,59 @@ function parseProductString($productString) {
 
                             <div class="white_card_body">
                                 <!-- Order Status Alert -->
-                                <div class="alert alert-info d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <i class="fas fa-info-circle me-2"></i>
-                                        Order is currently
-                                        <span class="status-badge badge-<?= strtolower($order['status']) ?> ms-2">
-                                            <?= ucfirst($order['status']) ?>
-                                        </span>
+                                <?php
+                                $orderStatusClass = 'badge-pending';
+                                switch (strtolower($order['order_status'])) {
+                                    case 'processing':
+                                        $orderStatusClass = 'badge-processing';
+                                        break;
+                                    case 'completed':
+                                        $orderStatusClass = 'badge-completed';
+                                        break;
+                                    case 'cancelled':
+                                        $orderStatusClass = 'badge-cancelled';
+                                        break;
+                                    case 'refunded':
+                                        $orderStatusClass = 'badge-refunded';
+                                        break;
+                                    case 'on-hold':
+                                        $orderStatusClass = 'badge-on-hold';
+                                        break;
+                                }
+                                
+                                $paymentStatusClass = 'badge-payment-pending';
+                                if (strtolower($order['payment_status']) === 'completed' || 
+                                    strtolower($order['payment_status']) === 'paid') {
+                                    $paymentStatusClass = 'badge-payment-completed';
+                                }
+                                ?>
+                                
+                                <div class="alert alert-light d-flex justify-content-between align-items-center mb-4">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div>
+                                            <span class="text-muted">Order Status:</span>
+                                            <span class="status-badge <?= $orderStatusClass ?> ms-2">
+                                                <?= ucfirst($order['order_status']) ?>
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span class="text-muted">Payment Status:</span>
+                                            <span class="status-badge <?= $paymentStatusClass ?> ms-2">
+                                                <?= ucfirst($order['payment_status']) ?>
+                                            </span>
+                                        </div>
                                     </div>
                                     <div class="text-muted small">
+                                        <i class="fas fa-clock me-1"></i>
                                         Created: <?= date('F j, Y, g:i a', strtotime($order['created_at'])) ?>
                                     </div>
                                 </div>
 
                                 <div class="row">
                                     <!-- Customer Information -->
-                                    <div class="col-lg-6 mb-4">
-                                        <div class="card detail-card h-100">
-                                            <div class="card-header bg-light">
+                                    <div class="col-lg-4 mb-4">
+                                        <div class="detail-card">
+                                            <div class="card-header card-header-light">
                                                 <h5 class="mb-0"><i class="fas fa-user me-2"></i>Customer Information</h5>
                                             </div>
                                             <div class="card-body">
@@ -361,55 +542,96 @@ function parseProductString($productString) {
                                                         <?= strtoupper(substr($order['first_name'], 0, 1)) ?>
                                                     </div>
                                                     <div>
-                                                        <h6 class="mb-1"><?= htmlspecialchars($order['first_name'] . ' ' . $order['last_name']) ?></h6>
-                                                        <p class="text-muted mb-0">Customer</p>
+                                                        <h6 class="mb-1 customer-name"><?= htmlspecialchars($order['first_name'] . ' ' . $order['last_name']) ?></h6>
+                                                        <p class="text-muted mb-0 small">Customer ID: <?= htmlspecialchars($order['user_id']) ?></p>
                                                     </div>
                                                 </div>
 
                                                 <div class="section-title">Contact Details</div>
                                                 <div class="detail-item">
                                                     <span class="detail-label">Email:</span>
-                                                    <span><?= htmlspecialchars($order['email']) ?></span>
+                                                    <span class="detail-value">
+                                                        <a href="mailto:<?= htmlspecialchars($order['email']) ?>" class="customer-email">
+                                                            <?= htmlspecialchars($order['email']) ?>
+                                                        </a>
+                                                    </span>
                                                 </div>
                                                 <div class="detail-item">
-                                                    <span class="detail-label">Phone:</span>
-                                                    <span><?= htmlspecialchars($order['phone']) ?></span>
-                                                </div>
-                                                <div class="detail-item">
-                                                    <span class="detail-label">User ID:</span>
-                                                    <span><?= htmlspecialchars($order['user_id'] ?? 'Guest') ?></span>
+                                                    <span class="detail-label">mobile:</span>
+                                                    <span class="detail-value">
+                                                        <a href="tel:<?= htmlspecialchars($order['mobile']) ?>" class="customer-email">
+                                                            <?= htmlspecialchars($order['mobile']) ?>
+                                                        </a>
+                                                    </span>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
 
                                     <!-- Shipping Address -->
-                                    <div class="col-lg-6 mb-4">
-                                        <div class="card detail-card h-100">
-                                            <div class="card-header bg-light">
-                                                <h5 class="mb-0"><i class="fas fa-map-marker-alt me-2"></i>Shipping Address</h5>
+                                    <div class="col-lg-4 mb-4">
+                                        <div class="detail-card">
+                                            <div class="card-header card-header-light">
+                                                <h5 class="mb-0"><i class="fas fa-truck me-2"></i>Shipping Address</h5>
                                             </div>
                                             <div class="card-body">
-                                                <div class="section-title">Delivery Information</div>
+                                                <div class="address-box">
+                                                    <?php if (!empty($shipping_address['address'])): ?>
+                                                        <p class="mb-2"><?= htmlspecialchars($shipping_address['address']) ?></p>
+                                                    <?php endif; ?>
+                                                    <div class="row small">
+                                                        <?php if (!empty($shipping_address['city'])): ?>
+                                                            <div class="col-6">
+                                                                <strong>City:</strong> <?= htmlspecialchars($shipping_address['city']) ?>
+                                                            </div>
+                                                        <?php endif; ?>
+                                                        <?php if (!empty($shipping_address['state'])): ?>
+                                                            <div class="col-6">
+                                                                <strong>State:</strong> <?= htmlspecialchars($shipping_address['state']) ?>
+                                                            </div>
+                                                        <?php endif; ?>
+                                                        <?php if (!empty($shipping_address['postal_code'])): ?>
+                                                            <div class="col-6">
+                                                                <strong>Postal Code:</strong> <?= htmlspecialchars($shipping_address['postal_code']) ?>
+                                                            </div>
+                                                        <?php endif; ?>
+                                                        <?php if (!empty($shipping_address['country'])): ?>
+                                                            <div class="col-6">
+                                                                <strong>Country:</strong> <?= htmlspecialchars($shipping_address['country']) ?>
+                                                            </div>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Payment Information -->
+                                    <div class="col-lg-4 mb-4">
+                                        <div class="detail-card">
+                                            <div class="card-header card-header-light">
+                                                <h5 class="mb-0"><i class="fas fa-credit-card me-2"></i>Payment Information</h5>
+                                            </div>
+                                            <div class="card-body">
                                                 <div class="detail-item">
-                                                    <span class="detail-label">Address:</span>
-                                                    <span><?= htmlspecialchars($order['address']) ?></span>
+                                                    <span class="detail-label">Method:</span>
+                                                    <span class="detail-value">
+                                                        <?= ucfirst(htmlspecialchars($order['payment_method'])) ?>
+                                                    </span>
                                                 </div>
                                                 <div class="detail-item">
-                                                    <span class="detail-label">City:</span>
-                                                    <span><?= htmlspecialchars($order['city']) ?></span>
+                                                    <span class="detail-label">Status:</span>
+                                                    <span class="detail-value">
+                                                        <span class="status-badge <?= $paymentStatusClass ?>">
+                                                            <?= ucfirst($order['payment_status']) ?>
+                                                        </span>
+                                                    </span>
                                                 </div>
                                                 <div class="detail-item">
-                                                    <span class="detail-label">State:</span>
-                                                    <span><?= htmlspecialchars($order['state']) ?></span>
-                                                </div>
-                                                <div class="detail-item">
-                                                    <span class="detail-label">Postal Code:</span>
-                                                    <span><?= htmlspecialchars($order['postal_code']) ?></span>
-                                                </div>
-                                                <div class="detail-item">
-                                                    <span class="detail-label">Country:</span>
-                                                    <span><?= htmlspecialchars($order['country']) ?></span>
+                                                    <span class="detail-label">Transaction ID:</span>
+                                                    <span class="detail-value small">
+                                                        <?= htmlspecialchars($order['order_id']) ?>
+                                                    </span>
                                                 </div>
                                             </div>
                                         </div>
@@ -417,139 +639,163 @@ function parseProductString($productString) {
                                 </div>
 
                                 <!-- Order Items -->
-                                <div class="card detail-card mb-4">
-                                    <div class="card-header bg-light">
+                                <div class="detail-card mb-4">
+                                    <div class="card-header card-header-light">
                                         <h5 class="mb-0"><i class="fas fa-shopping-cart me-2"></i>Order Items</h5>
                                     </div>
                                     <div class="card-body">
-                                        <?php if (count($products) > 0): ?>
-                                            <?php foreach ($products as $index => $product): ?>
+                                        <?php if (count($order_items) > 0): ?>
+                                            <?php foreach ($order_items as $index => $item): ?>
                                                 <div class="product-card">
                                                     <div class="row align-items-center">
-                                                        <div class="col-md-1 col-2">
-                                                            <div class="text-muted small">#<?= $index + 1 ?></div>
+                                                        <div class="col-md-1 col-2 text-center">
+                                                            <span class="text-muted small">#<?= $index + 1 ?></span>
                                                         </div>
                                                         <div class="col-md-1 col-3">
-                                                            <?php if (!empty($product['image'])): ?>
-                                                                <img src="<?= htmlspecialchars($product['image']) ?>" alt="Product Image" class="product-image">
+                                                            <?php if (!empty($item['product_image'])): ?>
+                                                                <img src="<?= htmlspecialchars($item['product_image']) ?>" 
+                                                                     alt="Product Image" class="product-image">
                                                             <?php else: ?>
-                                                                <div class="product-image bg-light d-flex align-items-center justify-content-center">
-                                                                    <i class="fas fa-box-open text-muted"></i>
+                                                                <div class="product-image d-flex align-items-center justify-content-center bg-light">
+                                                                    <i class="fas fa-box text-muted"></i>
                                                                 </div>
                                                             <?php endif; ?>
                                                         </div>
                                                         <div class="col-md-6 col-7">
-                                                            <h6 class="mb-1"><?= htmlspecialchars($product['name'] ?? 'Unknown Product') ?></h6>
-                                                            <p class="text-muted mb-1 small">Quantity: <?= htmlspecialchars($product['quantity'] ?? 1) ?></p>
-                                                            <p class="text-muted mb-0 small">
-                                                                <?php if (isset($product['price']) && $product['price'] > 0): ?>
-                                                                    Unit Price: ₹<?= number_format($product['price'], 2) ?>
-                                                                <?php else: ?>
-                                                                    Price: Not specified
-                                                                <?php endif; ?>
+                                                            <h6 class="mb-1"><?= htmlspecialchars($item['product_name']) ?></h6>
+                                                            <p class="text-muted mb-1 small">
+                                                                Product ID: <?= htmlspecialchars($item['product_id']) ?>
                                                             </p>
-                                                        </div>
-                                                        <div class="col-md-4 col-12 text-md-end mt-md-0 mt-2">
-                                                            <?php if (isset($product['price']) && $product['price'] > 0): ?>
-                                                                <strong class="text-primary">₹<?= number_format(($product['price'] ?? 0) * ($product['quantity'] ?? 1), 2) ?></strong>
-                                                            <?php else: ?>
-                                                                <span class="text-muted">Price not available</span>
+                                                            <?php if (!empty($item['attributes'])): ?>
+                                                                <p class="text-muted mb-0 small">
+                                                                    Attributes: <?= htmlspecialchars($item['attributes']) ?>
+                                                                </p>
                                                             <?php endif; ?>
                                                         </div>
+                                                        <div class="col-md-4 col-12">
+                                            <div class="row text-md-end">
+                                                <div class="col-4">
+                                                    <div class="small text-muted">Qty:</div>
+                                                    <div><?= htmlspecialchars($item['quantity']) ?></div>
+                                                </div>
+                                                <div class="col-4">
+                                                    <div class="small text-muted">Unit Price:</div>
+                                                    <div>₹<?= number_format($item['unit_price'], 2) ?></div>
+                                                </div>
+                                                <div class="col-4">
+                                                    <div class="small text-muted">Total:</div>
+                                                    <div class="amount-cell">₹<?= number_format($item['total_price'], 2) ?></div>
+                                                </div>
+                                            </div>
+                                        </div>
                                                     </div>
                                                 </div>
                                             <?php endforeach; ?>
                                         <?php else: ?>
                                             <div class="text-center py-4">
                                                 <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
-                                                <p class="text-muted">No products found in this order.</p>
+                                                <p class="text-muted">No items found in this order.</p>
                                             </div>
                                         <?php endif; ?>
-
-                                        <!-- Order Summary -->
-                                        <div class="row mt-4">
-                                            <div class="col-md-6 offset-md-6">
-                                                <div class="section-title">Order Summary</div>
-                                                <div class="detail-item">
-                                                    <span class="detail-label">Subtotal:</span>
-                                                    <span>₹<?= number_format($order['order_total'], 2) ?></span>
-                                                </div>
-                                                <div class="detail-item">
-                                                    <span class="detail-label">Shipping:</span>
-                                                    <span>₹0.00</span>
-                                                </div>
-                                                <div class="detail-item">
-                                                    <span class="detail-label">Tax:</span>
-                                                    <span>₹0.00</span>
-                                                </div>
-                                                <div class="detail-item fs-5 fw-bold border-top pt-2">
-                                                    <span class="detail-label">Total Amount:</span>
-                                                    <span class="text-primary">₹<?= number_format($order['order_total'], 2) ?></span>
-                                                </div>
-                                            </div>
-                                        </div>
                                     </div>
                                 </div>
 
-                                <!-- Payment & Additional Information -->
+                                <!-- Order Summary & Timeline -->
                                 <div class="row">
-                                    <div class="col-lg-6 mb-4">
-                                        <div class="card detail-card h-100">
-                                            <div class="card-header bg-light">
-                                                <h5 class="mb-0"><i class="fas fa-credit-card me-2"></i>Payment Information</h5>
+                                    <!-- Order Summary -->
+                                    <div class="col-lg-8 mb-4">
+                                        <div class="detail-card">
+                                            <div class="card-header card-header-light">
+                                                <h5 class="mb-0"><i class="fas fa-calculator me-2"></i>Order Summary</h5>
                                             </div>
                                             <div class="card-body">
-                                                <div class="detail-item">
-                                                    <span class="detail-label">Payment Method:</span>
-                                                    <span class="status-badge badge-<?= strtolower($order['payment_method']) ?>">
-                                                        <?= htmlspecialchars($order['payment_method']) ?>
-                                                    </span>
-                                                </div>
-                                                <?php if ($order['payment_method'] === 'razorpay'): ?>
-                                                    <div class="detail-item">
-                                                        <span class="detail-label">Razorpay Order ID:</span>
-                                                        <span class="font-monospace small"><?= htmlspecialchars($order['razorpay_order_id'] ?? 'N/A') ?></span>
-                                                    </div>
-                                                    <div class="detail-item">
-                                                        <span class="detail-label">Razorpay Payment ID:</span>
-                                                        <span class="font-monospace small"><?= htmlspecialchars($order['razorpay_payment_id'] ?? 'N/A') ?></span>
-                                                    </div>
-                                                    <?php if (!empty($order['razorpay_signature'])): ?>
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="section-title">Amount Breakdown</div>
                                                         <div class="detail-item">
-                                                            <span class="detail-label">Payment Signature:</span>
-                                                            <span class="font-monospace small text-truncate d-block" style="max-width: 200px;">
-                                                                <?= htmlspecialchars($order['razorpay_signature']) ?>
-                                                            </span>
+                                                            <span class="detail-label">Subtotal:</span>
+                                                            <span class="detail-value">₹<?= number_format($order['total_amount'], 2) ?></span>
                                                         </div>
-                                                    <?php endif; ?>
+                                                        <div class="detail-item">
+                                                            <span class="detail-label">Discount:</span>
+                                                            <span class="detail-value text-success">-₹<?= number_format($order['discount_amount'], 2) ?></span>
+                                                        </div>
+                                                        <div class="detail-item">
+                                                            <span class="detail-label">Shipping:</span>
+                                                            <span class="detail-value text-info">+₹<?= number_format($order['shipping_amount'], 2) ?></span>
+                                                        </div>
+                                                        <div class="detail-item">
+                                                            <span class="detail-label">Tax:</span>
+                                                            <span class="detail-value text-warning">+₹<?= number_format($order['tax_amount'], 2) ?></span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <div class="section-title">Final Calculation</div>
+                                                        <div class="detail-item">
+                                                            <span class="detail-label">Items Total:</span>
+                                                            <span class="detail-value">₹<?= number_format($order['total_amount'] - $order['discount_amount'], 2) ?></span>
+                                                        </div>
+                                                        <div class="detail-item">
+                                                            <span class="detail-label">Shipping + Tax:</span>
+                                                            <span class="detail-value">₹<?= number_format($order['shipping_amount'] + $order['tax_amount'], 2) ?></span>
+                                                        </div>
+                                                        <div class="detail-item border-top pt-2">
+                                                            <span class="detail-label fw-bold fs-5">Final Amount:</span>
+                                                            <span class="detail-value fw-bold fs-5 text-primary">₹<?= number_format($order['final_amount'], 2) ?></span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <?php if (!empty($order['notes'])): ?>
+                                                    <div class="section-title mt-4">Order Notes</div>
+                                                    <div class="alert alert-light">
+                                                        <?= nl2br(htmlspecialchars($order['notes'])) ?>
+                                                    </div>
                                                 <?php endif; ?>
                                             </div>
                                         </div>
                                     </div>
 
-                                    <div class="col-lg-6 mb-4">
-                                        <div class="card detail-card h-100">
-                                            <div class="card-header bg-light">
-                                                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Additional Information</h5>
+                                    <!-- Order Timeline -->
+                                    <div class="col-lg-4 mb-4">
+                                        <div class="detail-card">
+                                            <div class="card-header card-header-light">
+                                                <h5 class="mb-0"><i class="fas fa-history me-2"></i>Order Timeline</h5>
                                             </div>
                                             <div class="card-body">
-                                                <div class="detail-item">
-                                                    <span class="detail-label">User IP:</span>
-                                                    <span class="font-monospace small"><?= htmlspecialchars($order['user_ip']) ?></span>
-                                                </div>
-                                                <div class="detail-item">
-                                                    <span class="detail-label">Session ID:</span>
-                                                    <span class="font-monospace small text-truncate d-block" style="max-width: 200px;">
-                                                        <?= htmlspecialchars($order['session_id']) ?>
-                                                    </span>
-                                                </div>
-                                                <div class="detail-item">
-                                                    <span class="detail-label">Database ID:</span>
-                                                    <span><?= htmlspecialchars($order['id']) ?></span>
-                                                </div>
-                                                <div class="detail-item">
-                                                    <span class="detail-label">Created At:</span>
-                                                    <span><?= date('F j, Y, g:i a', strtotime($order['created_at'])) ?></span>
+                                                <div class="timeline">
+                                                    <div class="timeline-item">
+                                                        <div class="timeline-dot"></div>
+                                                        <div class="timeline-content">
+                                                            <div class="timeline-date"><?= date('M d, Y H:i', strtotime($order['created_at'])) ?></div>
+                                                            <div class="fw-bold">Order Created</div>
+                                                            <p class="small text-muted mb-0">Order #<?= htmlspecialchars($order['order_number']) ?> was placed</p>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <?php if (!empty($order['updated_at']) && $order['updated_at'] != $order['created_at']): ?>
+                                                    <div class="timeline-item">
+                                                        <div class="timeline-dot"></div>
+                                                        <div class="timeline-content">
+                                                            <div class="timeline-date"><?= date('M d, Y H:i', strtotime($order['updated_at'])) ?></div>
+                                                            <div class="fw-bold">Order Updated</div>
+                                                            <p class="small text-muted mb-0">Status changed to <?= ucfirst($order['order_status']) ?></p>
+                                                        </div>
+                                                    </div>
+                                                    <?php endif; ?>
+                                                    
+                                                    <div class="timeline-item">
+                                                        <div class="timeline-dot"></div>
+                                                        <div class="timeline-content">
+                                                            <div class="timeline-date">Current</div>
+                                                            <div class="fw-bold">Order Status</div>
+                                                            <p class="small text-muted mb-0">
+                                                                <span class="status-badge <?= $orderStatusClass ?>">
+                                                                    <?= ucfirst($order['order_status']) ?>
+                                                                </span>
+                                                            </p>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -567,9 +813,8 @@ function parseProductString($productString) {
 
     <script>
         // Initialize tooltips
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl)
+        $(document).ready(function() {
+            $('[data-bs-toggle="tooltip"]').tooltip();
         });
     </script>
 

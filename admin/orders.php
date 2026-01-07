@@ -6,12 +6,13 @@ require_once __DIR__ . '/models/Setting.php';
 
 // Initialize Settings
 $setting = new Setting($conn);
+
 // Handle status update
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_order_id'], $_POST['update_status'])) {
     $update_order_id = mysqli_real_escape_string($conn, $_POST['update_order_id']);
     $update_status = mysqli_real_escape_string($conn, $_POST['update_status']);
 
-    $update_sql = "UPDATE orders_new SET status = ? WHERE order_id = ?";
+    $update_sql = "UPDATE orders SET order_status = ? WHERE order_id = ?";
     $stmt = $conn->prepare($update_sql);
     $stmt->bind_param("ss", $update_status, $update_order_id);
 
@@ -34,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_action'], $_POST
     $placeholders = implode(',', array_fill(0, count($selected_orders), '?'));
     $types = str_repeat('s', count($selected_orders));
     
-    $bulk_sql = "UPDATE orders_new SET status = ? WHERE order_id IN ($placeholders)";
+    $bulk_sql = "UPDATE orders SET order_status = ? WHERE order_id IN ($placeholders)";
     $stmt = $conn->prepare($bulk_sql);
     $stmt->bind_param("s".$types, $bulk_status, ...$selected_orders);
     
@@ -55,28 +56,35 @@ $status_filter = isset($_GET['status']) ? mysqli_real_escape_string($conn, $_GET
 $date_from = isset($_GET['date_from']) ? $_GET['date_from'] : '';
 $date_to = isset($_GET['date_to']) ? $_GET['date_to'] : '';
 
-// Build the query with filters
-$sql = "SELECT * FROM `orders_new` WHERE 1=1";
+// Build the query with joins to get user info and order items count
+$sql = "SELECT o.*, 
+        u.first_name, u.last_name, u.email, u.mobile,
+        (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.order_id) as item_count,
+        (SELECT GROUP_CONCAT(CONCAT(oi.product_name, ' (', oi.quantity, ')') SEPARATOR ', ') 
+         FROM order_items oi WHERE oi.order_id = o.order_id LIMIT 3) as products_summary
+        FROM `orders` o
+        LEFT JOIN `users` u ON o.user_id = u.id
+        WHERE 1=1";
 $params = [];
 
 if (!empty($search)) {
-    $sql .= " AND (order_id LIKE ? OR first_name LIKE ? OR phone LIKE ? OR email LIKE ?)";
+    $sql .= " AND (o.order_id LIKE ? OR o.order_number LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ? OR u.mobile LIKE ? OR u.email LIKE ?)";
     $search_term = "%$search%";
-    $params = array_merge($params, [$search_term, $search_term, $search_term, $search_term]);
+    $params = array_merge($params, [$search_term, $search_term, $search_term, $search_term, $search_term, $search_term]);
 }
 
 if (!empty($status_filter)) {
-    $sql .= " AND status = ?";
+    $sql .= " AND o.order_status = ?";
     $params[] = $status_filter;
 }
 
 if (!empty($date_from) && !empty($date_to)) {
-    $sql .= " AND DATE(created_at) BETWEEN ? AND ?";
+    $sql .= " AND DATE(o.created_at) BETWEEN ? AND ?";
     $params[] = $date_from;
     $params[] = $date_to;
 }
 
-$sql .= " ORDER BY `id` DESC LIMIT 100";
+$sql .= " ORDER BY o.created_at DESC LIMIT 100";
 
 // Prepare and execute the query
 $stmt = $conn->prepare($sql);
@@ -191,7 +199,12 @@ $result = $stmt->get_result();
             color: var(--warning-color);
         }
 
-        .badge-delivered {
+        .badge-processing {
+            background-color: rgba(54, 185, 204, 0.2);
+            color: var(--info-color);
+        }
+
+        .badge-completed {
             background-color: rgba(28, 200, 138, 0.2);
             color: var(--success-color);
         }
@@ -201,9 +214,24 @@ $result = $stmt->get_result();
             color: var(--danger-color);
         }
 
-        .badge-processing {
-            background-color: rgba(54, 185, 204, 0.2);
-            color: var(--info-color);
+        .badge-refunded {
+            background-color: rgba(108, 117, 125, 0.2);
+            color: #6c757d;
+        }
+
+        .badge-on-hold {
+            background-color: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
+        }
+
+        .badge-payment-pending {
+            background-color: rgba(220, 53, 69, 0.2);
+            color: #dc3545;
+        }
+
+        .badge-payment-completed {
+            background-color: rgba(25, 135, 84, 0.2);
+            color: #198754;
         }
 
         .action-btn {
@@ -331,33 +359,27 @@ $result = $stmt->get_result();
             margin: 0;
         }
 
-        .product-list {
-            max-width: 300px;
+        .product-summary {
+            max-width: 250px;
             white-space: normal;
-        }
-
-        .product-item {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 0.25rem;
             font-size: 0.85rem;
         }
 
-        .product-name {
-            flex: 1;
-            overflow: hidden;
-            text-overflow: ellipsis;
+        .order-id-cell {
             white-space: nowrap;
         }
 
-        .product-qty {
-            color: var(--muted-text);
-            margin-left: 0.5rem;
-        }
-
-        .location-cell {
+        .address-cell {
             max-width: 200px;
             white-space: normal;
+            font-size: 0.85rem;
+        }
+
+        .notes-cell {
+            max-width: 200px;
+            white-space: normal;
+            font-size: 0.85rem;
+            color: var(--muted-text);
         }
 
         @media (max-width: 992px) {
@@ -469,13 +491,15 @@ $result = $stmt->get_result();
                                 <form method="GET" action="">
                                     <div class="filter-row">
                                         <div class="filter-group">
-                                            <label class="filter-label">Status</label>
+                                            <label class="filter-label">Order Status</label>
                                             <select name="status" class="form-select form-select-sm">
                                                 <option value="">All Statuses</option>
                                                 <option value="pending" <?= $status_filter === 'pending' ? 'selected' : '' ?>>Pending</option>
                                                 <option value="processing" <?= $status_filter === 'processing' ? 'selected' : '' ?>>Processing</option>
-                                                <option value="completed" <?= $status_filter === 'Completed' ? 'selected' : '' ?>>Completed</option>
+                                                <option value="completed" <?= $status_filter === 'completed' ? 'selected' : '' ?>>Completed</option>
                                                 <option value="cancelled" <?= $status_filter === 'cancelled' ? 'selected' : '' ?>>Cancelled</option>
+                                                <option value="on-hold" <?= $status_filter === 'on-hold' ? 'selected' : '' ?>>On Hold</option>
+                                                <option value="refunded" <?= $status_filter === 'refunded' ? 'selected' : '' ?>>Refunded</option>
                                             </select>
                                         </div>
                                         
@@ -513,8 +537,10 @@ $result = $stmt->get_result();
                                                 <option value="">Bulk Actions</option>
                                                 <option value="pending">Mark as Pending</option>
                                                 <option value="processing">Mark as Processing</option>
-                                                <option value="delivered">Mark as Delivered</option>
+                                                <option value="completed">Mark as Completed</option>
                                                 <option value="cancelled">Mark as Cancelled</option>
+                                                <option value="on-hold">Mark as On Hold</option>
+                                                <option value="refunded">Mark as Refunded</option>
                                             </select>
                                             
                                             <button type="submit" name="bulk_action" value="1" class="btn btn-sm btn-outline-primary">
@@ -530,14 +556,16 @@ $result = $stmt->get_result();
                                                             <th width="40px"></th>
                                                             <th scope="col">Action</th>
                                                             <th scope="col">Order ID</th>
-                                                            <th scope="col">Status</th>
+                                                            <th scope="col">Order #</th>
+                                                            <th scope="col">Order Status</th>
                                                             <th scope="col">Update Status</th>
+                                                            <th scope="col">Payment Status</th>
                                                             <th scope="col">Products</th>
                                                             <th scope="col">Customer</th>
-                                                            <th scope="col">Contact Info</th>
-                                                            <th scope="col">Location</th>
-                                                            <th scope="col">Payment</th>
-                                                            <th scope="col">Amount</th>
+                                                            <th scope="col">Amounts</th>
+                                                            <th scope="col">Shipping Address</th>
+                                                            <th scope="col">Payment Method</th>
+                                                            <th scope="col">Notes</th>
                                                             <th scope="col">Date</th>
                                                         </tr>
                                                     </thead>
@@ -545,25 +573,49 @@ $result = $stmt->get_result();
                                                         <?php if (mysqli_num_rows($result) > 0): ?>
                                                             <?php while ($row = mysqli_fetch_assoc($result)): ?>
                                                                 <?php
-                                                                $statusClass = '';
-                                                                switch (strtolower($row['status'])) {
-                                                                    case 'delivered':
-                                                                        $statusClass = 'badge-delivered';
+                                                                // Order Status badge class
+                                                                $orderStatusClass = 'badge-pending';
+                                                                switch (strtolower($row['order_status'])) {
+                                                                    case 'processing':
+                                                                        $orderStatusClass = 'badge-processing';
+                                                                        break;
+                                                                    case 'completed':
+                                                                        $orderStatusClass = 'badge-completed';
                                                                         break;
                                                                     case 'cancelled':
-                                                                        $statusClass = 'badge-cancelled';
+                                                                        $orderStatusClass = 'badge-cancelled';
                                                                         break;
-                                                                    case 'processing':
-                                                                        $statusClass = 'badge-processing';
+                                                                    case 'refunded':
+                                                                        $orderStatusClass = 'badge-refunded';
                                                                         break;
-                                                                    default:
-                                                                        $statusClass = 'badge-pending';
+                                                                    case 'on-hold':
+                                                                        $orderStatusClass = 'badge-on-hold';
+                                                                        break;
                                                                 }
                                                                 
-                                                                $orderDate = date("M d, Y", strtotime($row['created_at']));
+                                                                // Payment Status badge class
+                                                                $paymentStatusClass = 'badge-payment-pending';
+                                                                if (strtolower($row['payment_status']) === 'completed' || 
+                                                                    strtolower($row['payment_status']) === 'paid') {
+                                                                    $paymentStatusClass = 'badge-payment-completed';
+                                                                }
                                                                 
-                                                                // Parse products (assuming it's stored as JSON)
-                                                                $products = json_decode($row['products'], true);
+                                                                $orderDate = date("M d, Y h:i A", strtotime($row['created_at']));
+                                                                
+                                                                // Parse shipping address (assuming it's JSON)
+                                                                $shippingAddress = json_decode($row['shipping_address'], true);
+                                                                $shippingText = '';
+                                                                if (is_array($shippingAddress)) {
+                                                                    $shippingText = implode(', ', array_filter([
+                                                                        $shippingAddress['address'] ?? '',
+                                                                        $shippingAddress['city'] ?? '',
+                                                                        $shippingAddress['state'] ?? '',
+                                                                        $shippingAddress['postal_code'] ?? '',
+                                                                        $shippingAddress['country'] ?? ''
+                                                                    ]));
+                                                                } else {
+                                                                    $shippingText = $row['shipping_address'];
+                                                                }
                                                                 ?>
                                                                 <tr>
                                                                     <td>
@@ -573,6 +625,13 @@ $result = $stmt->get_result();
                                                                     </td>
                                                                     <td data-label="Action">
                                                                         <div class="d-flex">
+                                                                            <!-- View Details -->
+                                                                            <a href="order_details.php?id=<?= htmlspecialchars($row['order_id']) ?>" 
+                                                                               class="action-btn" data-bs-toggle="tooltip" 
+                                                                               title="View Details">
+                                                                                <i class="fas fa-eye text-primary fs-3"></i>
+                                                                            </a>
+                                                                            
                                                                             <!-- Generate Invoice -->
                                                                             <a href="generate_invoice.php?order_id=<?= htmlspecialchars($row['order_id']) ?>" 
                                                                                class="action-btn" data-bs-toggle="tooltip" 
@@ -581,7 +640,7 @@ $result = $stmt->get_result();
                                                                             </a>
                                                                             
                                                                             <!-- Edit Icon -->
-                                                                            <a href="edit_order.php?id=<?= htmlspecialchars($row['id']) ?>" 
+                                                                            <a href="edit_order.php?id=<?= htmlspecialchars($row['order_id']) ?>" 
                                                                                class="action-btn" 
                                                                                title="Edit Order">
                                                                                 <i class="fas fa-edit text-warning fs-3"></i>
@@ -596,15 +655,18 @@ $result = $stmt->get_result();
                                                                             </a>
                                                                         </div>
                                                                     </td>
-                                                                    <td data-label="Order ID">
-                                                                        <a href="order_details.php?id=<?= htmlspecialchars($row['id']) ?>" 
+                                                                    <td data-label="Order ID" class="order-id-cell">
+                                                                        <a href="order_details.php?id=<?= htmlspecialchars($row['order_id']) ?>" 
                                                                            class="text-primary fw-bold">
-                                                                            <?= htmlspecialchars($row['order_id']) ?>
+                                                                            #<?= htmlspecialchars($row['order_id']) ?>
                                                                         </a>
                                                                     </td>
-                                                                    <td data-label="Status">
-                                                                        <span class="status-badge <?= $statusClass ?>">
-                                                                            <?= ucfirst($row['status']) ?>
+                                                                    <td data-label="Order #">
+                                                                        <?= htmlspecialchars($row['order_number']) ?>
+                                                                    </td>
+                                                                    <td data-label="Order Status">
+                                                                        <span class="status-badge <?= $orderStatusClass ?>">
+                                                                            <?= ucfirst($row['order_status']) ?>
                                                                         </span>
                                                                     </td>
                                                                     <td data-label="Update Status">
@@ -615,62 +677,78 @@ $result = $stmt->get_result();
                                                                                     class="form-select form-select-sm border-0 shadow-sm" 
                                                                                     onchange="this.form.submit()">
                                                                                 <?php
-                                                                                $statuses = ['pending', 'processing', 'delivered', 'cancelled'];
+                                                                                $statuses = ['pending', 'processing', 'completed', 'cancelled', 'on-hold', 'refunded'];
                                                                                 foreach ($statuses as $status) {
-                                                                                    $selected = (strtolower($row['status']) === $status) ? 'selected' : '';
+                                                                                    $selected = (strtolower($row['order_status']) === $status) ? 'selected' : '';
                                                                                     echo "<option value='$status' $selected>" . ucfirst($status) . "</option>";
                                                                                 }
                                                                                 ?>
                                                                             </select>
                                                                         </form>
                                                                     </td>
-                                                                    <td data-label="Products" class="product-list">
-                                                                        <?php if (is_array($products)): ?>
-                                                                            <?php foreach ($products as $product): ?>
-                                                                                <div class="product-item">
-                                                                                    <span class="product-name">
-                                                                                        <?= htmlspecialchars($product['name'] ?? 'N/A') ?>
-                                                                                    </span>
-                                                                                    <span class="product-qty">
-                                                                                        (Qty: <?= htmlspecialchars($product['quantity'] ?? 1) ?>)
-                                                                                    </span>
-                                                                                </div>
-                                                                            <?php endforeach; ?>
-                                                                        <?php else: ?>
-                                                                            <?= htmlspecialchars($row['products']) ?>
-                                                                        <?php endif; ?>
+                                                                    <td data-label="Payment Status">
+                                                                        <span class="status-badge <?= $paymentStatusClass ?>">
+                                                                            <?= ucfirst($row['payment_status']) ?>
+                                                                        </span>
+                                                                    </td>
+                                                                    <td data-label="Products" class="product-summary">
+                                                                        <div class="mb-1">
+                                                                            <span class="badge bg-secondary"><?= $row['item_count'] ?> items</span>
+                                                                        </div>
+                                                                        <?php 
+                                                                        if (!empty($row['products_summary'])) {
+                                                                            $products = explode(', ', $row['products_summary']);
+                                                                            foreach ($products as $product) {
+                                                                                echo '<div class="text-muted small">' . htmlspecialchars($product) . '</div>';
+                                                                            }
+                                                                            if ($row['item_count'] > 3) {
+                                                                                echo '<div class="text-muted small">+ ' . ($row['item_count'] - 3) . ' more</div>';
+                                                                            }
+                                                                        }
+                                                                        ?>
                                                                     </td>
                                                                     <td data-label="Customer">
                                                                         <div class="customer-name">
-                                                                            <?= htmlspecialchars($row['first_name']) ?>
+                                                                            <?= htmlspecialchars($row['first_name'] . ' ' . $row['last_name']) ?>
+                                                                        </div>
+                                                                        <?php if (!empty($row['email'])): ?>
+                                                                            <a href="mailto:<?= htmlspecialchars($row['email']) ?>" 
+                                                                               class="customer-email d-block">
+                                                                                <?= htmlspecialchars($row['email']) ?>
+                                                                            </a>
+                                                                        <?php endif; ?>
+                                                                        <?php if (!empty($row['phone'])): ?>
+                                                                            <a href="tel:<?= htmlspecialchars($row['phone']) ?>" 
+                                                                               class="customer-email d-block">
+                                                                                <?= htmlspecialchars($row['phone']) ?>
+                                                                            </a>
+                                                                        <?php endif; ?>
+                                                                    </td>
+                                                                    <td data-label="Amounts" class="amount-cell">
+                                                                        <div class="small">
+                                                                            <div>Total: <strong>Rs. <?= number_format($row['total_amount'], 2) ?></strong></div>
+                                                                            <?php if ($row['discount_amount'] > 0): ?>
+                                                                                <div class="text-success">Discount: -Rs. <?= number_format($row['discount_amount'], 2) ?></div>
+                                                                            <?php endif; ?>
+                                                                            <?php if ($row['shipping_amount'] > 0): ?>
+                                                                                <div class="text-info">Shipping: +Rs. <?= number_format($row['shipping_amount'], 2) ?></div>
+                                                                            <?php endif; ?>
+                                                                            <?php if ($row['tax_amount'] > 0): ?>
+                                                                                <div class="text-warning">Tax: +Rs. <?= number_format($row['tax_amount'], 2) ?></div>
+                                                                            <?php endif; ?>
+                                                                            <div class="border-top mt-1 pt-1">
+                                                                                <strong>Final: Rs. <?= number_format($row['final_amount'], 2) ?></strong>
+                                                                            </div>
                                                                         </div>
                                                                     </td>
-                                                                    <td data-label="Contact Info">
-                                                                        <a href="tel:<?= htmlspecialchars($row['phone']) ?>" 
-                                                                           class="customer-email d-block">
-                                                                            <?= htmlspecialchars($row['phone']) ?>
-                                                                        </a>
-                                                                        <a href="mailto:<?= htmlspecialchars($row['email']) ?>" 
-                                                                           class="customer-email">
-                                                                            <?= htmlspecialchars($row['email']) ?>
-                                                                        </a>
+                                                                    <td data-label="Shipping Address" class="address-cell">
+                                                                        <?= htmlspecialchars($shippingText) ?>
                                                                     </td>
-                                                                    <td data-label="Location" class="location-cell">
-                                                                        <div>
-                                                                            <?= htmlspecialchars($row['address']) ?>, 
-                                                                            <?= htmlspecialchars($row['city']) ?>,
-                                                                            <?= htmlspecialchars($row['state']) ?>,
-                                                                            <?= htmlspecialchars($row['postal_code']) ?>
-                                                                        </div>
-                                                                        <small class="text-muted">
-                                                                            <?= htmlspecialchars($row['country']) ?>
-                                                                        </small>
-                                                                    </td>
-                                                                    <td data-label="Payment">
+                                                                    <td data-label="Payment Method">
                                                                         <?= ucfirst(htmlspecialchars($row['payment_method'])) ?>
                                                                     </td>
-                                                                    <td data-label="Amount" class="amount-cell">
-                                                                        Rs. <?= number_format($row['order_total'], 2) ?>
+                                                                    <td data-label="Notes" class="notes-cell">
+                                                                        <?= !empty($row['notes']) ? htmlspecialchars(substr($row['notes'], 0, 50)) . (strlen($row['notes']) > 50 ? '...' : '') : 'No notes' ?>
                                                                     </td>
                                                                     <td data-label="Date" class="date-cell">
                                                                         <?= $orderDate ?>
@@ -679,7 +757,7 @@ $result = $stmt->get_result();
                                                             <?php endwhile; ?>
                                                         <?php else: ?>
                                                             <tr>
-                                                                <td colspan="12" class="text-center py-5">
+                                                                <td colspan="14" class="text-center py-5">
                                                                     <div class="d-flex flex-column align-items-center">
                                                                         <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
                                                                         <h5 class="text-muted">No Orders Found</h5>
@@ -696,21 +774,6 @@ $result = $stmt->get_result();
                                             </div>
                                         </div>
                                     </form>
-                                    
-                                    <!-- Pagination would go here -->
-                                    <!-- <nav aria-label="Page navigation">
-                                        <ul class="pagination justify-content-end">
-                                            <li class="page-item disabled">
-                                                <a class="page-link" href="#" tabindex="-1" aria-disabled="true">Previous</a>
-                                            </li>
-                                            <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                                            <li class="page-item"><a class="page-link" href="#">2</a></li>
-                                            <li class="page-item"><a class="page-link" href="#">3</a></li>
-                                            <li class="page-item">
-                                                <a class="page-link" href="#">Next</a>
-                                            </li>
-                                        </ul>
-                                    </nav> -->
                                 </div>
                             </div>
                         </div>

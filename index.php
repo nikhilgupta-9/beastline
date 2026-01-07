@@ -1,5 +1,5 @@
 <?php
-
+include_once ( __DIR__ . '/util/bootstrap.php');
 include_once(__DIR__ . "/config/connect.php");
 include_once(__DIR__ . "/util/function.php");
 include_once(__DIR__ . "/models/WebsiteSettings.php");

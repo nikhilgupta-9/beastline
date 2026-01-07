@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once __DIR__ . '/util/visitor_tracker.php';
 include_once "config/connect.php";
 include_once "util/function.php";
 
@@ -40,6 +41,11 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
                 $_SESSION['user_name'] = $user['first_name'] . ' ' . $user['last_name'];
                 $_SESSION['user_email'] = $user['email'];
                 $_SESSION['user_type'] = $user['user_type'];
+
+                if (!empty($_COOKIE['visitor_id'])) {
+                    $tracker = new VisitorTracker($conn);
+                    $tracker->linkVisitorToUser($user['id']);
+                }
                 
                 // Set remember me cookie if selected
                 if($remember == 1) {
