@@ -17,6 +17,9 @@ RewriteRule ^logout/?$ logout.php [L,NC]
 RewriteRule ^wishlist/?$ wishlist.php [L,NC]
 RewriteRule ^my-account/?$ my-account.php [L,NC]
 RewriteRule ^faq/?$ faq.php [L,NC]
+RewriteRule ^size-guide/?$ size-guide.php [L,NC]
+RewriteRule ^customer-service/?$ customer-service.php [L,NC]
+RewriteRule ^forgot-password/?$ forgot-password.php [L,NC]
 
 # -------------------------------
 # Policy Pages (Dynamic)

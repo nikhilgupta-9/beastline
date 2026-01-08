@@ -473,7 +473,7 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
                         </form>
 
                         <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee;">
-                            <p>Already have an account? <a href="<?= $site ?>login/" class="text-primary fw-5">Sign in here</a></p>
+                            <p>Already have an account? <a href="<?= $site ?>user-login/" class="text-primary fw-bold">Sign in here</a></p>
                             <p>Want to checkout as guest? <a href="<?= $site ?>checkout/" class="text-danger">Continue without creating account</a></p>
                         </div>
                     </div>

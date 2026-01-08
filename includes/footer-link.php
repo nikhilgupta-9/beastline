@@ -26,256 +26,350 @@
 <!-- Main JS -->
 <script src="<?= $site ?>assets/js/main.js"></script>
 
+<!-- Custom JS for E-commerce -->
+<script>
+// Global cart functions
+function updateCartCount() {
+    $.ajax({
+        url: '<?= $site ?>ajax/get-cart-count.php',
+        method: 'GET',
+        success: function(response) {
+            if(response && response.count !== undefined) {
+                $('.item_count').text(response.count);
+            }
+        }
+    });
+}
 
- <script>
-        $(document).ready(function() {
-            // Initialize price slider
-            var minPrice = <?= $price_range['min_price'] ?? 0 ?>;
-            var maxPrice = <?= $price_range['max_price'] ?? 10000 ?>;
+function showNotification(message, type) {
+    // Remove existing notifications
+    $('.custom-notification').remove();
+    
+    var bgClass = type === 'success' ? 'bg-success' : 'bg-danger';
+    var icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
+    
+    var notification = $('<div class="custom-notification alert ' + bgClass + ' text-white alert-dismissible fade show fixed-top mt-5 mx-auto" style="max-width: 500px; z-index: 9999;">' +
+        '<i class="fa ' + icon + ' me-2"></i>' + message +
+        '<button type="button" class="btn-close" data-bs-dismiss="alert"></button>' +
+        '</div>');
+    
+    $('body').append(notification);
+    
+    // Auto remove after 3 seconds
+    setTimeout(function() {
+        notification.alert('close');
+    }, 3000);
+}
 
-            $("#slider-range").slider({
-                range: true,
-                min: minPrice,
-                max: maxPrice,
-                values: [<?= $filters['min_price'] ?? $price_range['min_price'] ?? 0 ?>, <?= $filters['max_price'] ?? $price_range['max_price'] ?? 10000 ?>],
-                slide: function(event, ui) {
-                    $("#amount").val("₹" + ui.values[0] + " - ₹" + ui.values[1]);
-                }
-            });
-            $("#amount").val("₹" + $("#slider-range").slider("values", 0) + " - ₹" + $("#slider-range").slider("values", 1));
-
-            // Cart count
-            function updateCartCount() {
+// Initialize cart count on page load
+$(document).ready(function() {
+    // Initialize cart count
+    updateCartCount();
+    
+    // Add to cart with variant handling
+    $(document).on('click', '.add-to-cart-btn:not([data-skip-variant])', function(e) {
+        e.preventDefault();
+        
+        var button = $(this);
+        var productId = button.data('product-id');
+        var productSlug = button.data('product-slug') || '';
+        var hasVariants = button.data('has-variants') || 0;
+        var isProductPage = button.data('product-page') || false;
+        
+        // If product has variants and we're not on product details page
+        if (hasVariants == 1 && !isProductPage) {
+            // Redirect to product page for variant selection
+            if(productSlug) {
+                window.location.href = '<?= $site ?>product-details/' + productSlug;
+            } else {
+                // Fallback - get slug from page
                 $.ajax({
-                    url: '<?= $site ?>ajax/get-cart-count.php',
+                    url: '<?= $site ?>ajax/get-product-slug.php',
                     method: 'GET',
+                    data: { product_id: productId },
                     success: function(response) {
-                        $('.item_count').text(response.count);
-                    }
-                });
-            }
-
-            // Initialize cart count
-            updateCartCount();
-
-            // Apply filters
-            function applyFilters() {
-                var filters = {
-                    min_price: $("#slider-range").slider("values", 0),
-                    max_price: $("#slider-range").slider("values", 1),
-                    brands: [],
-                    colors: [],
-                    sizes: [],
-                    sort: $("#sortSelect").val()
-                };
-
-                // Get selected brands
-                $('input[name="brand"]:checked').each(function() {
-                    filters.brands.push($(this).val());
-                });
-
-                // Get selected colors
-                $('input[name="color"]:checked').each(function() {
-                    filters.colors.push($(this).val());
-                });
-
-                // Get selected sizes
-                $('input[name="size"]:checked').each(function() {
-                    filters.sizes.push($(this).val());
-                });
-
-                // Update URL without reloading page
-                var url = new URL(window.location.href);
-                url.searchParams.set('min_price', filters.min_price);
-                url.searchParams.set('max_price', filters.max_price);
-                url.searchParams.delete('brand');
-                url.searchParams.delete('color');
-                url.searchParams.delete('size');
-
-                filters.brands.forEach(function(brand) {
-                    url.searchParams.append('brand', brand);
-                });
-
-                filters.colors.forEach(function(color) {
-                    url.searchParams.append('color', color);
-                });
-
-                filters.sizes.forEach(function(size) {
-                    url.searchParams.append('size', size);
-                });
-
-                url.searchParams.set('sort', filters.sort);
-
-                // Load products via AJAX
-                $.ajax({
-                    url: '<?= $site ?>ajax/load-products.php?category_id=<?= $category_id ?>&' + url.searchParams.toString(),
-                    method: 'GET',
-                    beforeSend: function() {
-                        $('#productsContainer').html('<div class="col-12 text-center"><div class="spinner-border" role="status"></div></div>');
-                    },
-                    success: function(response) {
-                        $('#productsContainer').html(response);
-                        $('#productCount').text($('#productsContainer .single_product').length);
-                        updateURL(url.toString());
-                    }
-                });
-            }
-
-            // Update browser URL without reload
-            function updateURL(url) {
-                window.history.pushState({
-                    path: url
-                }, '', url);
-            }
-
-            // Event listeners for filters
-            $('.filter-checkbox').change(function() {
-                applyFilters();
-            });
-
-            $('#sortSelect').change(function() {
-                applyFilters();
-            });
-
-            $('#applyPriceFilter').click(function() {
-                applyFilters();
-            });
-
-            $('#clearFilters').click(function() {
-                $('.filter-checkbox').prop('checked', false);
-                $("#slider-range").slider("values", [minPrice, maxPrice]);
-                $("#amount").val("₹" + minPrice + " - ₹" + maxPrice);
-                $("#sortSelect").val('newest');
-                applyFilters();
-            });
-
-            // Add to cart AJAX
-            $(document).on('click', '.add-to-cart-btn', function(e) {
-                e.preventDefault();
-
-                var productId = $(this).data('product-id');
-                var hasVariants = $(this).data('has-variants');
-                var button = $(this);
-
-                // If product has variants, redirect to product page
-                if (hasVariants == 1) {
-                    window.location.href = '<?= $site ?>product-details/' + $(this).data('product-slug');
-                    return;
-                }
-
-                $.ajax({
-                    url: '<?= $site ?>ajax/add-to-cart.php',
-                    method: 'POST',
-                    data: {
-                        product_id: productId,
-                        quantity: 1,
-                        action: 'add_to_cart'
-                    },
-                    beforeSend: function() {
-                        button.html('<span class="spinner-border spinner-border-sm"></span> Adding...');
-                        button.prop('disabled', true);
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            button.html('<i class="fa fa-check"></i> Added');
-                            $('.item_count').text(response.cart_count);
-
-                            // Show success toast/notification
-                            showNotification(response.message, 'success');
-
-                            // Update mini cart
-                            updateMiniCart();
-
-                            setTimeout(function() {
-                                button.html('Add to cart');
-                                button.prop('disabled', false);
-                            }, 1500);
+                        if(response.slug) {
+                            window.location.href = '<?= $site ?>product-details/' + response.slug;
                         } else {
-                            showNotification(response.message, 'error');
-                            button.html('Add to cart');
-                            button.prop('disabled', false);
+                            showNotification('Product not found', 'error');
                         }
-                    },
-                    error: function(xhr, status, error) {
-                        showNotification('Error adding to cart. Please try again.', 'error');
+                    }
+                });
+            }
+            return;
+        }
+        
+        // Check if we're on product page with variant selection
+        if(isProductPage && hasVariants == 1) {
+            // Get selected variants from product page
+            var selectedColor = $('input[name="color"]:checked').val();
+            var selectedSize = $('input[name="size"]:checked').val();
+            var selectedVariant = $('select[name="variant"]').val();
+            
+            // Validate variant selection
+            if(!selectedColor && !selectedSize && !selectedVariant) {
+                showNotification('Please select a variant (color/size) before adding to cart.', 'error');
+                return;
+            }
+            
+            // Add variant data to AJAX request
+            var variantData = {};
+            if(selectedColor) variantData.color = selectedColor;
+            if(selectedSize) variantData.size = selectedSize;
+            if(selectedVariant) variantData.variant = selectedVariant;
+        }
+        
+        // Get quantity
+        var quantity = button.data('quantity') || 1;
+        if($('#quantityInput').length) {
+            quantity = parseInt($('#quantityInput').val()) || 1;
+        }
+        
+        // Prepare AJAX data
+        var ajaxData = {
+            product_id: productId,
+            quantity: quantity,
+            action: 'add_to_cart'
+        };
+        
+        // Add variant data if exists
+        if(typeof variantData !== 'undefined') {
+            ajaxData.variants = variantData;
+        }
+        
+        // Add to cart via AJAX
+        $.ajax({
+            url: '<?= $site ?>ajax/add-to-cart.php',
+            method: 'POST',
+            data: ajaxData,
+            beforeSend: function() {
+                button.html('<span class="spinner-border spinner-border-sm"></span> Adding...');
+                button.prop('disabled', true);
+            },
+            success: function(response) {
+                if (response.success) {
+                    button.html('<i class="fa fa-check"></i> Added');
+                    
+                    // Update cart count
+                    if(response.cart_count !== undefined) {
+                        $('.item_count').text(response.cart_count);
+                    } else {
+                        updateCartCount();
+                    }
+                    
+                    // Show success notification
+                    showNotification(response.message || 'Product added to cart!', 'success');
+                    
+                    // Update mini cart if exists
+                    if(typeof updateMiniCart === 'function') {
+                        updateMiniCart();
+                    }
+                    
+                    // Revert button after delay
+                    setTimeout(function() {
                         button.html('Add to cart');
                         button.prop('disabled', false);
-                    }
-                });
-            });
-
-            // Add to wishlist AJAX
-            $(document).on('click', '.add-to-wishlist', function(e) {
-                e.preventDefault();
-                var productId = $(this).data('product-id');
-                var button = $(this);
-
-                $.ajax({
-                    url: '<?= $site ?>ajax/add-to-wishlist.php',
-                    method: 'POST',
-                    data: {
-                        product_id: productId,
-                        action: 'add_to_wishlist'
-                    },
-                    beforeSend: function() {
-                        button.find('span').addClass('text-danger');
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            button.find('span').removeClass('pe-7s-like').addClass('fa fa-heart text-danger');
-                            alert(response.message);
+                    }, 1500);
+                } else {
+                    // Handle specific error cases
+                    if(response.message.includes('variant') || response.message.includes('select')) {
+                        // Redirect to product page for variant selection
+                        if(productSlug) {
+                            window.location.href = '<?= $site ?>product-details/' + productSlug;
                         } else {
-                            if (response.message.includes('login')) {
-                                window.location.href = '<?= $site ?>user-login/';
+                            showNotification(response.message, 'error');
+                        }
+                    } else {
+                        showNotification(response.message || 'Error adding to cart', 'error');
+                    }
+                    button.html('Add to cart');
+                    button.prop('disabled', false);
+                }
+            },
+            error: function(xhr, status, error) {
+                showNotification('Error adding to cart. Please try again.', 'error');
+                button.html('Add to cart');
+                button.prop('disabled', false);
+                console.error('Add to cart error:', error);
+            }
+        });
+    });
+    
+    // Wishlist functionality
+    $(document).on('click', '.add-to-wishlist', function(e) {
+        e.preventDefault();
+        
+        var button = $(this);
+        var productId = button.data('product-id');
+        
+        $.ajax({
+            url: '<?= $site ?>ajax/add-to-wishlist.php',
+            method: 'POST',
+            data: {
+                product_id: productId,
+                action: 'add_to_wishlist'
+            },
+            beforeSend: function() {
+                button.addClass('processing');
+            },
+            success: function(response) {
+                if (response.success) {
+                    button.find('span').removeClass('pe-7s-like').addClass('fa fa-heart text-danger');
+                    button.attr('title', 'Remove from Wishlist');
+                    showNotification(response.message || 'Added to wishlist!', 'success');
+                } else {
+                    if (response.message && response.message.includes('login')) {
+                        // Store current URL for redirect back
+                        sessionStorage.setItem('redirect_url', window.location.href);
+                        window.location.href = '<?= $site ?>login/';
+                    } else {
+                        showNotification(response.message || 'Error adding to wishlist', 'error');
+                    }
+                }
+                button.removeClass('processing');
+            },
+            error: function() {
+                showNotification('Error adding to wishlist', 'error');
+                button.removeClass('processing');
+            }
+        });
+    });
+    
+    // Compare functionality
+    $(document).on('click', '.add-to-compare', function(e) {
+        e.preventDefault();
+        
+        var button = $(this);
+        var productId = button.data('product-id');
+        
+        $.ajax({
+            url: '<?= $site ?>ajax/add-to-compare.php',
+            method: 'POST',
+            data: {
+                product_id: productId,
+                action: 'add_to_compare'
+            },
+            success: function(response) {
+                if(response.success) {
+                    showNotification(response.message || 'Added to compare!', 'success');
+                } else {
+                    showNotification(response.message || 'Error adding to compare', 'error');
+                }
+            }
+        });
+    });
+    
+    // Quick view modal
+    $(document).on('click', '[data-bs-target="#quickViewModal"]', function(e) {
+        var productId = $(this).data('product-id');
+        var modal = $('#quickViewModal');
+        
+        // Show loading state
+        modal.find('.modal-body').html('<div class="text-center py-5"><div class="spinner-border"></div></div>');
+        
+        $.ajax({
+            url: '<?= $site ?>ajax/quick-view.php',
+            method: 'GET',
+            data: { product_id: productId },
+            success: function(response) {
+                modal.find('.modal-body').html(response);
+                
+                // Reinitialize any plugins inside modal
+                if(typeof $.fn.elevateZoom !== 'undefined') {
+                    modal.find('.zoom_01').elevateZoom({
+                        gallery:'gallery_01', 
+                        cursor: 'pointer', 
+                        galleryActiveClass: 'active', 
+                        imageCrossfade: true
+                    });
+                }
+            },
+            error: function() {
+                modal.find('.modal-body').html('<div class="alert alert-danger">Failed to load product details.</div>');
+            }
+        });
+    });
+    
+    // Close dropdowns when clicking outside
+    $(document).click(function(e) {
+        if (!$(e.target).closest('.header_account_area').length) {
+            $('#miniCartDropdown').hide();
+        }
+    });
+});
+
+// Initialize product-specific features
+function initProductFeatures() {
+    // Product image zoom
+    if(typeof $.fn.elevateZoom !== 'undefined') {
+        $('.zoom_01').elevateZoom({
+            gallery:'gallery_01', 
+            cursor: 'pointer', 
+            galleryActiveClass: 'active', 
+            imageCrossfade: true
+        });
+    }
+    
+    // Product variant selection
+    $('input[name="color"], input[name="size"]').change(function() {
+        var color = $('input[name="color"]:checked').val();
+        var size = $('input[name="size"]:checked').val();
+        var productId = $('#productId').val();
+        
+        if(color || size) {
+            $.ajax({
+                url: '<?= $site ?>ajax/get-variant-details.php',
+                method: 'GET',
+                data: {
+                    product_id: productId,
+                    color: color,
+                    size: size
+                },
+                success: function(response) {
+                    if(response.success) {
+                        // Update price
+                        if(response.price) {
+                            $('.current_price').text('₹' + response.price.toFixed(2));
+                        }
+                        
+                        // Update stock status
+                        if(response.stock !== undefined) {
+                            if(response.stock > 0) {
+                                $('.stock-status').text('In Stock (' + response.stock + ' available)').removeClass('text-danger').addClass('text-success');
+                                $('.add-to-cart-btn').prop('disabled', false);
                             } else {
-                                alert(response.message);
+                                $('.stock-status').text('Out of Stock').addClass('text-danger').removeClass('text-success');
+                                $('.add-to-cart-btn').prop('disabled', true);
                             }
                         }
+                        
+                        // Update selected variant ID
+                        if(response.variant_id) {
+                            $('.add-to-cart-btn').data('variant-id', response.variant_id);
+                        }
                     }
-                });
-            });
-
-            // Quick view modal
-            $('#quickViewModal').on('show.bs.modal', function(event) {
-                var button = $(event.relatedTarget);
-                var productId = button.data('product-id');
-
-                $.ajax({
-                    url: '<?= $site ?>ajax/quick-view.php',
-                    method: 'GET',
-                    data: {
-                        product_id: productId
-                    },
-                    success: function(response) {
-                        $('#quickViewContent').html(response);
-                    }
-                });
-            });
-
-            // Update mini cart dropdown
-            function updateMiniCart() {
-                $.ajax({
-                    url: '<?= $site ?>ajax/get-mini-cart.php',
-                    method: 'GET',
-                    success: function(response) {
-                        $('#miniCartItems').html(response.items);
-                        $('#cartTotal').text('₹' + response.total);
-                    }
-                });
-            }
-
-            // Toggle mini cart dropdown
-            $('.mini_cart_wrapper_trigger').click(function(e) {
-                e.preventDefault();
-                updateMiniCart();
-                $('#miniCartDropdown').toggle();
-            });
-
-            // Close dropdown when clicking outside
-            $(document).click(function(e) {
-                if (!$(e.target).closest('.header_account_area').length) {
-                    $('#miniCartDropdown').hide();
                 }
             });
-        });
-    </script>
+        }
+    });
+}
+
+// Call product features initialization when document is ready
+$(document).ready(function() {
+    if($('.product-details-page').length) {
+        initProductFeatures();
+    }
+});
+
+// AJAX error handling
+$(document).ajaxError(function(event, jqxhr, settings, thrownError) {
+    if(jqxhr.status === 401) {
+        // Unauthorized - redirect to login
+        sessionStorage.setItem('redirect_url', window.location.href);
+        window.location.href = '<?= $site ?>login/';
+    } else if(jqxhr.status === 0) {
+        // Network error
+        showNotification('Network error. Please check your connection.', 'error');
+    }
+});
+</script>

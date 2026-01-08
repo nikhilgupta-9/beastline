@@ -4721,7 +4721,8 @@ input:-ms-input-placeholder, textarea:-ms-input-placeholder {
   margin-right: 35px;
 }
 .footer_logo img {
-  width: 100px;
+  width: 100%;
+  height: 100px;
 }
 @media only screen and (max-width: 767px) {
   .footer_logo {

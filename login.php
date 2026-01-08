@@ -240,36 +240,7 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
             color: #666;
         }
         
-        .social-buttons {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-        }
-        
-        .social-btn {
-            padding: 10px 20px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            text-decoration: none;
-            color: #333;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.3s;
-        }
-        
-        .social-btn:hover {
-            background-color: #f5f5f5;
-            border-color: #ccc;
-        }
-        
-        .social-btn.google {
-            color: #DB4437;
-        }
-        
-        .social-btn.facebook {
-            color: #4267B2;
-        }
+       
     </style>
 </head>
 
@@ -320,7 +291,7 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
                         <form action="" method="POST" id="loginForm">
                             <input type="hidden" name="login" value="1">
                             
-                            <div class="form-group">
+                            <div class="form-group mb-2">
                                 <label>Email address <span>*</span></label>
                                 <input type="email" 
                                        name="email" 
@@ -330,7 +301,7 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
                                        value="<?= htmlspecialchars($_POST['email'] ?? '') ?>">
                             </div>
                             
-                            <div class="form-group">
+                            <div class="form-group mb-2">
                                 <label>Password <span>*</span></label>
                                 <div class="password-toggle">
                                     <input type="password" 
@@ -339,7 +310,7 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
                                            class="form-control" 
                                            placeholder="Enter your password" 
                                            required>
-                                    <button type="button" class="toggle-password" onclick="togglePassword('loginPassword')">
+                                    <button type="button" class="toggle-password p-1" onclick="togglePassword('loginPassword')">
                                         <i class="fa fa-eye"></i>
                                     </button>
                                 </div>
@@ -348,10 +319,10 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
                             <div class="form-options">
                                 <div class="remember-me">
                                     <input type="checkbox" id="remember" name="remember" value="1">
-                                    <label for="remember">Remember me</label>
+                                    <label for="remember" class="mb-0">Remember me</label>
                                 </div>
                                 <div class="forgot-password">
-                                    <a href="<?= $site ?>forgot-password/">Forgot your password?</a>
+                                    <a href="<?= $site ?>forgot-password/" class="fw-bold text-primary">Forgot your password?</a>
                                 </div>
                             </div>
                             
@@ -363,20 +334,20 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
                         <!-- Social Login Option -->
                         <div class="social-login">
                             <h4>Or sign in with</h4>
-                            <div class="social-buttons">
-                                <a href="#" class="social-btn google">
-                                    <i class="fa fa-google"></i> Google
+                            <div class="social-buttons d-flex align-items-center justify-content-center">
+                                <a href="#" class="social-btn google btn btn-outline-danger mx-3">
+                                    <i class="fa fa-google text-danger"></i> Google
                                 </a>
-                                <a href="#" class="social-btn facebook">
-                                    <i class="fa fa-facebook"></i> Facebook
+                                <a href="#" class="social-btn facebook btn btn-outline-primary">
+                                    <i class="fa fa-facebook text-primary"></i> Facebook
                                 </a>
                             </div>
                         </div>
                         
                         <!-- Guest Option -->
                         <div class="guest-option">
-                            <p>Don't have an account? <a href="<?= $site ?>register/">Create one here</a></p>
-                            <p>Want to checkout as guest? <a href="<?= $site ?>checkout/">Continue without account</a></p>
+                            <p>Don't have an account? <a href="<?= $site ?>register/"><b class="text-primary">Create one here</b></a></p>
+                            <!-- <p>Want to checkout as guest? <a href="<?= $site ?>checkout/">Continue without account</a></p> -->
                         </div>
                     </div>
                     
@@ -401,7 +372,7 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
                             </li>
                         </ul>
                         <div style="text-align: center; margin-top: 20px;">
-                            <a href="<?= $site ?>register/" class="btn btn-outline-primary">Create New Account</a>
+                            <a href="<?= $site ?>register/" class="button">Create New Account</a>
                         </div>
                     </div>
                 </div>

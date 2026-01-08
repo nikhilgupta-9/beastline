@@ -6,7 +6,7 @@ include_once "util/function.php";
 // Check if user is logged in
 if(!isset($_SESSION['user_id'])) {
     $_SESSION['redirect_url'] = $_SERVER['REQUEST_URI'];
-    header("Location: " . $site . "login/");
+    header("Location: " . $site . "user-login/");
     exit();
 }
 

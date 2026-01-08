@@ -80,11 +80,11 @@ $setting = new Setting($conn);
                         <ul class="footer_links list-unstyled">
                             <li class="mb-2"><a href="<?= $site ?>about/" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">About Us</a></li>
                             <li class="mb-2"><a href="<?= $site ?>blogs/" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Blogs</a></li>
-                            <li class="mb-2"><a href="<?= $site ?>careers" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Careers</a></li>
-                            <li class="mb-2"><a href="<?= $site ?>press" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Press</a></li>
+                            <li class="mb-2"><a href="<?= $site ?>user-login/" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Login</a></li>
+                            <li class="mb-2"><a href="<?= $site ?>register/" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Register</a></li>
                             <!-- <li class="mb-2"><a href="<?= $site ?>store-locator" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Store Locator</a></li> -->
                             <li class="mb-2"><a href="<?= $site ?>gift-cards" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Gift Cards</a></li>
-                            <li class="mb-2"><a href="<?= $site ?>affiliate" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Affiliate Program</a></li>
+                            <li class="mb-2"><a href="<?= $site ?>my-account/" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">My Account</a></li>
                         </ul>
                     </div>
                 </div>
@@ -151,7 +151,7 @@ $setting = new Setting($conn);
                     <div class="footer_bottom_left d-flex flex-column flex-md-row align-items-center align-items-md-start">
                         <div class="footer_logo mb-3 mb-md-0 mr-md-3">
                             <a href="<?= $site ?>">
-                                <img src="<?= $site ?>assets/img/logo/logo2.png" alt="Beastline" style="max-height: 40px;">
+                                <img src="<?= $site ?>assets/img/logo/footer-logo.png" alt="Beastline" style="max-height: 60px;">
                             </a>
                         </div>
                         <div class="copyright_area">
@@ -173,16 +173,7 @@ $setting = new Setting($conn);
                                 <img src="<?= $site ?>assets/img/icon/payment.png" alt="Payment Methods" style="max-width: 200px;">
                             </a>
                         </div>
-                        <div class="country_selector">
-                            <select class="form-select-sm"
-                                style="background-color: #333333; color: #ffffff; border: 1px solid #444444; padding: 5px 10px; border-radius: 4px;">
-                                <option value="us">United States (USD $)</option>
-                                <option value="uk">United Kingdom (GBP £)</option>
-                                <option value="eu">European Union (EUR €)</option>
-                                <option value="ca">Canada (CAD $)</option>
-                                <option value="au">Australia (AUD $)</option>
-                            </select>
-                        </div>
+                        
                     </div>
                 </div>
             </div>
