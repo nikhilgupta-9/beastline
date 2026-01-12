@@ -12,6 +12,7 @@ class EmailService
     private $smtp;
     private $site;
     private $mailer;
+    private $smtpSetting; // Declare the property here
 
     public function __construct($conn, $site = '')
     {

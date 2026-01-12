@@ -51,21 +51,21 @@
         <!--    </ul>-->
         <!--</li>-->
 
-        <!--<li>-->
-        <!--    <a class="has-arrow" href="#"><i class="fas fa-blog" style="color: #9b59b6;"></i> <span>Blogs & News</span></a>-->
-        <!--    <ul>-->
-        <!--        <li><a href="add-blog.php">Add Blog</a></li>-->
-        <!--        <li><a href="view-all-blog.php">View Blogs</a></li>-->
-        <!--    </ul>-->
-        <!--</li>-->
+        <li>
+            <a class="has-arrow" href="#"><i class="fas fa-blog" style="color: #9b59b6;"></i> <span>Blogs & News</span></a>
+            <ul>
+                <li><a href="add-blog.php">Add Blog</a></li>
+                <li><a href="view-all-blog.php">View Blogs</a></li>
+            </ul>
+        </li>
 
-        <!--<li>-->
-        <!--    <a class="has-arrow" href="#"><i class="fas fa-award" style="color: #1abc9c;"></i> <span>Best Brand</span></a>-->
-        <!--    <ul>-->
-        <!--        <li><a href="our-best-brand.php">Add Brands</a></li>-->
-        <!--        <li><a href="view_brands.php">View Brands</a></li>-->
-        <!--    </ul>-->
-        <!--</li>-->
+        <li>
+            <a class="has-arrow" href="#"><i class="fas fa-award" style="color: #1abc9c;"></i> <span>Best Brand</span></a>
+            <ul>
+                <li><a href="our-best-brand.php">Add Brands</a></li>
+                <li><a href="view_brands.php">View Brands</a></li>
+            </ul>
+        </li>
 
         <!--<li>-->
         <!--    <a class="has-arrow" href="#"><i class="fas fa-info-circle" style="color: #d35400;"></i> <span>About Us Page</span></a>-->

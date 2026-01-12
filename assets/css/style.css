@@ -4293,8 +4293,9 @@ input:-ms-input-placeholder, textarea:-ms-input-placeholder {
 }
 
 .testimonial_container .testimonial_thumb img {
-  width: 90px;
-  margin: 0 auto;
+  width: 120px;
+    margin: 0 auto;
+    border-radius: 50%;
 }
 .testimonial_container .col-lg-4 {
   flex: 0 0 100%;

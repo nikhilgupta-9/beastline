@@ -48,6 +48,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send_otp'])) {
             
             // Store OTP in session and database
             $_SESSION['reset_email'] = $email;
+            $_SESSION['first_name'] = $email;
             $_SESSION['reset_otp'] = $otp;
             $_SESSION['reset_otp_expiry'] = $otp_expiry;
             $_SESSION['reset_user_id'] = $user['id'];
@@ -67,7 +68,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['send_otp'])) {
             $activity_stmt->execute();
             
             // Send OTP via Email
-            if(sendOTPEmail($email, $user['first_name'], $otp)) {
+            if($emailService->sendPasswordResetOTP($email, $user['first_name'], $otp)) {
                 // Redirect to OTP verification step
                 header("Location: ?step=otp&email=" . urlencode($email));
                 exit();
@@ -95,7 +96,8 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['verify_otp'])) {
         $error = "Please enter a valid 6-digit OTP.";
     } else {
         // Verify OTP from database
-        $sql = "SELECT id, reset_otp, otp_expiry FROM users WHERE email = ? AND reset_otp = ? AND otp_expiry > NOW() AND status = 1";
+        // $sql = "SELECT id, reset_otp, otp_expiry FROM users WHERE email = ? AND reset_otp = ? AND otp_expiry > NOW() AND status = 1";
+        $sql = "SELECT id, reset_otp, otp_expiry FROM users WHERE email = ? AND reset_otp = ? AND status = 1";
         $stmt = $conn->prepare($sql);
         $stmt->bind_param("ss", $email, $otp);
         $stmt->execute();
@@ -158,6 +160,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['reset_password'])) {
     } else {
         $user_id = $_SESSION['reset_user_id'];
         $email = $_SESSION['reset_email'];
+        $name = $_SESSION['first_name'] ?? 'N/A';
         
         // Hash the new password
         $hashed_password = password_hash($password, PASSWORD_DEFAULT);
@@ -177,7 +180,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['reset_password'])) {
             $activity_stmt->execute();
             
             // Send confirmation email
-            sendPasswordResetConfirmation($email);
+            $emailService->sendPasswordResetConfirmation($email, $name);
             
             // Clear reset session
             unset($_SESSION['reset_verified']);
@@ -187,7 +190,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['reset_password'])) {
             unset($_SESSION['reset_otp_expiry']);
             
             $success = "Password reset successfully! You can now login with your new password.";
-            header("Location: " . $site . "login/?success=" . urlencode($success));
+            header("Location: " . $site . "user-login/?success=" . urlencode($success));
             exit();
         } else {
             $error = "Failed to reset password. Please try again.";
@@ -214,7 +217,7 @@ if(isset($_GET['resend']) && isset($_SESSION['reset_email'])) {
         $_SESSION['reset_otp_expiry'] = $otp_expiry;
         
         // Send email
-        sendOTPEmail($email, '', $otp);
+        $emailService->sendPasswordResetOTP($email, '', $otp);
         
         $success = "New OTP has been sent to your email.";
     } else {
@@ -227,75 +230,13 @@ if(isset($_GET['resend']) && isset($_SESSION['reset_email'])) {
 
 // Function to send OTP email
 
-$success = $emailService->sendRegistrationOTP(
-    $email,
-    $name,
-    $otp
-);
+// $success = $emailService->sendRegistrationOTP(
+//     $email,
+//     $name,
+//     $otp
+// );
 
-// Function to send password reset confirmation
-function sendPasswordResetConfirmation($email) {
-    global $site;
-    
-    $to = $email;
-    $subject = "Password Reset Successful - Beastline";
-    
-    $message = "
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Password Reset Successful</title>
-        <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
-            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 5px 5px; }
-            .success-icon { text-align: center; font-size: 60px; color: #28a745; margin: 20px 0; }
-            .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
-        </style>
-    </head>
-    <body>
-        <div class='container'>
-            <div class='header'>
-                <h2>Password Reset Successful</h2>
-            </div>
-            <div class='content'>
-                <div class='success-icon'>✓</div>
-                <h3>Your password has been reset successfully!</h3>
-                <p>You can now login to your Beastline account using your new password.</p>
-                
-                <p>If you did not perform this password reset, please contact our support team immediately at <a href='mailto:support@beastline.com'>support@beastline.com</a>.</p>
-                
-                <p>For security reasons, we recommend:</p>
-                <ul>
-                    <li>Using a strong, unique password</li>
-                    <li>Not sharing your password with anyone</li>
-                    <li>Enabling two-factor authentication if available</li>
-                </ul>
-                
-                <p style='text-align: center; margin-top: 30px;'>
-                    <a href='" . $site . "login/' style='background: #c7a17a; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;'>Login to Your Account</a>
-                </p>
-                
-                <p>Best regards,<br>The Beastline Team</p>
-            </div>
-            <div class='footer'>
-                <p>This is an automated message. Please do not reply to this email.</p>
-                <p>&copy; " . date('Y') . " Beastline. All rights reserved.</p>
-            </div>
-        </div>
-    </body>
-    </html>
-    ";
-    
-    $headers = "MIME-Version: 1.0" . "\r\n";
-    $headers .= "Content-type:text/html;charset=UTF-8" . "\r\n";
-    $headers .= 'From: Beastline <noreply@beastline.com>' . "\r\n";
-    $headers .= 'Reply-To: support@beastline.com' . "\r\n";
-    $headers .= 'X-Mailer: PHP/' . phpversion();
-    
-    return mail($to, $subject, $message, $headers);
-}
+
 ?>
 <!doctype html>
 <html class="no-js" lang="en">
@@ -439,6 +380,7 @@ function sendPasswordResetConfirmation($email) {
             border: 2px solid #ddd;
             border-radius: 5px;
             transition: all 0.3s ease;
+            padding: 5px;
         }
         
         .otp-input input:focus {
@@ -781,12 +723,12 @@ function sendPasswordResetConfirmation($email) {
     </div>
     <!-- password reset area end -->
     
+    <!-- <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script> -->
     <!--footer area start-->
     <?php include_once "includes/footer.php"; ?>
     <?php include_once "includes/footer-link.php"; ?>
 
     <!-- JavaScript -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // OTP Input Handling
@@ -1037,7 +979,7 @@ function sendPasswordResetConfirmation($email) {
                 }, 100);
             }
             
-            // Prevent form resubmission
+            // Prevent form resubmission  I~H!=Sf9&
             if (window.history.replaceState) {
                 window.history.replaceState(null, null, window.location.href);
             }

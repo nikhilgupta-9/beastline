@@ -12,9 +12,19 @@ if(isset($_SESSION['user_id'])) {
     exit();
 }
 
+// Check for success message in URL (from password reset)
+if(isset($_GET['success'])) {
+    $success = urldecode($_GET['success']);
+}
+
+// Check for error message in URL
+if(isset($_GET['error'])) {
+    $error = urldecode($_GET['error']);
+}
+
 // Handle login form submission
-$error = '';
-$success = '';
+$error = isset($error) ? $error : '';
+$success = isset($success) ? $success : '';
 
 if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['login'])) {
     $email = mysqli_real_escape_string($conn, $_POST['email']);

@@ -1,12 +1,10 @@
 <?php
-session_start();
-include "db-conn.php";
+require_once __DIR__ . '/config/db-conn.php';
+require_once __DIR__ . '/auth/admin-auth.php';
+require_once __DIR__ . '/models/Setting.php';
 
-// Check admin authentication
-if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
-    header("Location: login.php");
-    exit();
-}
+// Initialize
+$setting = new Setting($conn);
 
 // Delete testimonial
 if (isset($_GET['deleteId'])) {
@@ -49,7 +47,7 @@ $result = $conn->query("SELECT * FROM testimonials ORDER BY display_order ASC, c
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <title>Manage Testimonials | Admin Panel</title>
-    <link rel="icon" href="img/logo.png" type="image/png">
+    <link rel="icon" href="<?php echo htmlspecialchars($setting->get('favicon', 'assets/img/logo.png')); ?>" type="image/png">
 
     <?php include "links.php"; ?>
     
@@ -119,13 +117,13 @@ $result = $conn->query("SELECT * FROM testimonials ORDER BY display_order ASC, c
 
 <body class="crm_body_bg">
 
-    <?php include "header.php"; ?>
+    <?php include "includes/header.php"; ?>
     
     <section class="main_content dashboard_part large_header_bg">
         <div class="container-fluid g-0">
             <div class="row">
                 <div class="col-lg-12 p-0">
-                    <?php include "top_nav.php"; ?>
+                    <?php include "includes/top_nav.php"; ?>
                 </div>
             </div>
         </div>
@@ -170,9 +168,11 @@ $result = $conn->query("SELECT * FROM testimonials ORDER BY display_order ASC, c
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <?php while ($testimonial = $result->fetch_assoc()): ?>
+                                            <?php
+                                            $sno = 1; 
+                                            while ($testimonial = $result->fetch_assoc()): ?>
                                                 <tr>
-                                                    <td><?= htmlspecialchars($testimonial['id']); ?></td>
+                                                    <td><?= $sno++; ?></td>
                                                     <td>
                                                         <div class="d-flex align-items-center">
                                                             <?php if (!empty($testimonial['client_photo'])): ?>
@@ -277,7 +277,7 @@ $result = $conn->query("SELECT * FROM testimonials ORDER BY display_order ASC, c
             </div>
         </div>
 
-        <?php include "footer.php"; ?>
+        <?php include "includes/footer.php"; ?>
     </section>
 
     <script>

@@ -1,5 +1,5 @@
 <?php
-include_once ( __DIR__ . '/util/bootstrap.php');
+include_once(__DIR__ . '/util/bootstrap.php');
 include_once(__DIR__ . "/config/connect.php");
 include_once(__DIR__ . "/util/function.php");
 include_once(__DIR__ . "/models/WebsiteSettings.php");
@@ -21,32 +21,32 @@ $banners = get_banner();
 
 	<!-- CSS 
     ========================= -->
-	 <!--bootstrap min css-->
-    <link rel="stylesheet" href="<?= $site ?>assets/css/bootstrap.min.css">
-    <!--owl carousel min css-->
-    <link rel="stylesheet" href="<?= $site ?>assets/css/owl.carousel.min.css">
-    <!--slick min css-->
-    <link rel="stylesheet" href="<?= $site ?>assets/css/slick.css">
-    <!--magnific popup min css-->
-    <link rel="stylesheet" href="<?= $site ?>assets/css/magnific-popup.css">
-    <!--font awesome css-->
-    <link rel="stylesheet" href="<?= $site ?>assets/css/font.awesome.css">
-    <!--ionicons css-->
-    <link rel="stylesheet" href="<?= $site ?>assets/css/ionicons.min.css">
-    <!--7 stroke icons css-->
-    <link rel="stylesheet" href="<?= $site ?>assets/css/pe-icon-7-stroke.css">
-    <!--animate css-->
-    <link rel="stylesheet" href="<?= $site ?>assets/css/animate.css">
-    <!--jquery ui min css-->
-    <link rel="stylesheet" href="<?= $site ?>assets/css/jquery-ui.min.css">
-    <!--plugins css-->
-    <link rel="stylesheet" href="<?= $site ?>assets/css/plugins.css">
+	<!--bootstrap min css-->
+	<link rel="stylesheet" href="<?= $site ?>assets/css/bootstrap.min.css">
+	<!--owl carousel min css-->
+	<link rel="stylesheet" href="<?= $site ?>assets/css/owl.carousel.min.css">
+	<!--slick min css-->
+	<link rel="stylesheet" href="<?= $site ?>assets/css/slick.css">
+	<!--magnific popup min css-->
+	<link rel="stylesheet" href="<?= $site ?>assets/css/magnific-popup.css">
+	<!--font awesome css-->
+	<link rel="stylesheet" href="<?= $site ?>assets/css/font.awesome.css">
+	<!--ionicons css-->
+	<link rel="stylesheet" href="<?= $site ?>assets/css/ionicons.min.css">
+	<!--7 stroke icons css-->
+	<link rel="stylesheet" href="<?= $site ?>assets/css/pe-icon-7-stroke.css">
+	<!--animate css-->
+	<link rel="stylesheet" href="<?= $site ?>assets/css/animate.css">
+	<!--jquery ui min css-->
+	<link rel="stylesheet" href="<?= $site ?>assets/css/jquery-ui.min.css">
+	<!--plugins css-->
+	<link rel="stylesheet" href="<?= $site ?>assets/css/plugins.css">
 
-    <!-- Main Style CSS -->
-    <link rel="stylesheet" href="<?= $site ?>assets/css/style.css">
+	<!-- Main Style CSS -->
+	<link rel="stylesheet" href="<?= $site ?>assets/css/style.css">
 
-    <!--modernizr min js here-->
-    <script src="<?= $site ?>assets/js/vendor/modernizr-3.7.1.min.js"></script>
+	<!--modernizr min js here-->
+	<script src="<?= $site ?>assets/js/vendor/modernizr-3.7.1.min.js"></script>
 </head>
 <style>
 	/* Banner Video Base Fix */
@@ -148,24 +148,24 @@ $banners = get_banner();
 	<section class="slider_section mb-100">
 		<div class="slider_area owl-carousel">
 			<?php
-			foreach($banners as $b){
+			foreach ($banners as $b) {
 			?>
-			<div class="single_slider d-flex align-items-center" data-bgimg="<?= $site ?>admin/<?= $b['banner_path'] ?>">
-				<div class="container">
-					<div class="row">
-						<div class="col-12">
-							<div class="slider_content">
-								<h2>Get 30% Off &amp; Free Shipping </h2>
-								<h1><?= $b['title'] ?></h1>
-								<p>
-									<?= $b['description'] ?>
-								</p>
-								<a href="<?= $site ?>shop.php">Shop Now +</a>
+				<div class="single_slider d-flex align-items-center" data-bgimg="<?= $site ?>admin/<?= $b['banner_path'] ?>">
+					<div class="container">
+						<div class="row">
+							<div class="col-12">
+								<div class="slider_content">
+									<h2>Get 30% Off &amp; Free Shipping </h2>
+									<h1><?= $b['title'] ?></h1>
+									<p>
+										<?= $b['description'] ?>
+									</p>
+									<a href="<?= $site ?>shop.php">Shop Now +</a>
+								</div>
 							</div>
 						</div>
 					</div>
 				</div>
-			</div>
 			<?php
 			}
 			?>
@@ -239,7 +239,7 @@ $banners = get_banner();
 							<div class="banner_text1">
 								<div class="banner_text1_inner">
 									<h3>Shirt <br> Collections</h3>
-									<a href="shop.html">shop now</a>
+									<a href="<?= $site ?>shop/shirt/">shop now</a>
 								</div>
 							</div>
 						</div>
@@ -258,7 +258,7 @@ $banners = get_banner();
 							<div class="banner_text1">
 								<div class="banner_text1_inner">
 									<h3>Pant <br> Collections</h3>
-									<a href="shop.html">shop now</a>
+									<a href="<?= $site ?>shop/pants/">shop now</a>
 								</div>
 							</div>
 						</div>
@@ -277,7 +277,7 @@ $banners = get_banner();
 							<div class="banner_text1">
 								<div class="banner_text1_inner">
 									<h3>Shoes <br> Collection</h3>
-									<a href="shop.html">shop now</a>
+									<a href="<?= $site ?>shop/shoes/">shop now</a>
 								</div>
 							</div>
 						</div>
@@ -304,27 +304,27 @@ $banners = get_banner();
 				<div class="product_carousel product_column4 owl-carousel">
 					<?php
 					$category = get_category_home();
-					foreach($category as $cate){
+					foreach ($category as $cate) {
 					?>
-					<div class="col-lg-3">
-						<article class="single_categories">
-							<figure>
-								<div class="categories_thumb">
-									<a href="<?= $site ?>shop/<?= $cate['slug_url'] ?>">
-										<img src="<?= $site ?>admin/uploads/category/<?= $cate['image'] ?>" alt="<?= $cate['categories'] ?>">
-									</a>
-								</div>
-								<figcaption class="categories_content">
-									<h4 class="product_name"><a href="<?= $site ?>shop/<?= $cate['slug_url'] ?>"><?= $cate['categories'] ?></a></h4>
-									<div class="product_collection">
-										<p>13 Products</p>
-										<a href="<?= $site ?>shop/<?= $cate['slug_url'] ?>">+ Shop Collection</a>
+						<div class="col-lg-3">
+							<article class="single_categories">
+								<figure>
+									<div class="categories_thumb">
+										<a href="<?= $site ?>shop/<?= $cate['slug_url'] ?>">
+											<img src="<?= $site ?>admin/uploads/category/<?= $cate['image'] ?>" alt="<?= $cate['categories'] ?>">
+										</a>
 									</div>
-								</figcaption>
-							</figure>
-						</article>
-					</div>
-					<?php 
+									<figcaption class="categories_content">
+										<h4 class="product_name"><a href="<?= $site ?>shop/<?= $cate['slug_url'] ?>"><?= $cate['categories'] ?></a></h4>
+										<div class="product_collection">
+											<p>13 Products</p>
+											<a href="<?= $site ?>shop/<?= $cate['slug_url'] ?>">+ Shop Collection</a>
+										</div>
+									</figcaption>
+								</figure>
+							</article>
+						</div>
+					<?php
 					}
 					?>
 					<div class="col-lg-3">
@@ -343,7 +343,7 @@ $banners = get_banner();
 							</figure>
 						</article>
 					</div>
-					
+
 				</div>
 			</div>
 		</div>
@@ -364,36 +364,22 @@ $banners = get_banner();
 				<div class="row">
 					<div class="col-12">
 						<div class="testimonial_wrapper  testimonial_collumn1 owl-carousel">
-							<div class="single_testimonial">
-								<div class="testimonial_thumb">
-									<img src="assets/img/about/testimonial1.png" alt="">
+							<?php
+							$testimonial = testimonial();
+							foreach ($testimonial as $test) {
+							?>
+								<div class="single_testimonial">
+									<div class="testimonial_thumb">
+										<img src="<?= $site ?>admin/uploads/testimonials/<?= $test['client_photo'] ?>" alt="">
+									</div>
+									<div class="testimonial_content">
+										<p><?= $test['testimonial_text'] ?></p>
+										<h3><a href="#"><?= $test['client_name'] ?></a></h3>
+										<span>Customer</span>
+									</div>
 								</div>
-								<div class="testimonial_content">
-									<p>These guys have been absolutely outstanding. Perfect Themes and the best of all that you have many options to choose! Best Support team ever! Very fast responding! Thank you very much! I highly recommend this theme and these people!</p>
-									<h3><a href="#">John Sullivan</a></h3>
-									<span>Customer</span>
-								</div>
-							</div>
-							<div class="single_testimonial">
-								<div class="testimonial_thumb">
-									<img src="assets/img/about/testimonial2.png" alt="">
-								</div>
-								<div class="testimonial_content">
-									<p>Lorem ipsum dolor sit amet, consectetur adipisicing elit. Error in, mollitia nulla officiis excepturi repudiandae beatae optio, sequi maxime assumenda ipsum exercitationem nostrum ducimus facilis, nesciunt aliquam dicta totam.</p>
-									<h3><a href="#">Jenifer Brown</a></h3>
-									<span>Manager of AZ</span>
-								</div>
-							</div>
-							<div class="single_testimonial">
-								<div class="testimonial_thumb">
-									<img src="assets/img/about/testimonial3.png" alt="">
-								</div>
-								<div class="testimonial_content">
-									<p>These guys have been absolutely outstanding. Perfect Themes and the best of all that you have many options to choose! Best Support team ever! Very fast responding! Thank you very much! I highly recommend this theme and these people!</p>
-									<h3><a href="#">Kathy Young</a></h3>
-									<span>CEO of SunPark</span>
-								</div>
-							</div>
+							<?php } ?>
+
 						</div>
 					</div>
 				</div>
@@ -416,141 +402,141 @@ $banners = get_banner();
 				</div>
 			</div>
 			<div class="row">
-    <div class="product_carousel product_column5 owl-carousel">
-        <?php 
-        $fetaured_products = get_featured_product();
-        
-        // If no featured products, create placeholder array
-        if (empty($fetaured_products)) {
-            $fetaured_products = [
-                [
-                    'pro_id' => 1,
-                    'pro_name' => 'Eodem modo vels is mattis antes facilisis',
-                    'pro_img' => 'product3.jpg',
-                    'mrp' => 86.00,
-                    'selling_price' => 82.00,
-                    'is_on_sale' => true
-                ],
-                [
-                    'pro_id' => 2,
-                    'pro_name' => 'Epicuri per lobortis eleifend eget laoreet',
-                    'pro_img' => 'product5.jpg',
-                    'mrp' => 82.00,
-                    'selling_price' => 77.00,
-                    'is_on_sale' => true
-                ],
-                [
-                    'pro_id' => 3,
-                    'pro_name' => 'Fusce ultricies dolor vitae tristique suscipit',
-                    'pro_img' => 'product7.jpg',
-                    'mrp' => 90.00,
-                    'selling_price' => 88.00,
-                    'is_on_sale' => true
-                ],
-                [
-                    'pro_id' => 4,
-                    'pro_name' => 'Product Name 4',
-                    'pro_img' => 'product2.jpg',
-                    'mrp' => 84.00,
-                    'selling_price' => 79.00,
-                    'is_on_sale' => true
-                ]
-            ];
-        }
-        
-        foreach ($fetaured_products as $index => $f_p):
-            // Determine secondary image
-            $secondary_img_num = ($index % 4) + 2; // This will cycle through 2, 3, 4, 5, etc.
-            
-            // Calculate discount if available
-            $show_sale = isset($f_p['mrp']) && isset($f_p['selling_price']) && 
-                        $f_p['mrp'] > $f_p['selling_price'];
-            
-            // Format prices
-            $old_price = isset($f_p['mrp']) ? '$' . number_format($f_p['mrp'], 2) : '$0.00';
-            $current_price = isset($f_p['selling_price']) ? '$' . number_format($f_p['selling_price'], 2) : '$0.00';
-            
-            // Product link
-            $product_link = isset($f_p['pro_id']) ? "product-details.php?id={$f_p['pro_id']}" : "product-details.html";
-            
-            // Primary image path
-            if (isset($f_p['pro_img']) && strpos($f_p['pro_img'], 'assets/') === false) {
-                $primary_img = $site . 'admin/assets/img/uploads/' . $f_p['pro_img'];
-            } else {
-                $primary_img = isset($f_p['pro_img']) ? $f_p['pro_img'] : "assets/img/product/product" . (($index * 2) + 1) . ".jpg";
-            }
-        ?>
-        
-        <!-- Each carousel item should be a single product -->
-        <article class="single_product">
-            <figure>
-                <div class="product_thumb">
-                    <a class="primary_img" href="<?= $product_link ?>">
-                        <img src="<?= $primary_img ?>" alt="<?= htmlspecialchars($f_p['pro_name']) ?>">
-                    </a>
-                    <a class="secondary_img" href="<?= $product_link ?>">
-                        <img src="assets/img/product/product<?= $secondary_img_num ?>.jpg" alt="<?= htmlspecialchars($f_p['pro_name']) ?>">
-                    </a>
-                    
-                    <?php if ($show_sale): ?>
-                    <div class="label_product">
-                        <span class="label_sale">Sale</span>
-                        <?php 
-                        $discount = round((($f_p['mrp'] - $f_p['selling_price']) / $f_p['mrp']) * 100);
-                        if ($discount > 0): ?>
-                        <span class="label_discount">-<?= $discount ?>%</span>
-                        <?php endif; ?>
-                    </div>
-                    <?php endif; ?>
-                    
-                    <div class="action_links">
-                        <ul>
-                            <li class="quick_button">
-                                <a href="#" data-bs-toggle="modal" 
-                                   data-bs-target="#modal_box_<?= $f_p['pro_id'] ?? $index ?>" 
-                                   title="quick view">
-                                    <span class="pe-7s-search"></span>
-                                </a>
-                            </li>
-                            <li class="wishlist">
-                                <a href="wishlist.php?add_to_wishlist=<?= $f_p['pro_id'] ?? $index ?>" 
-                                   title="Add to Wishlist">
-                                    <span class="pe-7s-like"></span>
-                                </a>
-                            </li>
-                            <li class="compare">
-                                <a href="compare.php?add_to_compare=<?= $f_p['pro_id'] ?? $index ?>" 
-                                   title="Add to Compare">
-                                    <span class="pe-7s-edit"></span>
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-                <figcaption class="product_content">
-                    <div class="product_content_inner">
-                        <h4 class="product_name">
-                            <a href="<?= $product_link ?>">
-                                <?= htmlspecialchars($f_p['pro_name']) ?>
-                            </a>
-                        </h4>
-                        <div class="price_box">
-                            <?php if ($show_sale): ?>
-                            <span class="old_price"><?= $old_price ?></span>
-                            <?php endif; ?>
-                            <span class="current_price"><?= $current_price ?></span>
-                        </div>
-                    </div>
-                    <div class="add_to_cart">
-                        <a href="cart.php?add_to_cart=<?= $f_p['pro_id'] ?? $index ?>">Add to cart</a>
-                    </div>
-                </figcaption>
-            </figure>
-        </article>
-        
-        <?php endforeach; ?>
-    </div>
-</div>
+				<div class="product_carousel product_column5 owl-carousel">
+					<?php
+					$fetaured_products = get_featured_product();
+
+					// If no featured products, create placeholder array
+					if (empty($fetaured_products)) {
+						$fetaured_products = [
+							[
+								'pro_id' => 1,
+								'pro_name' => 'Eodem modo vels is mattis antes facilisis',
+								'pro_img' => 'product3.jpg',
+								'mrp' => 86.00,
+								'selling_price' => 82.00,
+								'is_on_sale' => true
+							],
+							[
+								'pro_id' => 2,
+								'pro_name' => 'Epicuri per lobortis eleifend eget laoreet',
+								'pro_img' => 'product5.jpg',
+								'mrp' => 82.00,
+								'selling_price' => 77.00,
+								'is_on_sale' => true
+							],
+							[
+								'pro_id' => 3,
+								'pro_name' => 'Fusce ultricies dolor vitae tristique suscipit',
+								'pro_img' => 'product7.jpg',
+								'mrp' => 90.00,
+								'selling_price' => 88.00,
+								'is_on_sale' => true
+							],
+							[
+								'pro_id' => 4,
+								'pro_name' => 'Product Name 4',
+								'pro_img' => 'product2.jpg',
+								'mrp' => 84.00,
+								'selling_price' => 79.00,
+								'is_on_sale' => true
+							]
+						];
+					}
+
+					foreach ($fetaured_products as $index => $f_p):
+						// Determine secondary image
+						$secondary_img_num = ($index % 4) + 2; // This will cycle through 2, 3, 4, 5, etc.
+
+						// Calculate discount if available
+						$show_sale = isset($f_p['mrp']) && isset($f_p['selling_price']) &&
+							$f_p['mrp'] > $f_p['selling_price'];
+
+						// Format prices
+						$old_price = isset($f_p['mrp']) ? '$' . number_format($f_p['mrp'], 2) : '$0.00';
+						$current_price = isset($f_p['selling_price']) ? '$' . number_format($f_p['selling_price'], 2) : '$0.00';
+
+						// Product link
+						$product_link = isset($f_p['pro_id']) ? "product-details.php?id={$f_p['pro_id']}" : "product-details.html";
+
+						// Primary image path
+						if (isset($f_p['pro_img']) && strpos($f_p['pro_img'], 'assets/') === false) {
+							$primary_img = $site . 'admin/assets/img/uploads/' . $f_p['pro_img'];
+						} else {
+							$primary_img = isset($f_p['pro_img']) ? $f_p['pro_img'] : "assets/img/product/product" . (($index * 2) + 1) . ".jpg";
+						}
+					?>
+
+						<!-- Each carousel item should be a single product -->
+						<article class="single_product">
+							<figure>
+								<div class="product_thumb">
+									<a class="primary_img" href="<?= $product_link ?>">
+										<img src="<?= $primary_img ?>" alt="<?= htmlspecialchars($f_p['pro_name']) ?>">
+									</a>
+									<a class="secondary_img" href="<?= $product_link ?>">
+										<img src="assets/img/product/product<?= $secondary_img_num ?>.jpg" alt="<?= htmlspecialchars($f_p['pro_name']) ?>">
+									</a>
+
+									<?php if ($show_sale): ?>
+										<div class="label_product">
+											<span class="label_sale">Sale</span>
+											<?php
+											$discount = round((($f_p['mrp'] - $f_p['selling_price']) / $f_p['mrp']) * 100);
+											if ($discount > 0): ?>
+												<span class="label_discount">-<?= $discount ?>%</span>
+											<?php endif; ?>
+										</div>
+									<?php endif; ?>
+
+									<div class="action_links">
+										<ul>
+											<li class="quick_button">
+												<a href="#" data-bs-toggle="modal"
+													data-bs-target="#modal_box_<?= $f_p['pro_id'] ?? $index ?>"
+													title="quick view">
+													<span class="pe-7s-search"></span>
+												</a>
+											</li>
+											<li class="wishlist">
+												<a href="wishlist.php?add_to_wishlist=<?= $f_p['pro_id'] ?? $index ?>"
+													title="Add to Wishlist">
+													<span class="pe-7s-like"></span>
+												</a>
+											</li>
+											<li class="compare">
+												<a href="compare.php?add_to_compare=<?= $f_p['pro_id'] ?? $index ?>"
+													title="Add to Compare">
+													<span class="pe-7s-edit"></span>
+												</a>
+											</li>
+										</ul>
+									</div>
+								</div>
+								<figcaption class="product_content">
+									<div class="product_content_inner">
+										<h4 class="product_name">
+											<a href="<?= $product_link ?>">
+												<?= htmlspecialchars($f_p['pro_name']) ?>
+											</a>
+										</h4>
+										<div class="price_box">
+											<?php if ($show_sale): ?>
+												<span class="old_price"><?= $old_price ?></span>
+											<?php endif; ?>
+											<span class="current_price"><?= $current_price ?></span>
+										</div>
+									</div>
+									<div class="add_to_cart">
+										<a href="cart.php?add_to_cart=<?= $f_p['pro_id'] ?? $index ?>">Add to cart</a>
+									</div>
+								</figcaption>
+							</figure>
+						</article>
+
+					<?php endforeach; ?>
+				</div>
+			</div>
 		</div>
 	</div>
 	<!--product area end-->
@@ -1267,75 +1253,36 @@ $banners = get_banner();
 	<!--shipping area end-->
 
 	<!--brand area start-->
-	<div class="brand_area">
-		<div class="container">
-			<div class="row">
-				<div class="col-12">
-					<div class="brand_container owl-carousel ">
-						<div class="single_brand">
-							<a href="#"><img src="assets/img/brand/brand1.jpg" alt=""></a>
-						</div>
-						<div class="single_brand">
-							<a href="#"><img src="assets/img/brand/brand2.jpg" alt=""></a>
-						</div>
-						<div class="single_brand">
-							<a href="#"><img src="assets/img/brand/brand3.jpg" alt=""></a>
-						</div>
-						<div class="single_brand">
-							<a href="#"><img src="assets/img/brand/brand4.jpg" alt=""></a>
-						</div>
-						<div class="single_brand">
-							<a href="#"><img src="assets/img/brand/brand5.jpg" alt=""></a>
-						</div>
-						<div class="single_brand">
-							<a href="#"><img src="assets/img/brand/brand6.jpg" alt=""></a>
-						</div>
-						<div class="single_brand">
-							<a href="#"><img src="assets/img/brand/brand7.jpg" alt=""></a>
+	<?php
+	$our_brand = get_best_brand();
+
+	// Only show brand section if there are brands
+	if (!empty($our_brand)):
+	?>
+		<div class="brand_area">
+			<div class="container">
+				<div class="row">
+					<div class="col-12">
+						<div class="brand_container owl-carousel">
+							<?php foreach ($our_brand as $brand):
+								// Make sure logo path exists
+								$logo_path = !empty($brand['logo_path']) ? $site . 'admin/' . $brand['logo_path'] : $site . 'assets/img/brand/default-brand.png';
+							?>
+								<div class="single_brand">
+									<a href="<?= $brand['brand_url'] ?? '#' ?>">
+										<img src="<?= $logo_path ?>" alt="<?= htmlspecialchars($brand['brand_name'] ?? 'Brand') ?>">
+									</a>
+								</div>
+							<?php endforeach; ?>
 						</div>
 					</div>
 				</div>
 			</div>
 		</div>
-	</div>
+	<?php endif; ?>
 	<!--brand area end-->
 
 	<?php include_once "includes/footer.php"; ?>
-
-	<!--news letter popup start-->
-
-	<!-- <div class="newletter-popup">
-		<div id="boxes" class="newletter-container">
-			<div id="dialog" class="window">
-				<div id="popup2">
-					<span class="b-close"><span>close</span></span>
-				</div>
-				<div class="box">
-					<div class="newletter-title">
-						<h2>Newsletter</h2>
-					</div>
-					<div class="box-content newleter-content">
-						<label class="newletter-label">Enter your email address to subscribe our notification of our new post &amp; features by email.</label>
-						<div id="frm_subscribe">
-							<form name="subscribe" id="subscribe_popup">
-								<input type="text" value="" name="subscribe_pemail" id="subscribe_pemail" placeholder="Enter you email address here...">
-								<input type="hidden" value="" name="subscribe_pname" id="subscribe_pname">
-								<div id="notification"></div>
-								<a class="theme-btn-outlined" onclick="email_subscribepopup()"><span>Subscribe</span></a>
-							</form>
-							<div class="subscribe-bottom">
-								<input type="checkbox" id="newsletter_popup_dont_show_again">
-								<label for="newsletter_popup_dont_show_again">Don't show this popup again</label>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-
-		</div>
-	</div> -->
-
-	<!--news letter popup start-->
 
 	<?php include_once "includes/footer-link.php"; ?>
 

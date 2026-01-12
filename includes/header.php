@@ -160,7 +160,7 @@ $is_logged_in = isset($_SESSION['user_id']);
                                         <ul class="mega_menu_inner">
                                             <!-- Categories Column -->
                                             <li>
-                                                <a href="#">Categories</a>
+                                                <a href="#" class="fw-bold">Categories</a>
                                                 <ul>
                                                     <?php 
                                                     // Show first 6 main categories
@@ -169,7 +169,7 @@ $is_logged_in = isset($_SESSION['user_id']);
                                                         if ($counter >= 6) break;
                                                     ?>
                                                     <li>
-                                                        <a href="<?= $site ?>category/<?= $category['slug_url'] ?>/">
+                                                        <a href="<?= $site ?>shop/<?= $category['slug_url'] ?>/">
                                                             <?= htmlspecialchars($category['categories']) ?> 
                                                             <span class="badge bg-light text-dark ms-1">
                                                                 <?= $category['product_count'] ?>
@@ -182,7 +182,7 @@ $is_logged_in = isset($_SESSION['user_id']);
                                                     ?>
                                                     <?php if (count($main_categories) > 6): ?>
                                                     <li>
-                                                        <a href="<?= $site ?>shop/categories/" class="text-primary">
+                                                        <a  href="<?= $site ?>shop/categories/" class="text-primary fw-bold">
                                                             View All Categories <i class="fa fa-arrow-right ms-1"></i>
                                                         </a>
                                                     </li>
@@ -192,7 +192,7 @@ $is_logged_in = isset($_SESSION['user_id']);
                                             
                                             <!-- Shop Pages Column -->
                                             <li>
-                                                <a href="#">Shop Pages</a>
+                                                <a href="#" class="fw-bold">Shop Pages</a>
                                                 <ul>
                                                     <li><a href="<?= $site ?>shop/">All Products</a></li>
                                                     <li><a href="<?= $site ?>new-arrivals/">New Arrivals</a></li>
@@ -205,7 +205,7 @@ $is_logged_in = isset($_SESSION['user_id']);
                                             
                                             <!-- Brands Column -->
                                             <li>
-                                                <a href="#">Brands</a>
+                                                <a href="#" class="fw-bold">Brands</a>
                                                 <ul>
                                                     <?php 
                                                     // Get top brands
@@ -238,7 +238,7 @@ $is_logged_in = isset($_SESSION['user_id']);
                                             
                                             <!-- Special Offers Column -->
                                             <li>
-                                                <a href="#">Special Offers</a>
+                                                <a href="#" class="fw-bold">Special Offers</a>
                                                 <ul>
                                                     <li><a href="<?= $site ?>deal-of-the-day/">Deal of the Day</a></li>
                                                     <li><a href="<?= $site ?>weekly-deals/">Weekly Deals</a></li>
@@ -252,43 +252,6 @@ $is_logged_in = isset($_SESSION['user_id']);
                                     </div>
                                 </li>
                                 
-                                <!-- Categories Dropdown -->
-                                <li>
-                                    <a href="#">Categories <i class="fa fa-angle-down"></i></a>
-                                    <ul class="sub_menu pages">
-                                        <?php foreach($main_categories as $category): 
-                                            // Get subcategories for this category
-                                            $subcategories_sql = "SELECT * FROM categories 
-                                                                  WHERE parent_id = {$category['id']} AND status = 1 
-                                                                  ORDER BY display_order LIMIT 5";
-                                            $subcategories_result = mysqli_query($conn, $subcategories_sql);
-                                            $has_subcategories = mysqli_num_rows($subcategories_result) > 0;
-                                        ?>
-                                        <li class="<?= $has_subcategories ? 'menu-item-has-children' : '' ?>">
-                                            <a href="<?= $site ?>category/<?= $category['slug_url'] ?>/">
-                                                <?= htmlspecialchars($category['categories']) ?>
-                                            </a>
-                                            <?php if ($has_subcategories): ?>
-                                            <ul class="sub-menu">
-                                                <?php while($subcat = mysqli_fetch_assoc($subcategories_result)): ?>
-                                                <li>
-                                                    <a href="<?= $site ?>category/<?= $subcat['slug_url'] ?>/">
-                                                        <?= htmlspecialchars($subcat['categories']) ?>
-                                                    </a>
-                                                </li>
-                                                <?php endwhile; ?>
-                                                <li>
-                                                    <a href="<?= $site ?>category/<?= $category['slug_url'] ?>/" class="text-primary">
-                                                        View All <i class="fa fa-arrow-right ms-1"></i>
-                                                    </a>
-                                                </li>
-                                            </ul>
-                                            <?php endif; ?>
-                                        </li>
-                                        <?php endforeach; ?>
-                                        <li><a href="<?= $site ?>shop/categories/" class="text-primary fw-bold">View All Categories</a></li>
-                                    </ul>
-                                </li>
                                 
                                 <li><a href="<?= $site ?>about/">About us</a></li>
                                 
@@ -348,7 +311,7 @@ $is_logged_in = isset($_SESSION['user_id']);
 
                         <!-- Cart -->
                         <div class="header_account_list mini_cart_wrapper_trigger">
-                            <a href="javascript:void(0)" class="cart-trigger">
+                            <a href="<?= $site ?>cart/" class="cart-trigger">
                                 <span class="pe-7s-shopbag"></span>
                                 <span class="item_count"><?= $cart_count ?></span>
                             </a>
