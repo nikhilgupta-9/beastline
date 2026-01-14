@@ -1,12 +1,14 @@
 <?php
+// This must be the VERY FIRST LINE in the file
 session_start();
-include_once "../config/connect.php";
-include_once "../util/cart_manager.php"; // If you have cart manager
 
-// Initialize cart if not exists
-if(!isset($_SESSION['cart'])) {
-    $_SESSION['cart'] = [];
-}
+include_once "../config/connect.php";
+
+// Set header for JSON response
+header('Content-Type: application/json');
+
+// Debug logging (remove in production)
+error_log("Add to cart request received: " . print_r($_POST, true));
 
 if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
@@ -15,105 +17,146 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         case 'add_to_cart':
             $product_id = intval($_POST['product_id']);
             $quantity = intval($_POST['quantity'] ?? 1);
-            $variants = $_POST['variants'] ?? [];
+            $color = isset($_POST['color']) ? trim($_POST['color']) : null;
+            $size = isset($_POST['size']) ? trim($_POST['size']) : null;
+            $variant_id = isset($_POST['variant_id']) ? intval($_POST['variant_id']) : null;
+            
+            // Validate required fields
+            if($product_id <= 0) {
+                echo json_encode(['success' => false, 'message' => 'Invalid product']);
+                exit();
+            }
             
             // Check if product exists and is active
-            $sql = "SELECT p.* FROM products p WHERE p.pro_id = ? AND p.status = 1";
+            $sql = "SELECT p.*, c.categories, c.slug_url 
+                    FROM products p 
+                    LEFT JOIN categories c ON p.pro_sub_cate = c.id 
+                    WHERE p.pro_id = ? AND p.status = 1";
             $stmt = $conn->prepare($sql);
             $stmt->bind_param("i", $product_id);
             $stmt->execute();
             $result = $stmt->get_result();
             
             if($result->num_rows == 0) {
-                echo json_encode(['success' => false, 'message' => 'Product not found']);
+                echo json_encode(['success' => false, 'message' => 'Product not found or inactive']);
                 exit();
             }
             
             $product = $result->fetch_assoc();
             
-            // Check if product has variants
-            $variant_sql = "SELECT COUNT(*) as variant_count FROM product_variants WHERE product_id = ?";
-            $variant_stmt = $conn->prepare($variant_sql);
-            $variant_stmt->bind_param("i", $product_id);
-            $variant_stmt->execute();
-            $variant_result = $variant_stmt->get_result();
-            $variant_count = $variant_result->fetch_assoc()['variant_count'];
+            // Check for variants
+            $has_variants = false;
+            $variant = null;
             
-            // If product has variants but none selected
-            if($variant_count > 0 && empty($variants)) {
-                echo json_encode([
-                    'success' => false, 
-                    'message' => 'Please select a variant (color/size) before adding to cart.'
-                ]);
-                exit();
-            }
-            
-            // If variants selected, get variant details
-            $variant_id = null;
-            $final_price = $product['selling_price'];
-            
-            if(!empty($variants)) {
-                $variant_query = "SELECT * FROM product_variants WHERE product_id = ?";
-                
-                if(isset($variants['color'])) {
-                    $variant_query .= " AND color = '" . mysqli_real_escape_string($conn, $variants['color']) . "'";
-                }
-                if(isset($variants['size'])) {
-                    $variant_query .= " AND size = '" . mysqli_real_escape_string($conn, $variants['size']) . "'";
-                }
-                if(isset($variants['variant'])) {
-                    $variant_query .= " AND id = " . intval($variants['variant']);
-                }
-                
-                $variant_stmt = $conn->prepare($variant_query);
-                $variant_stmt->bind_param("i", $product_id);
+            if($variant_id) {
+                // Get variant by ID
+                $variant_sql = "SELECT * FROM product_variants WHERE id = ? AND product_id = ?";
+                $variant_stmt = $conn->prepare($variant_sql);
+                $variant_stmt->bind_param("ii", $variant_id, $product_id);
                 $variant_stmt->execute();
                 $variant_result = $variant_stmt->get_result();
                 
                 if($variant_result->num_rows > 0) {
                     $variant = $variant_result->fetch_assoc();
-                    $variant_id = $variant['id'];
-                    $final_price = $variant['price'] > 0 ? $variant['price'] : $final_price;
-                    
-                    // Check variant stock
-                    if($variant['stock'] < $quantity) {
-                        echo json_encode(['success' => false, 'message' => 'Insufficient stock for selected variant']);
-                        exit();
-                    }
-                } else {
-                    echo json_encode(['success' => false, 'message' => 'Selected variant not available']);
-                    exit();
+                    $has_variants = true;
                 }
-            } else {
-                // Check main product stock
-                if($product['stock'] < $quantity) {
-                    echo json_encode(['success' => false, 'message' => 'Insufficient stock']);
-                    exit();
+            } elseif($color || $size) {
+                // Get variant by color/size
+                $variant_sql = "SELECT * FROM product_variants WHERE product_id = ?";
+                $params = array($product_id);
+                $types = "i";
+                
+                if($color) {
+                    $variant_sql .= " AND color = ?";
+                    $params[] = $color;
+                    $types .= "s";
+                }
+                if($size) {
+                    $variant_sql .= " AND size = ?";
+                    $params[] = $size;
+                    $types .= "s";
+                }
+                
+                $variant_stmt = $conn->prepare($variant_sql);
+                $variant_stmt->bind_param($types, ...$params);
+                $variant_stmt->execute();
+                $variant_result = $variant_stmt->get_result();
+                
+                if($variant_result->num_rows > 0) {
+                    $variant = $variant_result->fetch_assoc();
+                    $has_variants = true;
+                    $variant_id = $variant['id'];
                 }
             }
             
-            // Create cart item ID (include variant if exists)
+            // Check stock
+            if($has_variants && $variant) {
+                // Check variant stock
+                if($variant['quantity'] <= 0) {
+                    echo json_encode(['success' => false, 'message' => 'Selected variant is out of stock']);
+                    exit();
+                }
+                if($variant['quantity'] < $quantity) {
+                    echo json_encode(['success' => false, 'message' => 'Only ' . $variant['quantity'] . ' items available in stock']);
+                    exit();
+                }
+                $price = $variant['price'] > 0 ? $variant['price'] : $product['selling_price'];
+                $stock = $variant['quantity'];
+            } else {
+                // Check main product stock
+                if($product['quantity'] <= 0) {
+                    echo json_encode(['success' => false, 'message' => 'Product is out of stock']);
+                    exit();
+                }
+                if($product['quantity'] < $quantity) {
+                    echo json_encode(['success' => false, 'message' => 'Only ' . $product['quantity'] . ' items available in stock']);
+                    exit();
+                }
+                $price = $product['selling_price'];
+                $stock = $product['quantity'];
+            }
+            
+            // Initialize cart if not exists
+            if(!isset($_SESSION['cart'])) {
+                $_SESSION['cart'] = [];
+            }
+            
+            // Create cart item ID
             $cart_item_id = $product_id . ($variant_id ? '_' . $variant_id : '');
             
-            // Add to cart
+            // Check if item already exists in cart
+            $existing_quantity = isset($_SESSION['cart'][$cart_item_id]) ? $_SESSION['cart'][$cart_item_id]['quantity'] : 0;
+            
+            // Check if total quantity exceeds stock
+            if(($existing_quantity + $quantity) > $stock) {
+                echo json_encode([
+                    'success' => false, 
+                    'message' => 'Cannot add more items. Only ' . ($stock - $existing_quantity) . ' more available'
+                ]);
+                exit();
+            }
+            
+            // Add/Update cart item
             if(isset($_SESSION['cart'][$cart_item_id])) {
-                // Update quantity
                 $_SESSION['cart'][$cart_item_id]['quantity'] += $quantity;
             } else {
-                // Add new item
                 $_SESSION['cart'][$cart_item_id] = [
                     'product_id' => $product_id,
                     'variant_id' => $variant_id,
                     'quantity' => $quantity,
-                    'price' => $final_price,
+                    'price' => $price,
                     'name' => $product['pro_name'],
                     'image' => $product['pro_img'],
-                    'variants' => $variants,
+                    'color' => $color,
+                    'size' => $size,
+                    'sku' => $product['sku'],
+                    'category_name' => $product['categories'],
+                    'category_slug' => $product['slug_url'],
                     'added_at' => time()
                 ];
             }
             
-            // Calculate cart count
+            // Calculate total cart count
             $cart_count = 0;
             foreach($_SESSION['cart'] as $item) {
                 $cart_count += $item['quantity'];
@@ -129,5 +172,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         default:
             echo json_encode(['success' => false, 'message' => 'Invalid action']);
     }
+} else {
+    echo json_encode(['success' => false, 'message' => 'Invalid request']);
 }
 ?>

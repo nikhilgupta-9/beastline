@@ -487,72 +487,6 @@ function get_best_brand()
 }
 
 
-function get_course($slug)
-{
-    global $conn;
-
-    // Validate and sanitize the input
-    if (empty($slug)) {
-        return []; // Return empty array if no slug provided
-    }
-
-    // Use prepared statement to prevent SQL injection
-    $sql = "SELECT * FROM `sub_categories` WHERE `slug_url` = ? AND `status` = 1";
-    $stmt = mysqli_prepare($conn, $sql);
-
-    if (!$stmt) {
-        // Log the error instead of redirecting immediately
-        error_log("Database error: " . mysqli_error($conn));
-        return []; // Return empty array on error
-    }
-
-    // Bind parameters
-    mysqli_stmt_bind_param($stmt, "s", $slug);
-
-    // Execute query
-    if (!mysqli_stmt_execute($stmt)) {
-        error_log("Query execution failed: " . mysqli_stmt_error($stmt));
-        mysqli_stmt_close($stmt);
-        return [];
-    }
-
-    // Get result
-    $result = mysqli_stmt_get_result($stmt);
-    $course = mysqli_fetch_assoc($result); // Get single course (assuming slug is unique)
-
-    mysqli_stmt_close($stmt);
-
-    return $course ?: []; // Return course data or empty array if not found
-}
-
-// get course details page 
-function get_course_details($slug)
-{
-    global $conn;
-    global $site;
-
-    // Prevent SQL Injection
-    $slug = mysqli_real_escape_string($conn, $slug);
-
-    $sql_brand = "SELECT * FROM `products` WHERE `slug_url` = '$slug' LIMIT 1";
-    $res_brand = mysqli_query($conn, $sql_brand);
-
-    if (!$res_brand) {
-        header('Location: 500.php');
-        exit;
-    }
-
-    $row = mysqli_fetch_assoc($res_brand);
-
-    if (!$row) {
-        header('Location: ' . $site . '404.php');
-        exit;
-    }
-
-    return $row; // return single record
-}
-
-
 
 // course page related products 
 // Get category by slug
@@ -638,6 +572,7 @@ function get_category_hierarchy($category_id) {
     
     return array_reverse($hierarchy);
 }
+
 
 // set limit words 
 function limit_words($string, $word_limit = 20) {
@@ -904,3 +839,37 @@ function get_cart_items() {
     
     return ['items' => $cart_items, 'total' => $total];
 } 
+
+
+/**
+ * Get products by category ID
+ */
+function get_products_by_category($category_id, $limit = 8) {
+    global $conn;
+    
+    $sql = "SELECT p.*, 
+                   pi.image_url as product_image
+            FROM products p
+            LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.display_order = 1
+            WHERE p.pro_cate = ? 
+            AND p.status = 1
+            ORDER BY p.added_on DESC
+            LIMIT ?";
+    
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("ii", $category_id, $limit);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    
+    $products = [];
+    while ($row = $result->fetch_assoc()) {
+        // Format prices
+        $row['formatted_price'] = '₹' . number_format($row['mrp'], 2);
+        if ($row['selling_price'] > 0) {
+            $row['formatted_sale_price'] = '₹' . number_format($row['selling_price'], 2);
+        }
+        $products[] = $row;
+    }
+    
+    return $products;
+}

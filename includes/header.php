@@ -204,37 +204,39 @@ $is_logged_in = isset($_SESSION['user_id']);
                                             </li>
                                             
                                             <!-- Brands Column -->
-                                            <li>
+                                            <!-- <li>
                                                 <a href="#" class="fw-bold">Brands</a>
-                                                <ul>
+                                                <ul> -->
                                                     <?php 
                                                     // Get top brands
-                                                    $brands_sql = "SELECT b.*, COUNT(p.pro_id) as product_count 
-                                                                   FROM pro_brands b 
-                                                                   LEFT JOIN products p ON b.id = p.brand_name AND p.status = 1
-                                                                   WHERE b.status = 1 
-                                                                   GROUP BY b.id 
-                                                                   ORDER BY b.brand_name 
-                                                                   LIMIT 6";
-                                                    $brands_result = mysqli_query($conn, $brands_sql);
-                                                    while($brand = mysqli_fetch_assoc($brands_result)):
+                                                    // $brands_sql = "SELECT b.*, COUNT(p.pro_id) as product_count 
+                                                    //                FROM pro_brands b 
+                                                    //                LEFT JOIN products p ON b.id = p.brand_name AND p.status = 1
+                                                    //                WHERE b.status = 1 
+                                                    //                GROUP BY b.id 
+                                                    //                ORDER BY b.brand_name 
+                                                    //                LIMIT 6";
+                                                    // $brands_result = mysqli_query($conn, $brands_sql);
+                                                    // while($brand = mysqli_fetch_assoc($brands_result)):
                                                     ?>
-                                                    <li>
+                                                    <!-- <li>
                                                         <a href="<?= $site ?>brand/<?= strtolower(str_replace(' ', '-', $brand['brand_name'])) ?>/">
                                                             <?= htmlspecialchars($brand['brand_name']) ?>
                                                             <span class="badge bg-light text-dark ms-1">
                                                                 <?= $brand['product_count'] ?>
                                                             </span>
                                                         </a>
-                                                    </li>
-                                                    <?php endwhile; ?>
-                                                    <li>
+                                                    </li> -->
+                                                    <?php 
+                                                // endwhile;
+                                                 ?>
+                                                    <!-- <li>
                                                         <a href="<?= $site ?>brands/" class="text-primary">
                                                             View All Brands <i class="fa fa-arrow-right ms-1"></i>
                                                         </a>
                                                     </li>
                                                 </ul>
-                                            </li>
+                                            </li> -->
                                             
                                             <!-- Special Offers Column -->
                                             <li>

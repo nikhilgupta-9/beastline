@@ -4887,7 +4887,7 @@ input:-ms-input-placeholder, textarea:-ms-input-placeholder {
   cursor: pointer;
   font-size: 18px;
   position: absolute;
-  right: 21px;
+  right: 5px;
   top: 50%;
   transform: translatey(-50%);
 }

@@ -1,3 +1,6 @@
+<?php
+include_once "config/connect.php";
+?>
 <!-- JS
 ============================================ -->
 <!--jquery min js-->
@@ -67,133 +70,7 @@ $(document).ready(function() {
     updateCartCount();
     
     // Add to cart with variant handling
-    $(document).on('click', '.add-to-cart-btn:not([data-skip-variant])', function(e) {
-        e.preventDefault();
-        
-        var button = $(this);
-        var productId = button.data('product-id');
-        var productSlug = button.data('product-slug') || '';
-        var hasVariants = button.data('has-variants') || 0;
-        var isProductPage = button.data('product-page') || false;
-        
-        // If product has variants and we're not on product details page
-        if (hasVariants == 1 && !isProductPage) {
-            // Redirect to product page for variant selection
-            if(productSlug) {
-                window.location.href = '<?= $site ?>product-details/' + productSlug;
-            } else {
-                // Fallback - get slug from page
-                $.ajax({
-                    url: '<?= $site ?>ajax/get-product-slug.php',
-                    method: 'GET',
-                    data: { product_id: productId },
-                    success: function(response) {
-                        if(response.slug) {
-                            window.location.href = '<?= $site ?>product-details/' + response.slug;
-                        } else {
-                            showNotification('Product not found', 'error');
-                        }
-                    }
-                });
-            }
-            return;
-        }
-        
-        // Check if we're on product page with variant selection
-        if(isProductPage && hasVariants == 1) {
-            // Get selected variants from product page
-            var selectedColor = $('input[name="color"]:checked').val();
-            var selectedSize = $('input[name="size"]:checked').val();
-            var selectedVariant = $('select[name="variant"]').val();
-            
-            // Validate variant selection
-            if(!selectedColor && !selectedSize && !selectedVariant) {
-                showNotification('Please select a variant (color/size) before adding to cart.', 'error');
-                return;
-            }
-            
-            // Add variant data to AJAX request
-            var variantData = {};
-            if(selectedColor) variantData.color = selectedColor;
-            if(selectedSize) variantData.size = selectedSize;
-            if(selectedVariant) variantData.variant = selectedVariant;
-        }
-        
-        // Get quantity
-        var quantity = button.data('quantity') || 1;
-        if($('#quantityInput').length) {
-            quantity = parseInt($('#quantityInput').val()) || 1;
-        }
-        
-        // Prepare AJAX data
-        var ajaxData = {
-            product_id: productId,
-            quantity: quantity,
-            action: 'add_to_cart'
-        };
-        
-        // Add variant data if exists
-        if(typeof variantData !== 'undefined') {
-            ajaxData.variants = variantData;
-        }
-        
-        // Add to cart via AJAX
-        $.ajax({
-            url: '<?= $site ?>ajax/add-to-cart.php',
-            method: 'POST',
-            data: ajaxData,
-            beforeSend: function() {
-                button.html('<span class="spinner-border spinner-border-sm"></span> Adding...');
-                button.prop('disabled', true);
-            },
-            success: function(response) {
-                if (response.success) {
-                    button.html('<i class="fa fa-check"></i> Added');
-                    
-                    // Update cart count
-                    if(response.cart_count !== undefined) {
-                        $('.item_count').text(response.cart_count);
-                    } else {
-                        updateCartCount();
-                    }
-                    
-                    // Show success notification
-                    showNotification(response.message || 'Product added to cart!', 'success');
-                    
-                    // Update mini cart if exists
-                    if(typeof updateMiniCart === 'function') {
-                        updateMiniCart();
-                    }
-                    
-                    // Revert button after delay
-                    setTimeout(function() {
-                        button.html('Add to cart');
-                        button.prop('disabled', false);
-                    }, 1500);
-                } else {
-                    // Handle specific error cases
-                    if(response.message.includes('variant') || response.message.includes('select')) {
-                        // Redirect to product page for variant selection
-                        if(productSlug) {
-                            window.location.href = '<?= $site ?>product-details/' + productSlug;
-                        } else {
-                            showNotification(response.message, 'error');
-                        }
-                    } else {
-                        showNotification(response.message || 'Error adding to cart', 'error');
-                    }
-                    button.html('Add to cart');
-                    button.prop('disabled', false);
-                }
-            },
-            error: function(xhr, status, error) {
-                showNotification('Error adding to cart. Please try again.', 'error');
-                button.html('Add to cart');
-                button.prop('disabled', false);
-                console.error('Add to cart error:', error);
-            }
-        });
-    });
+    
     
     // Wishlist functionality
     $(document).on('click', '.add-to-wishlist', function(e) {
