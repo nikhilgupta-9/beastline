@@ -157,9 +157,9 @@ $contact = contact_us();
                             <h4>Contact Us</h4>
                             <p>If you have any questions about this Privacy Policy, please contact us:</p>
                             <ul>
-                                <li>Email: <?= htmlspecialchars($contact['email'] ?? 'contact@beastline.com') ?></li>
-                                <li>Phone: <?= htmlspecialchars($contact['phone'] ?? '') ?></li>
-                                <li>Address: <?= htmlspecialchars($contact['address'] ?? '') ?></li>
+                                <li>Email: <?php echo htmlspecialchars($setting->get('business_email')); ?></li>
+                                <li>Phone: <?php echo htmlspecialchars($setting->get('support_phone')); ?></li>
+                                <li>Address: <?php echo htmlspecialchars($setting->get('business_address')); ?></li>
                             </ul>
                         </div>
                     </div>

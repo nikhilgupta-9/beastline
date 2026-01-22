@@ -1,13 +1,11 @@
-<?php include('auth_check.php'); ?>
-<?php
-include "db-conn.php";
+<?php 
+require_once __DIR__ . '/config/db-conn.php';
+require_once __DIR__ . '/auth/admin-auth.php';
+require_once __DIR__ . '/models/setting.php';
 
-// Check if current user has permission to create admins
-// if ($_SESSION['role'] !== 'super_admin') {
-//     $_SESSION['error'] = "You don't have permission to create admin users!";
-//     header("Location: dashboard.php");
-//     exit();
-// }
+// Initialize
+$setting = new Setting($conn);
+
 
 if (isset($_POST['createLogin'])) {
     // Get and sanitize input
@@ -98,8 +96,8 @@ $conn->close();
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <title>Create Admin User | Admin Panel</title>
-    <link rel="icon" href="assets/img/logo.png" type="image/png">
+    <title>Create Admin User | Beastline</title>
+    <link rel="icon" href="<?php echo htmlspecialchars($setting->get('favicon', 'assets/img/logo.png')); ?>" type="image/png">
 
     <?php include "links.php"; ?>
     
@@ -158,13 +156,13 @@ $conn->close();
 
 <body class="crm_body_bg">
 
-    <?php include "header.php"; ?>
+    <?php include "includes/header.php"; ?>
     
     <section class="main_content dashboard_part large_header_bg">
         <div class="container-fluid g-0">
             <div class="row">
                 <div class="col-lg-12 p-0">
-                    <?php include "top_nav.php"; ?>
+                    <?php include "includes/top_nav.php"; ?>
                 </div>
             </div>
         </div>
@@ -370,7 +368,7 @@ $conn->close();
             </div>
         </div>
 
-        <?php include "footer.php"; ?>
+        <?php include "includes/footer.php"; ?>
     </section>
 
     <script>

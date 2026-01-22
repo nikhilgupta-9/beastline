@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/config/db-conn.php';
 require_once __DIR__ . '/auth/admin-auth.php';
-require_once __DIR__ . '/models/Setting.php';
+require_once __DIR__ . '/models/setting.php';
 
 // Initialize
 $setting = new Setting($conn);
@@ -171,32 +171,78 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update-product'])) {
         // Handle product images
         $upload_dir = 'assets/img/uploads/';
 
-        // Handle main product image in product_images table
-        mysqli_query($conn, "DELETE FROM product_images WHERE product_id = $pro_id AND is_main = 1");
-        if (!empty($pro_img)) {
-            $main_img_sql = "INSERT INTO product_images (product_id, image_url, is_main, display_order) 
-                            VALUES ($pro_id, '$pro_img', 1, 0)";
-            mysqli_query($conn, $main_img_sql);
+        // Handle main image
+        if (!empty($_FILES['main_image']['name'])) {
+            $file_name = 'product-' . time() . '-' . preg_replace('/[^a-zA-Z0-9._-]/', '', $_FILES['main_image']['name']);
+            $target_path = $upload_dir . $file_name;
+
+            if (move_uploaded_file($_FILES['main_image']['tmp_name'], $target_path)) {
+                // Delete old main image if exists
+                if (!empty($product['pro_img']) && file_exists($upload_dir . $product['pro_img'])) {
+                    unlink($upload_dir . $product['pro_img']);
+                }
+
+                // Update main image in products table
+                $pro_img = $file_name;
+                mysqli_query($conn, "UPDATE products SET pro_img = '$pro_img' WHERE pro_id = $pro_id");
+
+                // Update or insert in product_images table
+                $check_main_img_sql = "SELECT id FROM product_images WHERE product_id = $pro_id AND is_main = 1";
+                $check_result = mysqli_query($conn, $check_main_img_sql);
+
+                if (mysqli_num_rows($check_result) > 0) {
+                    mysqli_query($conn, "UPDATE product_images SET image_url = '$pro_img' WHERE product_id = $pro_id AND is_main = 1");
+                } else {
+                    mysqli_query($conn, "INSERT INTO product_images (product_id, image_url, is_main, display_order) 
+                                VALUES ($pro_id, '$pro_img', 1, 0)");
+                }
+            }
         }
 
         // Handle additional images
-        $additional_images = [];
-        if (isset($_FILES['additional_images']) && count($_FILES['additional_images']['name']) > 0) {
-            $display_order = 1;
+        if (!empty($_FILES['additional_images']['name'][0])) {
+            // Get existing additional images to preserve them
+            $existing_images = [];
+            $existing_img_query = "SELECT id, image_url, display_order FROM product_images 
+                          WHERE product_id = $pro_id AND is_main = 0 
+                          ORDER BY display_order";
+            $existing_img_result = mysqli_query($conn, $existing_img_query);
+            while ($img = mysqli_fetch_assoc($existing_img_result)) {
+                $existing_images[] = $img;
+            }
+
+            $display_order = count($existing_images) + 1;
+
             foreach ($_FILES['additional_images']['name'] as $key => $name) {
                 if ($_FILES['additional_images']['error'][$key] === 0) {
-                    $file_name = 'product-' . time() . '-' . $key . '-' . $name;
+                    $file_name = 'product-' . time() . '-' . $key . '-' . preg_replace('/[^a-zA-Z0-9._-]/', '', $name);
                     $target_path = $upload_dir . $file_name;
 
                     if (move_uploaded_file($_FILES['additional_images']['tmp_name'][$key], $target_path)) {
-                        $additional_images[] = $file_name;
-                        $img_sql = "INSERT INTO product_images (product_id, image_url, is_main, display_order) 
-                                   VALUES ($pro_id, '$file_name', 0, $display_order)";
-                        mysqli_query($conn, $img_sql);
+                        $insert_img_sql = "INSERT INTO product_images (product_id, image_url, is_main, display_order) 
+                                  VALUES ($pro_id, '$file_name', 0, $display_order)";
+                        mysqli_query($conn, $insert_img_sql);
                         $display_order++;
                     }
                 }
             }
+        }
+
+        // Handle image deletion (if you have delete buttons in UI)
+        if (isset($_POST['delete_images']) && !empty($_POST['delete_images'])) {
+            $delete_ids = implode(',', array_map('intval', $_POST['delete_images']));
+
+            // Get image URLs before deleting
+            $delete_query = "SELECT image_url FROM product_images WHERE id IN ($delete_ids)";
+            $delete_result = mysqli_query($conn, $delete_query);
+            while ($img = mysqli_fetch_assoc($delete_result)) {
+                if (file_exists($upload_dir . $img['image_url'])) {
+                    unlink($upload_dir . $img['image_url']);
+                }
+            }
+
+            // Delete from database
+            mysqli_query($conn, "DELETE FROM product_images WHERE id IN ($delete_ids)");
         }
 
         // Commit transaction
@@ -228,25 +274,77 @@ if ($result && mysqli_num_rows($result) > 0) {
     die("Product not found.");
 }
 
-// Fetch product attributes
-$attributes_sql = "SELECT * FROM product_attributes WHERE product_id = $product_id ORDER BY display_order";
-$attributes_result = mysqli_query($conn, $attributes_sql);
-$attributes = [];
-while ($attr = mysqli_fetch_assoc($attributes_result)) {
-    $attributes[] = [
-        'name' => $attr['attribute_name'],
-        'value' => $attr['attribute_value']
-    ];
+// Handle product attributes
+if (isset($_POST['attributes'])) {
+    $attributes = json_decode($_POST['attributes'], true);
+
+    // Get existing attribute IDs
+    $existing_attr_ids = [];
+    $existing_attrs_query = "SELECT id FROM product_attributes WHERE product_id = $pro_id";
+    $existing_attrs_result = mysqli_query($conn, $existing_attrs_query);
+    while ($row = mysqli_fetch_assoc($existing_attrs_result)) {
+        $existing_attr_ids[] = $row['id'];
+    }
+
+    $display_order = 1;
+    foreach ($attributes as $attr) {
+        $attr_name = mysqli_real_escape_string($conn, $attr['name']);
+        $attr_value = mysqli_real_escape_string($conn, $attr['value']);
+
+        // Check if attribute exists
+        $check_attr_sql = "SELECT id FROM product_attributes 
+                          WHERE product_id = $pro_id 
+                          AND attribute_name = '$attr_name' 
+                          LIMIT 1";
+        $check_result = mysqli_query($conn, $check_attr_sql);
+
+        if (mysqli_num_rows($check_result) > 0) {
+            // Update existing attribute
+            $existing_attr = mysqli_fetch_assoc($check_result);
+            $attr_id = $existing_attr['id'];
+
+            // Remove from delete list
+            if (($key = array_search($attr_id, $existing_attr_ids)) !== false) {
+                unset($existing_attr_ids[$key]);
+            }
+
+            $update_attr_sql = "UPDATE product_attributes SET 
+                               attribute_value = '$attr_value',
+                               display_order = $display_order 
+                               WHERE id = $attr_id";
+            mysqli_query($conn, $update_attr_sql);
+        } else {
+            // Insert new attribute
+            $insert_attr_sql = "INSERT INTO product_attributes 
+                               (product_id, attribute_name, attribute_value, display_order) 
+                               VALUES ($pro_id, '$attr_name', '$attr_value', $display_order)";
+            mysqli_query($conn, $insert_attr_sql);
+        }
+
+        $display_order++;
+    }
+
+    // Delete attributes that were removed
+    if (!empty($existing_attr_ids)) {
+        $delete_ids = implode(',', $existing_attr_ids);
+        $delete_sql = "DELETE FROM product_attributes WHERE id IN ($delete_ids)";
+        mysqli_query($conn, $delete_sql);
+    }
 }
 
 // Handle product variants
-$variants = json_decode($_POST['variants_json'] ?? '[]', true);
+if (isset($_POST['variants'])) {
+    $variants = $_POST['variants'];
 
-// Delete existing variants
-mysqli_query($conn, "DELETE FROM product_variants WHERE product_id = $product_id");
+    // Get existing variant IDs to track which ones to keep
+    $existing_variant_ids = [];
+    $existing_variants_query = "SELECT id FROM product_variants WHERE product_id = $pro_id";
+    $existing_variants_result = mysqli_query($conn, $existing_variant_ids_query);
+    while ($row = mysqli_fetch_assoc($existing_variants_result)) {
+        $existing_variant_ids[] = $row['id'];
+    }
+    $existing_variant_ids = array_map('intval', $existing_variant_ids);
 
-// Insert new variants
-if (!empty($variants)) {
     foreach ($variants as $index => $variant) {
         $color = mysqli_real_escape_string($conn, $variant['color'] ?? '');
         $size = mysqli_real_escape_string($conn, $variant['size'] ?? '');
@@ -255,44 +353,100 @@ if (!empty($variants)) {
         $compare_at_price = floatval($variant['compare_at_price'] ?? 0);
         $quantity = intval($variant['quantity'] ?? 0);
 
-        // Initialize image variable
-        $variant_image = '';
+        // Check if this variant already exists
+        $check_variant_sql = "SELECT id FROM product_variants 
+                              WHERE product_id = $pro_id 
+                              AND color = '$color' 
+                              AND size = '$size' 
+                              LIMIT 1";
+        $check_result = mysqli_query($conn, $check_variant_sql);
 
-        // Handle variant image upload
-        if (
-            isset($_FILES['variant_images']) &&
-            isset($_FILES['variant_images']['name'][$index]) &&
-            $_FILES['variant_images']['error'][$index] === 0
-        ) {
+        if (mysqli_num_rows($check_result) > 0) {
+            // Update existing variant
+            $existing_variant = mysqli_fetch_assoc($check_result);
+            $variant_id = $existing_variant['id'];
 
-            $upload_dir = 'assets/img/uploads/variants/';
-            if (!is_dir($upload_dir)) {
-                mkdir($upload_dir, 0755, true);
+            // Remove this ID from the delete list
+            if (($key = array_search($variant_id, $existing_variant_ids)) !== false) {
+                unset($existing_variant_ids[$key]);
             }
 
-            $file_name = 'variant-' . $pro_id . '-' . time() . '-' . $index . '-' .
-                preg_replace('/[^a-zA-Z0-9._-]/', '', $_FILES['variant_images']['name'][$index]);
-            $target_path = $upload_dir . $file_name;
+            // Handle variant image
+            $image_field = '';
+            if (!empty($_FILES['variant_images'][$index]['name'])) {
+                $upload_dir = 'assets/img/uploads/variants/';
+                if (!is_dir($upload_dir)) {
+                    mkdir($upload_dir, 0755, true);
+                }
 
-            if (move_uploaded_file($_FILES['variant_images']['tmp_name'][$index], $target_path)) {
-                $variant_image = $file_name;
+                $file_name = 'variant-' . $pro_id . '-' . time() . '-' . $index . '-' .
+                    preg_replace('/[^a-zA-Z0-9._-]/', '', $_FILES['variant_images'][$index]['name']);
+                $target_path = $upload_dir . $file_name;
+
+                if (move_uploaded_file($_FILES['variant_images'][$index]['tmp_name'], $target_path)) {
+                    // Delete old image if exists
+                    $old_img_query = "SELECT image FROM product_variants WHERE id = $variant_id";
+                    $old_img_result = mysqli_query($conn, $old_img_query);
+                    if ($old_img = mysqli_fetch_assoc($old_img_result)) {
+                        if (!empty($old_img['image']) && file_exists($upload_dir . $old_img['image'])) {
+                            unlink($upload_dir . $old_img['image']);
+                        }
+                    }
+                    $image_field = ", image = '$file_name'";
+                }
+            } elseif (!empty($variant['existing_image'])) {
+                // Keep existing image
+                $image_field = ", image = '" . mysqli_real_escape_string($conn, $variant['existing_image']) . "'";
+            }
+
+            // Update variant
+            $update_variant_sql = "UPDATE product_variants SET 
+                                   sku = '$variant_sku',
+                                   price = $price,
+                                   compare_at_price = $compare_at_price,
+                                   quantity = $quantity
+                                   $image_field
+                                   WHERE id = $variant_id";
+
+            if (!mysqli_query($conn, $update_variant_sql)) {
+                throw new Exception("Error updating variant: " . mysqli_error($conn));
+            }
+        } else {
+            // Insert new variant
+            $variant_image = '';
+
+            // Handle image upload for new variant
+            if (!empty($_FILES['variant_images'][$index]['name'])) {
+                $upload_dir = 'assets/img/uploads/variants/';
+                if (!is_dir($upload_dir)) {
+                    mkdir($upload_dir, 0755, true);
+                }
+
+                $file_name = 'variant-' . $pro_id . '-' . time() . '-' . $index . '-' .
+                    preg_replace('/[^a-zA-Z0-9._-]/', '', $_FILES['variant_images'][$index]['name']);
+                $target_path = $upload_dir . $file_name;
+
+                if (move_uploaded_file($_FILES['variant_images'][$index]['tmp_name'], $target_path)) {
+                    $variant_image = $file_name;
+                }
+            }
+
+            $insert_variant_sql = "INSERT INTO product_variants 
+                                  (product_id, color, size, sku, price, compare_at_price, quantity, image, status) 
+                                  VALUES ($pro_id, '$color', '$size', '$variant_sku', $price, 
+                                          $compare_at_price, $quantity, '$variant_image', 1)";
+
+            if (!mysqli_query($conn, $insert_variant_sql)) {
+                throw new Exception("Error inserting variant: " . mysqli_error($conn));
             }
         }
+    }
 
-        // If no new image uploaded, check if we should keep existing image
-        if (empty($variant_image) && isset($variant['existing_image'])) {
-            $variant_image = mysqli_real_escape_string($conn, $variant['existing_image']);
-        }
-
-        // Insert variant with image
-        $variant_sql = "INSERT INTO product_variants 
-                       (product_id, color, size, sku, price, compare_at_price, quantity, image, status) 
-                       VALUES ($pro_id, '$color', '$size', '$variant_sku', $price, 
-                               $compare_at_price, $quantity, '$variant_image', 1)";
-
-        if (!mysqli_query($conn, $variant_sql)) {
-            throw new Exception("Error inserting variant: " . mysqli_error($conn));
-        }
+    // Delete variants that were removed in the UI
+    if (!empty($existing_variant_ids)) {
+        $delete_ids = implode(',', $existing_variant_ids);
+        $delete_sql = "DELETE FROM product_variants WHERE id IN ($delete_ids)";
+        mysqli_query($conn, $delete_sql);
     }
 }
 
@@ -623,7 +777,16 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
                                                     </button>
 
                                                     <div id="variantsContainer">
-                                                        <?php if (!empty($variants)): ?>
+                                                        <?php
+                                                        // Fetch existing variants
+                                                        $existing_variants_query = "SELECT * FROM product_variants WHERE product_id = $product_id";
+                                                        $existing_variants_result = mysqli_query($conn, $existing_variants_query);
+                                                        $existing_variants = [];
+                                                        while ($variant = mysqli_fetch_assoc($existing_variants_result)) {
+                                                            $existing_variants[] = $variant;
+                                                        }
+
+                                                        if (!empty($existing_variants)): ?>
                                                             <div class="table-responsive">
                                                                 <table class="table table-bordered">
                                                                     <thead>
@@ -637,7 +800,7 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
                                                                         </tr>
                                                                     </thead>
                                                                     <tbody>
-                                                                        <?php foreach ($variants as $index => $variant): ?>
+                                                                        <?php foreach ($existing_variants as $index => $variant): ?>
                                                                             <tr>
                                                                                 <td>
                                                                                     <input type="hidden" name="variants[<?= $index ?>][color]"
@@ -688,7 +851,7 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
                                                             <p class="text-muted">No variants generated yet.</p>
                                                         <?php endif; ?>
                                                     </div>
-                                                    <input type="hidden" name="variants_json" id="variantsJson" value='<?= json_encode($variants) ?>'>
+                                                    <input type="hidden" name="variants_json" id="variantsJson" value='<?= json_encode($existing_variants) ?>'>
                                                 </div>
                                             </div>
                                         </div>
@@ -915,7 +1078,6 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
             updateAttributeTags();
         }
 
-        // Generate variants
         function generateVariants() {
             const selectedColors = Array.from(document.querySelectorAll('input[name="colors[]"]:checked'))
                 .map(cb => cb.value);
@@ -927,112 +1089,197 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
                 return;
             }
 
-            const variants = [];
-            let index = 0;
+            // Get existing variants from the table
+            const existingVariants = [];
+            const variantRows = document.querySelectorAll('#variantsContainer tbody tr');
+            variantRows.forEach((row, index) => {
+                const color = row.querySelector('input[name*="[color]"]')?.value;
+                const size = row.querySelector('input[name*="[size]"]')?.value;
+                const sku = row.querySelector('input[name*="[sku]"]')?.value;
+                const price = row.querySelector('input[name*="[price]"]')?.value;
+                const quantity = row.querySelector('input[name*="[quantity]"]')?.value;
+                const existingImage = row.querySelector('input[name*="[existing_image]"]')?.value;
+
+                if (color && size) {
+                    existingVariants.push({
+                        color,
+                        size,
+                        sku,
+                        price,
+                        quantity,
+                        existing_image: existingImage
+                    });
+                }
+            });
+
+            // Create new variants array
+            const newVariants = [];
+            let variantIndex = existingVariants.length;
 
             selectedColors.forEach(color => {
                 selectedSizes.forEach(size => {
-                    // Generate SKU based on product SKU, color and size
-                    const baseSku = document.querySelector('input[name="sku"]').value;
-                    const variantSku = `${baseSku}-${color.substring(0, 3).toUpperCase()}-${size.toUpperCase()}`;
+                    // Check if this variant already exists
+                    const existingVariant = existingVariants.find(v =>
+                        v.color === color && v.size === size
+                    );
 
-                    variants.push({
-                        id: index,
-                        color: color,
-                        size: size,
-                        sku: variantSku,
-                        price: document.querySelector('input[name="selling_price"]').value || 0,
-                        compare_at_price: document.querySelector('input[name="mrp"]').value || 0,
-                        quantity: document.querySelector('input[name="qty"]').value || 0,
-                        existing_image: '' // For existing images on edit
-                    });
+                    if (existingVariant) {
+                        // Keep existing variant
+                        newVariants.push(existingVariant);
+                    } else {
+                        // Create new variant
+                        const baseSku = document.querySelector('input[name="sku"]').value;
+                        const variantSku = `${baseSku}-${color.substring(0, 3).toUpperCase()}-${size.toUpperCase()}`;
 
-                    index++;
+                        newVariants.push({
+                            color: color,
+                            size: size,
+                            sku: variantSku,
+                            price: document.querySelector('input[name="selling_price"]').value || 0,
+                            compare_at_price: document.querySelector('input[name="mrp"]').value || 0,
+                            quantity: document.querySelector('input[name="qty"]').value || 0,
+                            existing_image: ''
+                        });
+                    }
                 });
             });
 
             // Update variants JSON
-            document.getElementById('variantsJson').value = JSON.stringify(variants);
+            document.getElementById('variantsJson').value = JSON.stringify(newVariants);
 
             // Generate HTML table
             let html = `
-        <div class="table-responsive">
-            <table class="table table-bordered">
-                <thead>
-                    <tr>
-                        <th>Color</th>
-                        <th>Size</th>
-                        <th>SKU</th>
-                        <th>Price</th>
-                        <th>Quantity</th>
-                        <th>Image</th>
-                    </tr>
-                </thead>
-                <tbody>`;
+            <div class="table-responsive">
+                <table class="table table-bordered">
+                    <thead>
+                        <tr>
+                            <th>Color</th>
+                            <th>Size</th>
+                            <th>SKU</th>
+                            <th>Price</th>
+                            <th>Quantity</th>
+                            <th>Image</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
 
-            variants.forEach((variant, idx) => {
-                html += `
-            <tr>
-                <td>
-                    <input type="hidden" name="variants[${idx}][color]" value="${variant.color}">
-                    ${variant.color}
-                </td>
-                <td>
-                    <input type="hidden" name="variants[${idx}][size]" value="${variant.size}">
-                    ${variant.size}
-                </td>
-                <td>
-                    <input type="text" class="form-control form-control-sm" 
-                           name="variants[${idx}][sku]" value="${variant.sku}">
-                </td>
-                <td>
-                    <input type="number" class="form-control form-control-sm" 
-                           name="variants[${idx}][price]" value="${variant.price}" step="0.01">
-                </td>
-                <td>
-                    <input type="number" class="form-control form-control-sm" 
-                           name="variants[${idx}][quantity]" value="${variant.quantity}" min="0">
-                </td>
-                <td>
-                    <input type="file" class="form-control form-control-sm" 
-                           name="variant_images[${idx}]" accept="image/*">
-                </td>
-            </tr>`;
-            });
+                    newVariants.forEach((variant, idx) => {
+                        html += `
+                <tr>
+                    <td>
+                        <input type="hidden" name="variants[${idx}][color]" value="${variant.color}">
+                        ${variant.color}
+                    </td>
+                    <td>
+                        <input type="hidden" name="variants[${idx}][size]" value="${variant.size}">
+                        ${variant.size}
+                    </td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm" 
+                            name="variants[${idx}][sku]" value="${variant.sku}">
+                    </td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm" 
+                            name="variants[${idx}][price]" value="${variant.price}" step="0.01">
+                    </td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm" 
+                            name="variants[${idx}][quantity]" value="${variant.quantity}" min="0">
+                    </td>
+                    <td>
+                        ${variant.existing_image ? `
+                        <div class="mb-1">
+                            <img src="assets/img/uploads/variants/${variant.existing_image}"
+                                style="width: 50px; height: 50px; object-fit: cover;"
+                                class="img-thumbnail">
+                            <input type="hidden"
+                                name="variants[${idx}][existing_image]"
+                                value="${variant.existing_image}">
+                            <small class="d-block">Current image</small>
+                        </div>
+                        ` : ''}
+                        <input type="file" class="form-control form-control-sm" 
+                            name="variant_images[${idx}]" accept="image/*">
+                    </td>
+                </tr>`;
+                    });
 
-            html += `</tbody></table></div>`;
+                    html += `</tbody></table></div>`;
 
             document.getElementById('variantsContainer').innerHTML = html;
         }
 
         // Form validation
         document.getElementById('productForm').addEventListener('submit', function(e) {
-            const productName = document.querySelector('input[name="pro_name"]').value.trim();
-            const sku = document.querySelector('input[name="sku"]').value.trim();
-            const sellingPrice = parseFloat(document.querySelector('input[name="selling_price"]').value);
-            const mrp = parseFloat(document.querySelector('input[name="mrp"]').value);
+    // Collect all attributes
+    const attributes = [];
+    document.querySelectorAll('#attributeTags .badge').forEach(tag => {
+        const text = tag.textContent.trim();
+        const parts = text.split(':');
+        if (parts.length === 2) {
+            attributes.push({
+                name: parts[0].trim(),
+                value: parts[1].trim()
+            });
+        }
+    });
+    
+    // Set attributes JSON
+    document.getElementById('attributesJson').value = JSON.stringify(attributes);
+    
+    // Collect all variants from table
+    const variants = [];
+    const variantRows = document.querySelectorAll('#variantsContainer tbody tr');
+    variantRows.forEach((row, index) => {
+        const color = row.querySelector('input[name*="[color]"]')?.value;
+        const size = row.querySelector('input[name*="[size]"]')?.value;
+        const sku = row.querySelector('input[name*="[sku]"]')?.value;
+        const price = row.querySelector('input[name*="[price]"]')?.value;
+        const quantity = row.querySelector('input[name*="[quantity]"]')?.value;
+        const existingImage = row.querySelector('input[name*="[existing_image]"]')?.value;
+        
+        if (color && size) {
+            variants.push({
+                color,
+                size,
+                sku,
+                price,
+                quantity,
+                existing_image: existingImage
+            });
+        }
+    });
+    
+    // Set variants JSON
+    document.getElementById('variantsJson').value = JSON.stringify(variants);
+    
+    // Continue with validation
+    const productName = document.querySelector('input[name="pro_name"]').value.trim();
+    const skuField = document.querySelector('input[name="sku"]').value.trim();
+    const sellingPrice = parseFloat(document.querySelector('input[name="selling_price"]').value);
+    const mrp = parseFloat(document.querySelector('input[name="mrp"]').value);
 
-            if (!productName) {
-                alert('Product name is required');
-                e.preventDefault();
-                return false;
-            }
+    if (!productName) {
+        alert('Product name is required');
+        e.preventDefault();
+        return false;
+    }
 
-            if (!sku) {
-                alert('SKU is required');
-                e.preventDefault();
-                return false;
-            }
+    if (!skuField) {
+        alert('SKU is required');
+        e.preventDefault();
+        return false;
+    }
 
-            if (sellingPrice > mrp) {
-                if (!confirm('Selling price is higher than MRP. Continue anyway?')) {
-                    e.preventDefault();
-                    return false;
-                }
-            }
+    if (sellingPrice > mrp) {
+        if (!confirm('Selling price is higher than MRP. Continue anyway?')) {
+            e.preventDefault();
+            return false;
+        }
+    }
 
-            return true;
-        });
+    return true;
+});
     </script>
 </body>
 

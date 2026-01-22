@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/config/db-conn.php';
 require_once __DIR__ . '/auth/admin-auth.php';
-require_once __DIR__ . '/models/Setting.php';
+require_once __DIR__ . '/models/setting.php';
 
 // Initialize
 $setting = new Setting($conn);
@@ -10,7 +10,7 @@ $setting = new Setting($conn);
 $stats = [];
 $stats['total_users'] = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as total FROM `users`"))['total'];
 $stats['total_visitors'] = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(DISTINCT session_id) as total FROM `visitor_tracking`"))['total'];
-$stats['active_today'] = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(DISTINCT user_id) as total FROM `visitor_tracking` WHERE DATE(created_at) = CURDATE() AND user_id IS NOT NULL"))['total'];
+$stats['active_today'] = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(DISTINCT user_id) as total FROM `visitor_tracking` WHERE DATE(last_visit) = CURDATE() AND user_id IS NOT NULL"))['total'];
 $stats['total_orders'] = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as total FROM `orders`"))['total'];
 
 // Handle filters
@@ -19,7 +19,7 @@ $search = $_GET['search'] ?? '';
 $date_range = $_GET['date_range'] ?? 'all'; // today, week, month, all
 
 // Build query based on filters
-$where_conditions = [];
+$where_conditions = [];c
 $params = [];
 $types = "";
 

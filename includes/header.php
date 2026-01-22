@@ -42,8 +42,12 @@ $is_logged_in = isset($_SESSION['user_id']);
                             <li class="menu-item-has-children active">
                                 <a href="<?= $site ?>">Home</a>
                             </li>
+
+                            <li class="menu-item-has-children active">
+                                <a href="<?= $site ?>">All Categories</a>
+                            </li>
                             
-                            <li class="menu-item-has-children">
+                            <!-- <li class="menu-item-has-children">
                                 <a href="<?= $site ?>shop/">Shop</a>
                                 <?php if (!empty($main_categories)): ?>
                                 <ul class="sub-menu">
@@ -80,7 +84,7 @@ $is_logged_in = isset($_SESSION['user_id']);
                                     </li>
                                 </ul>
                                 <?php endif; ?>
-                            </li>
+                            </li> -->
                             
                             <li class="menu-item-has-children">
                                 <a href="<?= $site ?>blog/">Blog</a>
@@ -153,55 +157,56 @@ $is_logged_in = isset($_SESSION['user_id']);
                         <nav>
                             <ul>
                                 <li><a href="<?= $site ?>">Home</a></li>
+                                <li><a href="<?= $site ?>">All Products</a></li>
                                 
-                                <li class="mega_items">
+                                <!-- <li class="mega_items">
                                     <a href="<?= $site ?>shop/">Shop <i class="fa fa-angle-down"></i></a>
                                     <div class="mega_menu">
-                                        <ul class="mega_menu_inner">
+                                        <ul class="mega_menu_inner"> -->
                                             <!-- Categories Column -->
-                                            <li>
+                                            <!-- <li>
                                                 <a href="#" class="fw-bold">Categories</a>
-                                                <ul>
+                                                <ul> -->
                                                     <?php 
                                                     // Show first 6 main categories
-                                                    $counter = 0;
-                                                    foreach($main_categories as $category): 
-                                                        if ($counter >= 6) break;
+                                                    // $counter = 0;
+                                                    // foreach($main_categories as $category): 
+                                                    //     if ($counter >= 6) break;
                                                     ?>
-                                                    <li>
+                                                    <!-- <li>
                                                         <a href="<?= $site ?>shop/<?= $category['slug_url'] ?>/">
                                                             <?= htmlspecialchars($category['categories']) ?> 
                                                             <span class="badge bg-light text-dark ms-1">
                                                                 <?= $category['product_count'] ?>
                                                             </span>
                                                         </a>
-                                                    </li>
+                                                    </li> -->
                                                     <?php 
-                                                        $counter++;
-                                                    endforeach; 
+                                                    //     $counter++;
+                                                    // endforeach; 
                                                     ?>
-                                                    <?php if (count($main_categories) > 6): ?>
+                                                    <!-- <?php if (count($main_categories) > 6): ?>
                                                     <li>
                                                         <a  href="<?= $site ?>shop/categories/" class="text-primary fw-bold">
                                                             View All Categories <i class="fa fa-arrow-right ms-1"></i>
                                                         </a>
                                                     </li>
-                                                    <?php endif; ?>
-                                                </ul>
-                                            </li>
+                                                    <?php endif; ?> -->
+                                                <!-- </ul>
+                                            </li> -->
                                             
                                             <!-- Shop Pages Column -->
-                                            <li>
+                                            <!-- <li>
                                                 <a href="#" class="fw-bold">Shop Pages</a>
                                                 <ul>
-                                                    <li><a href="<?= $site ?>shop/">All Products</a></li>
+                                                    <li><a href="<?= $site ?>shops/">All Products</a></li>
                                                     <li><a href="<?= $site ?>new-arrivals/">New Arrivals</a></li>
                                                     <li><a href="<?= $site ?>trending/">Trending Products</a></li>
                                                     <li><a href="<?= $site ?>sale/">Sale Products</a></li>
                                                     <li><a href="<?= $site ?>best-sellers/">Best Sellers</a></li>
                                                     <li><a href="<?= $site ?>featured/">Featured Products</a></li>
                                                 </ul>
-                                            </li>
+                                            </li> -->
                                             
                                             <!-- Brands Column -->
                                             <!-- <li>
@@ -239,7 +244,7 @@ $is_logged_in = isset($_SESSION['user_id']);
                                             </li> -->
                                             
                                             <!-- Special Offers Column -->
-                                            <li>
+                                            <!-- <li>
                                                 <a href="#" class="fw-bold">Special Offers</a>
                                                 <ul>
                                                     <li><a href="<?= $site ?>deal-of-the-day/">Deal of the Day</a></li>
@@ -252,7 +257,7 @@ $is_logged_in = isset($_SESSION['user_id']);
                                             </li>
                                         </ul>
                                     </div>
-                                </li>
+                                </li> -->
                                 
                                 
                                 <li><a href="<?= $site ?>about/">About us</a></li>
@@ -270,7 +275,7 @@ $is_logged_in = isset($_SESSION['user_id']);
                                 
                                 <li><a href="<?= $site ?>contact/">Contact Us</a></li>
                                 
-                                <li>
+                                <!-- <li>
                                     <a href="#">Pages <i class="fa fa-angle-down"></i></a>
                                     <ul class="sub_menu pages">
                                         <?php if ($is_logged_in): ?>
@@ -291,7 +296,7 @@ $is_logged_in = isset($_SESSION['user_id']);
                                         <li><a href="<?= $site ?>return/">Return Policy</a></li>
                                         <li><a href="<?= $site ?>track-order/">Track Order</a></li>
                                     </ul>
-                                </li>
+                                </li> -->
                             </ul>
                         </nav>
                     </div>

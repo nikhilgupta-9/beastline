@@ -1,6 +1,9 @@
 <?php
 include_once "config/connect.php";
 include_once "util/function.php";
+include_once(__DIR__ . "/models/WebsiteSettings.php");
+
+$setting = new Setting($conn);
 
 $contact = contact_us();
 ?>
@@ -14,7 +17,7 @@ $contact = contact_us();
     <meta name="description" content="">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <!-- Favicon -->
-    <link rel="shortcut icon" type="image/x-icon" href="<?= $site ?>assets/img/favicon/favicon.ico">
+    <link rel="shortcut icon" type="image/x-icon" href="<?= $site ?>admin/<?php echo htmlspecialchars($setting->get('favicon')); ?>">
 
     <!-- CSS 
     ========================= -->
@@ -74,15 +77,7 @@ $contact = contact_us();
     <!--contact map start-->
     <div class="contact_map">
         <div class="map-area">
-            <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d16653.049831135642!2d77.11020362604857!3d28.66353677306576!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x390d0396e99a6f9b%3A0xe125214ba794b2fc!2sPunjabi%20Bagh%2C%20Delhi%2C%20India!5e0!3m2!1sen!2sus!4v1766800782883!5m2!1sen!2sus"
-                width="100%"
-                height="450"
-                style="border:0;"
-                allowfullscreen=""
-                loading="lazy"
-                referrerpolicy="no-referrer-when-downgrade">
-            </iframe>
+            <?php echo $setting->get('google_maps'); ?>
 
         </div>
     </div>
@@ -97,9 +92,9 @@ $contact = contact_us();
                         <h3>contact us</h3>
                         <p>Claritas est etiam processus dynamicus, qui sequitur mutationem consuetudium lectorum. Mirum est notare quam littera gothica, quam nunc putamus parum claram anteposuerit litterarum formas human. qui sequitur mutationem consuetudium lectorum. Mirum est notare quam</p>
                         <ul>
-                            <li><i class="fa fa-fax"></i> Address : No 40 Baria Sreet 133/2 NewYork City</li>
-                            <li><i class="fa fa-phone"></i> <a href="#">Infor@roadthemes.com</a></li>
-                            <li><i class="fa fa-envelope-o"></i><a href="tel:0(1234)567890">0(1234) 567 890</a> </li>
+                            <li><i class="fa fa-fax"></i> Address : <?php echo htmlspecialchars($setting->get('business_address')); ?></li>
+                            <li><i class="fa fa-phone"></i> <a href="mailto:<?php echo htmlspecialchars($setting->get('business_email')); ?>"><?php echo htmlspecialchars($setting->get('business_email')); ?></a></li>
+                            <li><i class="fa fa-envelope-o"></i><a href="tel:91<?php echo htmlspecialchars($setting->get('support_phone')); ?>">+91 <?php echo htmlspecialchars($setting->get('support_phone')); ?></a> </li>
                         </ul>
                     </div>
                 </div>

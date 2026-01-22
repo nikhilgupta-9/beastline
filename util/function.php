@@ -873,3 +873,18 @@ function get_products_by_category($category_id, $limit = 8) {
     
     return $products;
 }
+
+
+function getBannersByLocation($conn, $location)
+{
+    $stmt = $conn->prepare("
+        SELECT * FROM banners 
+        WHERE location = ?
+        AND status = 1
+        AND (expiry_date IS NULL OR expiry_date >= CURDATE())
+        ORDER BY display_order ASC
+    ");
+    $stmt->bind_param("s", $location);
+    $stmt->execute();
+    return $stmt->get_result();
+}

@@ -1,14 +1,10 @@
 <?php
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-include "db-conn.php";
+require_once __DIR__ . '/config/db-conn.php';
+require_once __DIR__ . '/auth/admin-auth.php';
+require_once __DIR__ . '/models/setting.php';
 
-// Check if admin is logged in
-if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
-    header("Location: auth/login.php");
-    exit();
-}
+// Initialize
+$setting = new Setting($conn);
 
 // CSRF Protection
 if (!isset($_SESSION['csrf_token'])) {
@@ -29,32 +25,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_profile'])) {
     $last_name = mysqli_real_escape_string($conn, $_POST['last_name']);
     $current_password = $_POST['current_password'];
     $new_password = $_POST['new_password'];
+    $notes = isset($_POST['notes']) ? mysqli_real_escape_string($conn, $_POST['notes']) : '';
     
     // Fetch current admin data
-    $stmt = $conn->prepare("SELECT password, failed_attempts, locked_until FROM admin_user WHERE id = ?");
+    $stmt = $conn->prepare("SELECT password FROM admin_user WHERE id = ?");
     $stmt->bind_param("i", $admin_id);
     $stmt->execute();
-    $stmt->bind_result($hashed_password, $failed_attempts, $locked_until);
+    $stmt->bind_result($hashed_password);
     $stmt->fetch();
     $stmt->close();
     
-    // Check if account is locked
-    if ($locked_until && strtotime($locked_until) > time()) {
-        $error_message = "Account locked. Try again after " . date('H:i', strtotime($locked_until));
-    } 
     // Verify current password
-    else if (password_verify($current_password, $hashed_password)) {
-        // Reset failed attempts on successful verification
-        $reset_attempts = $conn->prepare("UPDATE admin_user SET failed_attempts = 0 WHERE id = ?");
-        $reset_attempts->bind_param("i", $admin_id);
-        $reset_attempts->execute();
-        $reset_attempts->close();
-        
+    if (password_verify($current_password, $hashed_password)) {
         // Update profile information
         $update_stmt = $conn->prepare("UPDATE admin_user SET 
-                                     username = ?, email = ?, first_name = ?, last_name = ? 
+                                     username = ?, email = ?, first_name = ?, last_name = ?, notes = ?, updated_at = NOW() 
                                      WHERE id = ?");
-        $update_stmt->bind_param("ssssi", $new_username, $email, $first_name, $last_name, $admin_id);
+        $update_stmt->bind_param("sssssi", $new_username, $email, $first_name, $last_name, $notes, $admin_id);
         $update_stmt->execute();
         
         // Update password if new password provided
@@ -69,6 +56,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_profile'])) {
                 $update_pass_stmt->bind_param("si", $new_hashed_password, $admin_id);
                 $update_pass_stmt->execute();
                 $update_pass_stmt->close();
+                
+                if ($update_stmt->affected_rows > 0) {
+                    $success_message = "Profile and password updated successfully!";
+                }
+            }
+        } else {
+            if ($update_stmt->affected_rows > 0) {
+                $success_message = "Profile updated successfully!";
             }
         }
         
@@ -79,35 +74,35 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_profile'])) {
         $_SESSION['admin_email'] = $email;
         $_SESSION['admin_name'] = $first_name . ' ' . $last_name;
         
-        $success_message = "Profile updated successfully!";
     } else {
-        // Increment failed attempts
-        $failed_attempts++;
-        $update_attempts = $conn->prepare("UPDATE admin_user SET 
-                                          failed_attempts = ?,
-                                          locked_until = IF(? >= 5, DATE_ADD(NOW(), INTERVAL 30 MINUTE), NULL)
-                                          WHERE id = ?");
-        $update_attempts->bind_param("iii", $failed_attempts, $failed_attempts, $admin_id);
-        $update_attempts->execute();
-        $update_attempts->close();
-        
-        $remaining_attempts = 5 - $failed_attempts;
-        $error_message = "Current password is incorrect! " . 
-                        ($remaining_attempts > 0 ? 
-                         "$remaining_attempts attempts remaining" : 
-                         "Account locked for 30 minutes");
+        $error_message = "Current password is incorrect!";
     }
 }
 
-// Fetch current admin data for display
+// Fetch current admin data
 $admin_id = $_SESSION['admin_id'];
-$stmt = $conn->prepare("SELECT username, email, first_name, last_name, role, status, 
-                       last_login, last_login_ip, created_at 
-                       FROM admin_user WHERE id = ?");
+$stmt = $conn->prepare("SELECT 
+    username, 
+    email, 
+    first_name, 
+    last_name, 
+    role, 
+    status, 
+    last_login, 
+    created_at
+    FROM admin_user WHERE id = ?");
 $stmt->bind_param("i", $admin_id);
 $stmt->execute();
-$stmt->bind_result($username, $email, $first_name, $last_name, $role, $status, 
-                  $last_login, $last_login_ip, $created_at);
+$stmt->bind_result(
+    $username, 
+    $email, 
+    $first_name, 
+    $last_name, 
+    $role, 
+    $status, 
+    $last_login, 
+    $created_at
+);
 $stmt->fetch();
 $stmt->close();
 ?>
@@ -117,405 +112,413 @@ $stmt->close();
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <title>Admin Profile | Computer Electronics</title>
-    <link rel="icon" href="assets/img/logo.png" type="image/png">
+    <title>Admin Profile | Beastline</title>
+    <link rel="icon" href="<?php echo htmlspecialchars($setting->get('favicon', 'assets/img/logo.png')); ?>" type="image/png">
 
     <?php include "links.php"; ?>
     
     <style>
         :root {
-            --primary-color: #4361ee;
-            --secondary-color: #3f37c9;
-            --accent-color: #4cc9f0;
-            --dark-color: #1a1a2e;
-            --light-color: #f8f9fa;
-            --danger-color: #f72585;
-            --success-color: #4bb543;
+            --primary-red: #dc3545;
+            --dark-red: #c82333;
+            --light-red: #f8d7da;
+            --white: #ffffff;
+            --black: #212529;
+            --light-gray: #f8f9fa;
+            --gray: #6c757d;
+            --border-color: #dee2e6;
         }
         
+        body {
+            background-color: var(--white);
+            color: var(--black);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        /* Header */
         .profile-header {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            color: white;
-            border-radius: 12px;
-            padding: 2rem;
+            background-color: var(--white);
+            border-bottom: 3px solid var(--primary-red);
+            padding: 2rem 0;
             margin-bottom: 2rem;
-            position: relative;
-            overflow: hidden;
-            height: 205px;
         }
         
-        .profile_header_details{
-            position: relative;
-            bottom: 8rem;
-            left: 5rem;
-            color:;
-        }
-
-        .profile-header::before {
-            content: "";
-            position: absolute;
-            top: -50%;
-            right: -50%;
-            width: 100%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%);
-        }
-        
-        .profile-img {
-            width: 120px;
-            height: 120px;
+        .profile-avatar {
+            width: 100px;
+            height: 100px;
             border-radius: 50%;
-            object-fit: cover;
-            border: 4px solid white;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-            transition: all 0.3s ease;
+            background: linear-gradient(135deg, var(--primary-red), var(--dark-red));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            color: var(--white);
+            font-weight: bold;
+            border: 3px solid var(--white);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
         
-        .profile-img:hover {
-            transform: scale(1.05);
-        }
-        
-        .profile-detail-card {
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            border: none;
-            transition: all 0.3s ease;
+        /* Cards */
+        .simple-card {
+            background-color: var(--white);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
             margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
         
-        .profile-detail-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+        .card-header {
+            background-color: var(--white);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 1.25rem;
         }
         
-        .detail-item {
-            padding: 1rem;
-            border-bottom: 1px solid rgba(0,0,0,0.05);
+        .card-header h5 {
+            color: var(--black);
+            font-weight: 600;
+            margin: 0;
         }
         
-        .detail-item:last-child {
+        .card-body {
+            padding: 1.25rem;
+        }
+        
+        /* Form */
+        .form-label {
+            font-weight: 600;
+            color: var(--black);
+            margin-bottom: 0.5rem;
+        }
+        
+        .form-control {
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            padding: 0.75rem;
+            color: var(--black);
+            background-color: var(--white);
+        }
+        
+        .form-control:focus {
+            border-color: var(--primary-red);
+            box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.15);
+        }
+        
+        /* Buttons */
+        .btn-red {
+            background-color: var(--primary-red);
+            border: none;
+            color: var(--white);
+            padding: 0.75rem 2rem;
+            border-radius: 5px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn-red:hover {
+            background-color: var(--dark-red);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(220, 53, 69, 0.2);
+        }
+        
+        .btn-outline-red {
+            background-color: transparent;
+            border: 1px solid var(--primary-red);
+            color: var(--primary-red);
+            padding: 0.5rem 1.5rem;
+            border-radius: 5px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .btn-outline-red:hover {
+            background-color: var(--primary-red);
+            color: var(--white);
+        }
+        
+        /* Badges */
+        .badge-red {
+            background-color: var(--light-red);
+            color: var(--primary-red);
+            padding: 0.25rem 0.75rem;
+            border-radius: 50px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        
+        .badge-success {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 0.25rem 0.75rem;
+            border-radius: 50px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        
+        /* Info Display */
+        .info-row {
+            display: flex;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .info-row:last-child {
             border-bottom: none;
         }
         
-        .detail-label {
+        .info-label {
             font-weight: 600;
-            color: var(--dark-color);
-            margin-bottom: 0.25rem;
+            color: var(--black);
+            width: 150px;
+            min-width: 150px;
         }
         
-        .detail-value {
-            color: #555;
+        .info-value {
+            color: var(--gray);
+            flex: 1;
         }
         
-        .password-strength {
-            height: 4px;
-            background: #e9ecef;
-            margin-top: 0.5rem;
-            border-radius: 2px;
-            overflow: hidden;
+        /* Alerts */
+        .alert {
+            border-radius: 5px;
+            border: 1px solid transparent;
         }
         
-        .password-strength-bar {
-            height: 100%;
-            width: 0%;
-            background: var(--danger-color);
-            transition: all 0.3s ease;
+        .alert-success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
         }
         
+        .alert-danger {
+            background-color: var(--light-red);
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .info-row {
+                flex-direction: column;
+            }
+            
+            .info-label {
+                width: 100%;
+                margin-bottom: 0.25rem;
+            }
+            
+            .profile-avatar {
+                width: 80px;
+                height: 80px;
+                font-size: 28px;
+            }
+        }
+        
+        /* Password Toggle */
         .password-toggle {
             cursor: pointer;
-            transition: all 0.2s ease;
+            background-color: var(--white);
+            border: 1px solid var(--border-color);
+            border-left: none;
         }
         
         .password-toggle:hover {
-            color: var(--accent-color);
+            background-color: var(--light-gray);
         }
         
-        .btn-update {
-            background-color: var(--primary-color);
-            color: white;
-            border: none;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            transition: all 0.3s ease;
-            padding: 0.5rem 1.5rem;
-        }
-        
-        .btn-update:hover {
-            background-color: var(--secondary-color);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(67, 97, 238, 0.3);
-        }
-        
-        .role-badge {
-            font-size: 0.75rem;
-            padding: 0.35rem 0.75rem;
-            border-radius: 50px;
-            font-weight: 600;
-        }
-        
-        .status-badge {
-            font-size: 0.75rem;
-            padding: 0.35rem 0.75rem;
-            border-radius: 50px;
-            font-weight: 600;
-        }
-
-        .profile-container {
-            position: relative;
-            width: 150px;
-            height: 150px;
-            border-radius: 50%;
-            overflow: hidden;
-            cursor: pointer;
-        }
-        .profile-img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        #fileInput {
-            display: none;
-        }
-        .upload-overlay {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: rgba(0,0,0,0.5);
-            color: white;
-            text-align: center;
-            padding: 10px;
-            transform: translateY(100%);
-            transition: transform 0.3s;
-        }
-        .profile-container:hover .upload-overlay {
-            transform: translateY(0);
+        /* Divider */
+        .divider {
+            height: 1px;
+            background-color: var(--border-color);
+            margin: 2rem 0;
         }
     </style>
 </head>
 
 <body class="crm_body_bg">
 
-    <?php include "header.php"; ?>
+    <?php include "includes/header.php"; ?>
     
-    <section class="main_content dashboard_part large_header_bg">
+    <section class="main_content dashboard_part">
         <div class="container-fluid g-0">
             <div class="row">
                 <div class="col-lg-12 p-0">
-                    <?php include "top_nav.php"; ?>
+                    <?php include "includes/top_nav.php"; ?>
                 </div>
             </div>
         </div>
 
         <div class="main_content_iner">
-            <div class="container-fluid p-0 sm_padding_15px">
+            <div class="container-fluid p-0">
                 <div class="row justify-content-center">
                     <div class="col-12">
-                        <div class="dashboard_header mb-4">
-                            <h2>Admin Profile Management</h2>
-                            <p>Update your account information and security settings</p>
+                        <!-- Header -->
+                        <div class="profile-header text-center">
+                            <div class="profile-avatar mx-auto mb-3">
+                                <?= strtoupper(substr($first_name, 0, 1) . substr($last_name, 0, 1)) ?>
+                            </div>
+                            <h2 class="mb-2"><?= htmlspecialchars($first_name . ' ' . $last_name) ?></h2>
+                            <p class="mb-1">
+                                <span class="badge-<?= $role === 'super_admin' ? 'red' : 'success' ?> me-2">
+                                    <?= ucfirst(str_replace('_', ' ', $role)) ?>
+                                </span>
+                                <span class="badge-<?= $status === 'active' ? 'success' : 'red' ?>">
+                                    <?= ucfirst($status) ?>
+                                </span>
+                            </p>
+                            <p class="text-muted">Member since <?= date('M Y', strtotime($created_at)) ?></p>
                         </div>
                         
+                        <!-- Alerts -->
                         <?php if (isset($error_message)): ?>
-                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
                                 <i class="fas fa-exclamation-circle me-2"></i> <?= htmlspecialchars($error_message) ?>
                                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                             </div>
                         <?php endif; ?>
                         
                         <?php if (isset($success_message)): ?>
-                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
                                 <i class="fas fa-check-circle me-2"></i> <?= htmlspecialchars($success_message) ?>
                                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                             </div>
                         <?php endif; ?>
                         
                         <div class="row">
-                            <!-- Profile Header -->
-                            <div class="col-12">
-                                <div class="profile-header text-center">
-                                        <div class="profile-container" onclick="document.getElementById('fileInput').click()">
-                                            <img id="profileImage" src="assets/img/client_img.png" alt="Profile" class="profile-img">
-                                            <div class="upload-overlay">Change Photo</div>
-                                            <form action="profile_upload.php" method="post">
-                                            <input type="file" id="fileInput" name="profile_img" accept="image/*">
-                                            </form>
-                                        </div>
-                                    <!-- <form action="" method="post">
-                                    <input type="file" name="profile_img">
-                                    <img src="assets/img/client_img.png" alt="Admin" class="profile-img mb-3">
-                                    </form> -->
-                                    <div class="profile_header_details">
-                                    <h3><?= htmlspecialchars($first_name . ' ' . $last_name) ?></h3>
-                                    <p class="mb-0">
-                                        <span class="role-badge bg-<?= $role === 'super_admin' ? 'danger' : 'primary' ?> me-2">
-                                            <?= ucfirst(str_replace('_', ' ', $role)) ?>
-                                        </span>
-                                        <span class="status-badge bg-<?= $status === 'active' ? 'success' : 'warning' ?>">
-                                            <?= ucfirst($status) ?>
-                                        </span>
-                                    </p>
+                            <!-- Left Column - Basic Info -->
+                            <div class="col-lg-6 mb-4">
+                                <div class="simple-card">
+                                    <div class="card-header">
+                                        <h5><i class="fas fa-user me-2"></i>Basic Information</h5>
                                     </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Left Column - Profile Details -->
-                            <div class="col-lg-4">
-                                <div class="profile-detail-card">
                                     <div class="card-body">
-                                        <h5 class="card-title mb-4">Account Details</h5>
-                                        
-                                        <div class="detail-item">
-                                            <div class="detail-label">Username</div>
-                                            <div class="detail-value"><?= htmlspecialchars($username) ?></div>
+                                        <div class="info-row">
+                                            <div class="info-label">Username</div>
+                                            <div class="info-value"><?= htmlspecialchars($username) ?></div>
                                         </div>
-                                        
-                                        <div class="detail-item">
-                                            <div class="detail-label">Email</div>
-                                            <div class="detail-value"><?= htmlspecialchars($email) ?></div>
+                                        <div class="info-row">
+                                            <div class="info-label">Email</div>
+                                            <div class="info-value"><?= htmlspecialchars($email) ?></div>
                                         </div>
-                                        
-                                        <div class="detail-item">
-                                            <div class="detail-label">Account Created</div>
-                                            <div class="detail-value"><?= date('M j, Y', strtotime($created_at)) ?></div>
+                                        <div class="info-row">
+                                            <div class="info-label">Full Name</div>
+                                            <div class="info-value"><?= htmlspecialchars($first_name . ' ' . $last_name) ?></div>
                                         </div>
-                                        
-                                        <div class="detail-item">
-                                            <div class="detail-label">Last Login</div>
-                                            <div class="detail-value">
-                                                <?= $last_login ? date('M j, Y H:i', strtotime($last_login)) : 'Never' ?>
-                                                <?php if ($last_login_ip): ?>
-                                                    <small class="text-muted d-block">IP: <?= $last_login_ip ?></small>
-                                                <?php endif; ?>
+                                        <div class="info-row">
+                                            <div class="info-label">Role</div>
+                                            <div class="info-value">
+                                                <span class="badge-<?= $role === 'super_admin' ? 'red' : 'success' ?>">
+                                                    <?= ucfirst(str_replace('_', ' ', $role)) ?>
+                                                </span>
                                             </div>
                                         </div>
-                                        
-                                        <div class="detail-item">
-                                            <div class="detail-label">Account Status</div>
-                                            <div class="detail-value">
-                                                <span class="badge bg-<?= $status === 'active' ? 'success' : 'warning' ?>">
+                                        <div class="info-row">
+                                            <div class="info-label">Status</div>
+                                            <div class="info-value">
+                                                <span class="badge-<?= $status === 'active' ? 'success' : 'red' ?>">
                                                     <?= ucfirst($status) ?>
                                                 </span>
                                             </div>
                                         </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="profile-detail-card">
-                                    <div class="card-body">
-                                        <h5 class="card-title mb-4">Security Information</h5>
-                                        
-                                        <div class="detail-item">
-                                            <div class="detail-label">Two-Factor Authentication</div>
-                                            <div class="detail-value">
-                                                <span class="badge bg-secondary">Not Enabled</span>
-                                                <a href="#" class="btn btn-sm btn-outline-primary ms-2">Enable</a>
+                                        <div class="info-row">
+                                            <div class="info-label">Last Login</div>
+                                            <div class="info-value">
+                                                <?= $last_login ? date('M j, Y H:i', strtotime($last_login)) : 'Never' ?>
                                             </div>
                                         </div>
-                                        
-                                        <div class="detail-item">
-                                            <div class="detail-label">Login History</div>
-                                            <div class="detail-value">
-                                                <a href="login-history.php" class="btn btn-sm btn-outline-primary">View History</a>
-                                            </div>
-                                        </div>
-                                        
-                                        <div class="detail-item">
-                                            <div class="detail-label">Active Sessions</div>
-                                            <div class="detail-value">
-                                                <span class="badge bg-success">1 Active</span>
-                                                <a href="#" class="btn btn-sm btn-outline-danger ms-2">Logout Others</a>
-                                            </div>
+                                        <div class="info-row">
+                                            <div class="info-label">Account Created</div>
+                                            <div class="info-value"><?= date('M j, Y', strtotime($created_at)) ?></div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                             
                             <!-- Right Column - Update Form -->
-                            <div class="col-lg-8">
-                                <div class="card">
+                            <div class="col-lg-6 mb-4">
+                                <div class="simple-card">
+                                    <div class="card-header">
+                                        <h5><i class="fas fa-edit me-2"></i>Edit Profile</h5>
+                                    </div>
                                     <div class="card-body">
-                                        <h5 class="card-title mb-4">Update Profile Information</h5>
-                                        
                                         <form method="post" action="">
                                             <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                                             
-                                            <div class="row">
-                                                <div class="col-md-6 mb-3">
-                                                    <label for="first_name" class="form-label">First Name</label>
-                                                    <input type="text" class="form-control" id="first_name" name="first_name" 
-                                                        value="<?= htmlspecialchars($first_name) ?>" required>
+                                            <div class="row mb-3">
+                                                <div class="col-md-6">
+                                                    <label class="form-label">First Name</label>
+                                                    <input type="text" class="form-control" 
+                                                        name="first_name" value="<?= htmlspecialchars($first_name) ?>" required>
                                                 </div>
-                                                
-                                                <div class="col-md-6 mb-3">
-                                                    <label for="last_name" class="form-label">Last Name</label>
-                                                    <input type="text" class="form-control" id="last_name" name="last_name" 
-                                                        value="<?= htmlspecialchars($last_name) ?>" required>
+                                                <div class="col-md-6">
+                                                    <label class="form-label">Last Name</label>
+                                                    <input type="text" class="form-control" 
+                                                        name="last_name" value="<?= htmlspecialchars($last_name) ?>" required>
                                                 </div>
                                             </div>
                                             
                                             <div class="mb-3">
-                                                <label for="username" class="form-label">Username</label>
-                                                <input type="text" class="form-control" id="username" name="username" 
-                                                    value="<?= htmlspecialchars($username) ?>" required>
+                                                <label class="form-label">Username</label>
+                                                <input type="text" class="form-control" 
+                                                    name="username" value="<?= htmlspecialchars($username) ?>" required>
                                             </div>
                                             
                                             <div class="mb-3">
-                                                <label for="email" class="form-label">Email Address</label>
-                                                <input type="email" class="form-control" id="email" name="email" 
-                                                    value="<?= htmlspecialchars($email) ?>" required>
+                                                <label class="form-label">Email Address</label>
+                                                <input type="email" class="form-control" 
+                                                    name="email" value="<?= htmlspecialchars($email) ?>" required>
                                             </div>
                                             
-                                            <hr class="my-4">
+                                            <div class="mb-3">
+                                                <label class="form-label">Notes (Optional)</label>
+                                                <textarea class="form-control" 
+                                                    name="notes" rows="2" placeholder="Add any notes about your account"><?= htmlspecialchars($notes ?? '') ?></textarea>
+                                            </div>
                                             
-                                            <h6 class="mb-3">Password Update</h6>
+                                            <div class="divider"></div>
+                                            
+                                            <h6 class="mb-3">Change Password (Optional)</h6>
                                             
                                             <div class="mb-3">
-                                                <label for="current_password" class="form-label">Current Password</label>
+                                                <label class="form-label">Current Password</label>
                                                 <div class="input-group">
-                                                    <input type="password" class="form-control" id="current_password" 
-                                                        name="current_password" >
-                                                    <span class="input-group-text password-toggle" 
-                                                        onclick="togglePassword('current_password')">
+                                                    <input type="password" class="form-control" 
+                                                        id="current_password" name="current_password">
+                                                    <span class="input-group-text password-toggle" onclick="togglePassword('current_password')">
                                                         <i class="fas fa-eye"></i>
                                                     </span>
                                                 </div>
-                                                <small class="text-muted">Required to confirm any changes</small>
+                                                <small class="text-muted">Required to save changes</small>
                                             </div>
                                             
                                             <div class="mb-3">
-                                                <label for="new_password" class="form-label">New Password</label>
+                                                <label class="form-label">New Password</label>
                                                 <div class="input-group">
-                                                    <input type="password" class="form-control" id="new_password" 
-                                                        name="new_password" oninput="checkPasswordStrength(this.value)">
-                                                    <span class="input-group-text password-toggle" 
-                                                        onclick="togglePassword('new_password')">
+                                                    <input type="password" class="form-control" 
+                                                        id="new_password" name="new_password">
+                                                    <span class="input-group-text password-toggle" onclick="togglePassword('new_password')">
                                                         <i class="fas fa-eye"></i>
                                                     </span>
                                                 </div>
-                                                <div class="password-strength mt-2">
-                                                    <div class="password-strength-bar" id="password-strength-bar"></div>
-                                                </div>
-                                                <small class="text-muted">Leave blank to keep current password. Minimum 8 characters.</small>
+                                                <small class="text-muted">Leave blank to keep current password</small>
                                             </div>
                                             
-                                            <div class="mb-3">
-                                                <label for="confirm_password" class="form-label">Confirm New Password</label>
+                                            <div class="mb-4">
+                                                <label class="form-label">Confirm New Password</label>
                                                 <div class="input-group">
-                                                    <input type="password" class="form-control" id="confirm_password" 
-                                                        name="confirm_password">
-                                                    <span class="input-group-text password-toggle" 
-                                                        onclick="togglePassword('confirm_password')">
+                                                    <input type="password" class="form-control" 
+                                                        id="confirm_password" name="confirm_password">
+                                                    <span class="input-group-text password-toggle" onclick="togglePassword('confirm_password')">
                                                         <i class="fas fa-eye"></i>
                                                     </span>
                                                 </div>
-                                                <small id="password-match-feedback" class="text-muted"></small>
                                             </div>
                                             
-                                            <div class="d-flex justify-content-end mt-4">
-                                                <button type="submit" name="update_profile" class="btn btn-update">
-                                                    <i class="fas fa-save me-2"></i> Update Profile
+                                            <div class="d-flex justify-content-between">
+                                                <button type="button" class="btn btn-outline-red" onclick="window.location.reload()">
+                                                    <i class="fas fa-times me-2"></i>Cancel
+                                                </button>
+                                                <button type="submit" name="update_profile" class="btn btn-red">
+                                                    <i class="fas fa-save me-2"></i>Save Changes
                                                 </button>
                                             </div>
                                         </form>
@@ -528,7 +531,7 @@ $stmt->close();
             </div>
         </div>
 
-        <?php include "footer.php"; ?>
+        <?php include "includes/footer.php"; ?>
     </section>
 
     <script>
@@ -548,75 +551,62 @@ $stmt->close();
             }
         }
         
-        // Check password strength
-        function checkPasswordStrength(password) {
-            const strengthBar = document.getElementById('password-strength-bar');
-            let strength = 0;
-            
-            if (password.length >= 8) strength += 1;
-            if (password.match(/([a-z].*[A-Z])|([A-Z].*[a-z])/)) strength += 1;
-            if (password.match(/([0-9])/)) strength += 1;
-            if (password.match(/([!,%,&,@,#,$,^,*,?,_,~])/)) strength += 1;
-            
-            switch(strength) {
-                case 0:
-                    strengthBar.style.width = '0%';
-                    strengthBar.style.backgroundColor = 'var(--danger-color)';
-                    break;
-                case 1:
-                    strengthBar.style.width = '25%';
-                    strengthBar.style.backgroundColor = 'var(--danger-color)';
-                    break;
-                case 2:
-                    strengthBar.style.width = '50%';
-                    strengthBar.style.backgroundColor = '#ffcc00';
-                    break;
-                case 3:
-                    strengthBar.style.width = '75%';
-                    strengthBar.style.backgroundColor = '#66cc33';
-                    break;
-                case 4:
-                    strengthBar.style.width = '100%';
-                    strengthBar.style.backgroundColor = 'var(--success-color)';
-                    break;
-            }
-        }
-        
-        // Check password match
-        document.getElementById('new_password').addEventListener('input', function() {
-            const confirmPassword = document.getElementById('confirm_password');
-            const feedback = document.getElementById('password-match-feedback');
-            
-            if (confirmPassword.value.length > 0) {
-                if (this.value === confirmPassword.value) {
-                    feedback.textContent = "Passwords match!";
-                    feedback.style.color = "var(--success-color)";
-                } else {
-                    feedback.textContent = "Passwords don't match!";
-                    feedback.style.color = "var(--danger-color)";
-                }
-            }
-        });
-        
-        document.getElementById('confirm_password').addEventListener('input', function() {
+        // Form validation
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.querySelector('form');
             const newPassword = document.getElementById('new_password');
-            const feedback = document.getElementById('password-match-feedback');
+            const confirmPassword = document.getElementById('confirm_password');
             
-            if (this.value.length > 0) {
-                if (this.value === newPassword.value) {
-                    feedback.textContent = "Passwords match!";
-                    feedback.style.color = "var(--success-color)";
-                } else {
-                    feedback.textContent = "Passwords don't match!";
-                    feedback.style.color = "var(--danger-color)";
+            // Check password match
+            function checkPasswordMatch() {
+                if (newPassword.value && confirmPassword.value) {
+                    if (newPassword.value !== confirmPassword.value) {
+                        alert("New passwords don't match!");
+                        return false;
+                    }
+                    if (newPassword.value.length < 8) {
+                        alert("New password must be at least 8 characters!");
+                        return false;
+                    }
                 }
-            } else {
-                feedback.textContent = "";
+                return true;
+            }
+            
+            form.addEventListener('submit', function(e) {
+                // Check current password
+                const currentPassword = document.getElementById('current_password');
+                if (!currentPassword.value) {
+                    e.preventDefault();
+                    alert("Please enter your current password to save changes");
+                    return;
+                }
+                
+                // Check new password
+                if (!checkPasswordMatch()) {
+                    e.preventDefault();
+                }
+            });
+            
+            // Live password match check
+            if (newPassword && confirmPassword) {
+                newPassword.addEventListener('input', function() {
+                    if (confirmPassword.value && this.value !== confirmPassword.value) {
+                        confirmPassword.style.borderColor = 'var(--primary-red)';
+                    } else {
+                        confirmPassword.style.borderColor = '';
+                    }
+                });
+                
+                confirmPassword.addEventListener('input', function() {
+                    if (newPassword.value && this.value !== newPassword.value) {
+                        this.style.borderColor = 'var(--primary-red)';
+                    } else {
+                        this.style.borderColor = '';
+                    }
+                });
             }
         });
     </script>
-
-
 
 </body>
 </html>

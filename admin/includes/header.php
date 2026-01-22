@@ -17,7 +17,7 @@
         <li>
             <a class="has-arrow" href="#"><i class="fas fa-home" style="color: #e74c3c;"></i> <span>Home Content</span></a>
             <ul>
-                <li><a href="add-logo.php">Add Logo</a></li>
+                <!--<li><a href="add-logo.php">Add Logo</a></li>-->
                 <li><a href="view-banners.php">Add Banners</a></li>
                 <!-- <li><a href="add-banner-website.php">Home Page Banners</a></li> -->
             </ul>

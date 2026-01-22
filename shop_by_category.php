@@ -12,10 +12,10 @@ $sort_by = isset($_GET['sort']) ? $_GET['sort'] : 'newest';
 $search = isset($_GET['search']) ? mysqli_real_escape_string($conn, $_GET['search']) : '';
 
 // Build query with filters
-$sql_pro = "SELECT p.*, c.category_name, b.brand_name 
+$sql_pro = "SELECT p.*, c.categories, b.brand_name 
             FROM products p 
-            LEFT JOIN categories c ON p.category_id = c.category_id
-            LEFT JOIN brands b ON p.brand_id = b.brand_id
+            LEFT JOIN categories c ON p.pro_sub_cate = c.id
+            LEFT JOIN brands b ON p.brand_name = b.id
             WHERE p.status = 1";
 
 // Apply filters
@@ -92,10 +92,10 @@ if ($stmt) {
     mysqli_stmt_close($stmt);
 } else {
     // Fallback to simple query
-    $result = mysqli_query($conn, "SELECT p.*, c.category_name, b.brand_name 
+    $result = mysqli_query($conn, "SELECT p.*, c.categories, b.brand_name 
                                   FROM products p 
-                                  LEFT JOIN categories c ON p.category_id = c.category_id
-                                  LEFT JOIN brands b ON p.brand_id = b.brand_id
+                                  LEFT JOIN categories c ON p.pro_sub_cate = c.id
+                                  LEFT JOIN brands b ON p.brand_name = b.id
                                   WHERE p.status = 1 
                                   ORDER BY p.pro_id DESC");
     $products = [];
@@ -109,7 +109,7 @@ if ($stmt) {
 }
 
 // Get categories for filtering
-$categories_sql = "SELECT * FROM categories WHERE status = 1 ORDER BY category_name";
+$categories_sql = "SELECT * FROM categories WHERE status = 1 ORDER BY categories";
 $categories_result = mysqli_query($conn, $categories_sql);
 $categories = [];
 while ($cat = mysqli_fetch_assoc($categories_result)) {
@@ -117,7 +117,7 @@ while ($cat = mysqli_fetch_assoc($categories_result)) {
 }
 
 // Get brands for filtering
-$brands_sql = "SELECT * FROM brands WHERE status = 1 ORDER BY brand_name";
+$brands_sql = "SELECT * FROM brands ORDER BY brand_name";
 $brands_result = mysqli_query($conn, $brands_sql);
 $brands = [];
 while ($brand = mysqli_fetch_assoc($brands_result)) {
@@ -278,7 +278,7 @@ $contact = contact_us();
                         <article class="single_product">
                             <figure>
                                 <div class="product_thumb">
-                                    <a class="primary_img" href="<?= $site ?>product/<?= $product['pro_slug'] ?>">
+                                    <a class="primary_img" href="<?= $site ?>product-details/<?= $product['slug_url'] ?>">
                                         <img src="<?= $image_path ?>" alt="<?= htmlspecialchars($product['pro_name']) ?>" style="height: 250px; object-fit: cover;">
                                     </a>
                                     <?php if ($discount > 0): ?>
@@ -295,7 +295,7 @@ $contact = contact_us();
                                 <figcaption class="product_content">
                                     <div class="product_content_inner">
                                         <h4 class="product_name">
-                                            <a href="<?= $site ?>product/<?= $product['pro_slug'] ?>">
+                                            <a href="<?= $site ?>product-details/<?= $product['slug_url'] ?>">
                                                 <?= htmlspecialchars($product['pro_name']) ?>
                                             </a>
                                         </h4>
@@ -316,7 +316,7 @@ $contact = contact_us();
                                         </div>
                                     </div>
                                     <div class="add_to_cart mt-3">
-                                        <a class="add-to-cart btn btn-primary w-100" href="<?= $site ?>product/<?= $product['pro_slug'] ?>">
+                                        <a class="add-to-cart btn btn-primary w-100" href="<?= $site ?>product-details/<?= $product['slug_url'] ?>">
                                             View Product
                                         </a>
                                     </div>

@@ -1,8 +1,9 @@
 <?php
 include_once "config/connect.php";
 include_once "util/function.php";
+include_once(__DIR__ . "/models/WebsiteSettings.php");
 
-$contact = contact_us();
+$setting = new Setting($conn);
 ?>
 <!doctype html>
 <html class="no-js" lang="en">
@@ -376,7 +377,7 @@ $contact = contact_us();
                                     <ul>
                                         <li>Contact our customer service immediately at support@beastline.com</li>
                                         <li>Include your order number and requested changes</li>
-                                        <li>Call us at +91-XXXXXXXXXX within 1 hour of placing your order</li>
+                                        <li>Call us at +91-<?php echo htmlspecialchars($setting->get('support_phone')); ?> within 1 hour of placing your order</li>
                                     </ul>
                                     <p><strong>Note:</strong> Once your order is shipped, modifications cannot be made. You can return items following our return policy.</p>
                                 </div>
@@ -922,7 +923,7 @@ $contact = contact_us();
                                 <i class="fa fa-phone"></i>
                             </div>
                             <h6>Call Us</h6>
-                            <p>+91-<?= $contact['phone'] ?><br>Mon-Sun: 9 AM - 9 PM</p>
+                            <p>+91-<?php echo htmlspecialchars($setting->get('support_phone')); ?><br>Mon-Sun: 9 AM - 9 PM</p>
                         </div>
                     </div>
                     <div class="col-md-4">
@@ -931,7 +932,7 @@ $contact = contact_us();
                                 <i class="fa fa-envelope"></i>
                             </div>
                             <h6>Email Us</h6>
-                            <p><?= $contact['email'] ?><br>Response within 24 hours</p>
+                            <p><?php echo htmlspecialchars($setting->get('business_email')); ?><br>Response within 24 hours</p>
                         </div>
                     </div>
                     <div class="col-md-4">

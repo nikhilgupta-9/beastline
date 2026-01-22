@@ -36,13 +36,37 @@ RewriteRule ^blogs/([^/]+)/?$ blog-details.php?alias=$1 [L,QSA]
 # Products
 # -------------------------------
 RewriteRule ^product-details/([^/]+)/?$ product-details.php?alias=$1 [L,QSA]
-RewriteRule ^shop/([^/]+)/?$ shop.php?alias=$1 [L,QSA]
-RewriteRule ^shops/([^/]+)/?$ shop_by_category.php?alias=$1 [L,QSA]
+RewriteRule ^product/([^/]+)/?$ product-details.php?slug=$1 [L,QSA]
+RewriteRule ^product/([^/]+)/([0-9]+)/?$ product-details.php?slug=$1&id=$2 [L,QSA]
 
 # -------------------------------
-# Brand Search
+# Shop Pages (CORRECTED)
 # -------------------------------
-RewriteRule ^brand/([^/]+)/?$ search.php?query=$1 [L,QSA]
+# Main shop page - shows all products
+RewriteRule ^shop/([^/]+)/?$ shop.php?alias=$1 [L,NC]
+
+# Shop by category
+RewriteRule ^shops/?$ shop_by_category.php [L,NC]
+RewriteRule ^shops/([^/]+)/?$ shop_by_category.php?alias=$1 [L,QSA,NC]
+
+# Special shop filters
+RewriteRule ^new-arrivals/?$ shop_by_category.php?filter=new [L,NC]
+RewriteRule ^trending/?$ shop_by_category.php?filter=trending [L,NC]
+RewriteRule ^sale/?$ shop_by_category.php?filter=sale [L,NC]
+RewriteRule ^best-sellers/?$ shop_by_category.php?filter=bestsellers [L,NC]
+RewriteRule ^featured/?$ shop_by_category.php?filter=featured [L,NC]
+
+# -------------------------------
+# Categories & Brands
+# -------------------------------
+RewriteRule ^category/([^/]+)/?$ shop_by_category.php?category=$1 [L,QSA,NC]
+RewriteRule ^brand/([^/]+)/?$ shop_by_category.php?brand=$1 [L,QSA,NC]
+
+# -------------------------------
+# Search
+# -------------------------------
+RewriteRule ^search/?$ search.php [L,NC]
+RewriteRule ^search/([^/]+)/?$ search.php?query=$1 [L,QSA]
 
 # -------------------------------
 # Custom Error Pages

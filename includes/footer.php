@@ -63,7 +63,6 @@ $setting = new Setting($conn);
                         <h3 class="footer_title mb-4" style="color: #ffffff; font-size: 16px; font-weight: 600; text-transform: uppercase;">HELP</h3>
                         <ul class="footer_links list-unstyled">
                             <li class="mb-2"><a href="<?= $site ?>contact/" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Contact Us</a></li>
-                            <li class="mb-2"><a href="<?= $site ?>customer-service" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Customer Service</a></li>
                             <li class="mb-2"><a href="<?= $site ?>policy/shipping-policy" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Shipping & Delivery</a></li>
                             <li class="mb-2"><a href="<?= $site ?>policy/return-refund-policy" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Returns & Exchanges</a></li>
                             <li class="mb-2"><a href="<?= $site ?>size-guide" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Size Guide</a></li>

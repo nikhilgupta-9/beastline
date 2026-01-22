@@ -4,7 +4,7 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 require_once __DIR__ . '/config/db-conn.php';
 require_once __DIR__ . '/auth/admin-auth.php';
-require_once __DIR__ . '/models/Setting.php';
+require_once __DIR__ . '/models/setting.php';
 
 // Initialize Settings
 $setting = new Setting($conn);

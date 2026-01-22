@@ -175,6 +175,23 @@ $cart_count = isset($_SESSION['cart']) ? array_sum(array_column($_SESSION['cart'
 $page_title = $product['meta_title'] ?: $product['pro_name'] . " | Beastline";
 $meta_description = htmlspecialchars(strip_tags($product['short_desc'] ?: $product['description']));
 $meta_keywords = $product['tags'] ? $product['tags'] : $product['meta_key'];
+
+
+$colorMap = [
+    'red'   => '#ff0000',
+    'blue'  => '#007bff',
+    'green' => '#28a745',
+    'black' => '#000000',
+    'white' => '#ffffff',
+    'grey'  => '#6c757d',
+    'gray'  => '#6c757d',
+    'yellow' => '#ffc107',
+    'orange' => '#fd7e14',
+    'pink'  => '#e83e8c',
+    'purple' => '#6f42c1',
+    'brown' => '#795548'
+];
+
 ?>
 <!doctype html>
 <html class="no-js" lang="en">
@@ -244,40 +261,176 @@ $meta_keywords = $product['tags'] ? $product['tags'] : $product['meta_key'];
         </div>
     </div>
     <!--breadcrumbs area end-->
+    <style>
+        
+        /* Active/Selected color */
+        .color-option.selected {
+            position: relative;
+        }
 
+        .color-option.selected .color-swatch {
+            border: 2px solid #000 !important;
+            transform: scale(1.1);
+            box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .color-option.selected .color-swatch::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        /* Active/Selected size */
+        .size-option-btn {
+            min-width: 40px;
+            height: 40px;
+            border: 1px solid #ddd;
+            background: #fff;
+            margin-right: 8px;
+            margin-bottom: 8px;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .size-option-btn:hover {
+            border-color: #666;
+        }
+
+        .size-option-btn.selected {
+            background: #000;
+            color: #fff;
+            border-color: #000;
+            font-weight: 600;
+        }
+
+        .size-option-btn.out-of-stock {
+            opacity: 0.5;
+            cursor: not-allowed;
+            position: relative;
+        }
+
+        .size-option-btn.out-of-stock::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        /* Quantity selector */
+
+
+        .quantity-input {
+            width: 60px;
+            height: 40px;
+            border: 1px solid #ddd;
+            border-left: none;
+            border-right: none;
+            text-align: center;
+            font-size: 16px;
+            padding: 0 10px;
+        }
+
+        /* Variant notification */
+        #variantNotification {
+            padding: 12px 15px;
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            margin: 15px 0;
+            color: #856404;
+            font-size: 14px;
+        }
+
+        /* Selected variant details */
+        #selectedVariantDetails {
+            padding: 15px;
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+
+        #variantPrice {
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+
+        #variantStock {
+            font-size: 14px;
+        }
+
+        /* Add to cart button */
+
+
+        .add-to-cart-btn:hover:not(:disabled) {
+            background: #333;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .add-to-cart-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+    </style>
     <!--product details start-->
     <div class="product_details mb-80">
         <div class="container">
             <div class="row">
                 <div class="col-lg-5 col-md-5">
-                    <div class="product-details-tab">
+                    <div class="product-details-tab position-relative overflow-hidden" style="max-width:100%; width:100%;">
+
+
                         <?php if ($main_image): ?>
-                            <div id="img-1" class="zoomWrapper single-zoom">
-                                <a href="#">
-                                    <img id="zoom1" src="<?= $site ?>admin/assets/img/uploads/<?= $main_image['image_url'] ?>"
+                            <div id="img-1" class="zoomWrapper single-zoom d-flex justify-content-center overflow-hidden position-relative"
+                                style="max-width:100%; width:100%; overflow:hidden;">
+
+                                <a href="#" class="d-block text-center" style="max-width:100%;">
+                                    <img id="zoom1"
+                                        src="<?= $site ?>admin/assets/img/uploads/<?= $main_image['image_url'] ?>"
                                         data-zoom-image="<?= $site ?>admin/assets/img/uploads/<?= $main_image['image_url'] ?>"
-                                        alt="<?= htmlspecialchars($product['pro_name']) ?>">
+                                        alt="<?= htmlspecialchars($product['pro_name']) ?>"
+                                        class="img-fluid"
+                                        style="max-width:100%; height:auto; object-fit:contain; position: absolute; right: 1px;">
                                 </a>
                             </div>
                         <?php endif; ?>
 
                         <?php if (count($product_images) > 1): ?>
-                            <div class="single-zoom-thumb">
-                                <ul class="s-tab-zoom owl-carousel single-product-active" id="gallery_01">
+                            <div class="single-zoom-thumb mt-3 overflow-hidden">
+                                <ul class="s-tab-zoom owl-carousel single-product-active d-flex align-items-center" id="gallery_01">
+
                                     <?php foreach ($product_images as $index => $image): ?>
-                                        <li>
-                                            <a href="#" class="elevatezoom-gallery <?= $index == 0 ? 'active' : '' ?>"
+                                        <li class="me-2">
+                                            <a href="#"
+                                                class="elevatezoom-gallery <?= $index == 0 ? 'active' : '' ?>"
                                                 data-update=""
                                                 data-image="<?= $site ?>admin/assets/img/uploads/<?= $image['image_url'] ?>"
                                                 data-zoom-image="<?= $site ?>admin/assets/img/uploads/<?= $image['image_url'] ?>">
-                                                <img src="<?= $site ?>admin/assets/img/uploads/<?= $image['image_url'] ?>" alt="<?= htmlspecialchars($product['pro_name']) ?>" />
+
+                                                <img src="<?= $site ?>admin/assets/img/uploads/<?= $image['image_url'] ?>"
+                                                    alt="<?= htmlspecialchars($product['pro_name']) ?>"
+                                                    class="img-fluid"
+                                                    style="max-width:70px; height:auto; object-fit:contain;">
                                             </a>
                                         </li>
                                     <?php endforeach; ?>
+
                                 </ul>
                             </div>
                         <?php endif; ?>
+
                     </div>
+
                 </div>
                 <div class="col-lg-7 col-md-7">
                     <div class="product_d_right">
@@ -318,7 +471,7 @@ $meta_keywords = $product['tags'] ? $product['tags'] : $product['meta_key'];
                             <div class="product_ratting">
                                 <ul>
                                     <?php
-                                    $avg_rating = $review_stats['avg_rating'];
+                                    $avg_rating = $review_stats['avg_rating'] ?? 0;
                                     $full_stars = floor($avg_rating);
                                     $has_half_star = ($avg_rating - $full_stars) >= 0.5;
 
@@ -362,13 +515,23 @@ $meta_keywords = $product['tags'] ? $product['tags'] : $product['meta_key'];
                             <!-- Color Variants -->
                             <?php if (!empty($available_colors)): ?>
                                 <div class="product_variant color">
-                                    <h3>Color</h3>
                                     <label>Select Color:</label>
                                     <ul>
-                                        <?php foreach ($available_colors as $color): ?>
+                                        <?php foreach ($available_colors as $color):
+                                            $colorKey = strtolower(trim($color));
+                                            $bgColor = $colorMap[$colorKey] ?? '#cccccc'; // default if unknown
+                                        ?>
                                             <li class="color-option" data-color="<?= htmlspecialchars($color) ?>">
                                                 <a href="#" title="<?= htmlspecialchars($color) ?>">
-                                                    <span class="color-swatch" style="background-color: <?= $color ?>;"></span>
+                                                    <?php
+                                                    $textColor = in_array($colorKey, ['white', 'yellow']) ? '#000' : '#fff';
+                                                    ?>
+
+                                                    <span class="color-swatch"
+                                                        style="background-color: <?= $bgColor ?>; color: <?= $textColor ?>;">
+                                                        <?= ucfirst(htmlspecialchars($color)) ?>
+                                                    </span>
+
                                                 </a>
                                             </li>
                                         <?php endforeach; ?>
@@ -377,10 +540,11 @@ $meta_keywords = $product['tags'] ? $product['tags'] : $product['meta_key'];
                                 </div>
                             <?php endif; ?>
 
+
                             <!-- Size Variants -->
                             <?php if (!empty($available_sizes)): ?>
                                 <div class="product_variant size" style="margin-top: 20px;">
-                                    <h3>Size</h3>
+                                    <!-- <h3>Size</h3> -->
                                     <label>Select Size:</label>
                                     <div class="size-options">
                                         <?php foreach ($available_sizes as $size):
@@ -417,7 +581,7 @@ $meta_keywords = $product['tags'] ? $product['tags'] : $product['meta_key'];
                             </div>
 
                             <!-- Quantity -->
-                            <div class="product_variant quantity">
+                            <div class="product_variant quantity ">
                                 <label>Quantity</label>
                                 <div class="quantity-selector">
                                     <button type="button" class="quantity-btn minus">-</button>
@@ -427,7 +591,7 @@ $meta_keywords = $product['tags'] ? $product['tags'] : $product['meta_key'];
 
                                 <!-- Add to Cart Button -->
                                 <button type="submit" class="button add-to-cart-btn"
-
+                                    style="margin-left: 20px;"
                                     data-product-id="<?= $product_id ?>"
                                     data-has-variants="<?= $has_variants ? 1 : 0 ?>"
                                     data-product-page="true"
@@ -446,13 +610,7 @@ $meta_keywords = $product['tags'] ? $product['tags'] : $product['meta_key'];
                                             + Add to Wishlist
                                         </a>
                                     </li>
-                                    <li>
-                                        <a href="#" class="add-to-compare"
-                                            data-product-id="<?= $product_id ?>"
-                                            title="Add to Compare">
-                                            + Compare
-                                        </a>
-                                    </li>
+
                                 </ul>
                             </div>
 

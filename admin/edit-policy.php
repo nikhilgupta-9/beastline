@@ -4,7 +4,7 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 require_once __DIR__ . '/config/db-conn.php';
 require_once __DIR__ . '/auth/admin-auth.php';
-require_once __DIR__ . '/models/Setting.php';
+require_once __DIR__ . '/models/setting.php';
 require_once __DIR__ . '/models/Policy.php';
 
 // Initialize
@@ -40,12 +40,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_policy'])) {
     $meta_keywords = trim($_POST['meta_keywords'] ?? '');
     $status = (int)($_POST['status'] ?? 1);
     $display_order = (int)($_POST['display_order'] ?? 0);
-    
+
     // Validation
     if (empty($title)) {
         $errors[] = "Policy title is required";
     }
-    
+
     if (empty($slug)) {
         $errors[] = "Slug URL is required";
     } else {
@@ -54,11 +54,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_policy'])) {
             $slug = $policyModel->generateSlug($slug);
         }
     }
-    
+
     if (empty($content)) {
         $errors[] = "Policy content is required";
     }
-    
+
     // Update policy if no errors
     if (empty($errors)) {
         $data = [
@@ -71,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_policy'])) {
             'status' => $status,
             'display_order' => $display_order
         ];
-        
+
         if ($policyModel->updatePolicy($policy_id, $data)) {
             $_SESSION['success'] = "Policy updated successfully!";
             header("Location: view-policies.php");
@@ -93,10 +93,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_policy'])) {
     <link rel="icon" href="<?php echo htmlspecialchars($setting->get('favicon', 'assets/img/logo.png')); ?>" type="image/png">
 
     <?php include "links.php"; ?>
-    
+
     <!-- Summernote CSS -->
-    <link rel="stylesheet" href="assets/vendors/text_editor/summernote-bs4.css">
-    
+    <!-- <link rel="stylesheet" href="assets/vendors/text_editor/summernote-bs4.css"> -->
+         <script src="https://cdn.ckeditor.com/4.21.0/standard/ckeditor.js"></script>
+
+
     <style>
         .form-section {
             border-left: 4px solid #4361ee;
@@ -105,18 +107,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_policy'])) {
             border-radius: 8px;
             margin-bottom: 25px;
         }
-        
+
         .required-star {
             color: #dc3545;
         }
-        
+
         .character-count {
             font-size: 0.8rem;
             color: #6c757d;
             text-align: right;
             margin-top: 0.25rem;
         }
-        
+
         .slug-preview {
             background: #e9ecef;
             padding: 8px 12px;
@@ -124,7 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_policy'])) {
             font-family: monospace;
             font-size: 0.9rem;
         }
-        
+
         .template-card {
             border: 1px solid #dee2e6;
             border-radius: 8px;
@@ -133,22 +135,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_policy'])) {
             cursor: pointer;
             transition: all 0.3s;
         }
-        
+
         .template-card:hover {
             border-color: #4361ee;
             background: rgba(67, 97, 238, 0.05);
         }
-        
+
         .template-card.active {
             border-color: #4361ee;
             background: rgba(67, 97, 238, 0.1);
         }
-        
+
         .template-icon {
             font-size: 1.5rem;
             margin-bottom: 10px;
         }
-        
+
         .preview-box {
             border: 1px solid #dee2e6;
             border-radius: 8px;
@@ -158,7 +160,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_policy'])) {
             max-height: 300px;
             overflow-y: auto;
         }
-        
+
         .policy-info {
             background: #f8f9fa;
             border-left: 4px solid #6c757d;
@@ -166,11 +168,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_policy'])) {
             border-radius: 6px;
             margin-bottom: 20px;
         }
-        
+
         .policy-info h6 {
             margin-bottom: 10px;
         }
-        
+
         .slug-warning {
             color: #856404;
             background-color: #fff3cd;
@@ -181,7 +183,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_policy'])) {
             font-size: 0.875rem;
             display: none;
         }
-        
+
         .last-saved {
             font-size: 0.875rem;
             color: #28a745;
@@ -192,7 +194,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_policy'])) {
 <body class="crm_body_bg">
 
     <?php include "includes/header.php"; ?>
-    
+
     <section class="main_content dashboard_part large_header_bg">
         <div class="container-fluid g-0">
             <div class="row">
@@ -220,32 +222,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_policy'])) {
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div class="white_card_body">
                                 <!-- Messages -->
                                 <?php if (!empty($errors)): ?>
-                                <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                                    <h6><i class="fas fa-exclamation-circle mr-2"></i> Please fix the following:</h6>
-                                    <ul class="mb-0 pl-3">
-                                        <?php foreach ($errors as $error): ?>
-                                        <li><?= htmlspecialchars($error) ?></li>
-                                        <?php endforeach; ?>
-                                    </ul>
-                                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                        <span aria-hidden="true">&times;</span>
-                                    </button>
-                                </div>
+                                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                        <h6><i class="fas fa-exclamation-circle mr-2"></i> Please fix the following:</h6>
+                                        <ul class="mb-0 pl-3">
+                                            <?php foreach ($errors as $error): ?>
+                                                <li><?= htmlspecialchars($error) ?></li>
+                                            <?php endforeach; ?>
+                                        </ul>
+                                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
                                 <?php endif; ?>
-                                
+
                                 <!-- Success Message from Session -->
                                 <?php if (isset($_SESSION['success'])): ?>
-                                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                                    <i class="fas fa-check-circle mr-2"></i> <?php echo htmlspecialchars($_SESSION['success']); ?>
-                                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                                        <span aria-hidden="true">&times;</span>
-                                    </button>
-                                </div>
-                                <?php unset($_SESSION['success']); ?>
+                                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                        <i class="fas fa-check-circle mr-2"></i> <?php echo htmlspecialchars($_SESSION['success']); ?>
+                                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                    <?php unset($_SESSION['success']); ?>
                                 <?php endif; ?>
 
                                 <!-- Policy Information -->
@@ -261,7 +263,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_policy'])) {
                                             <strong><i class="fas fa-calendar-check mr-1"></i> Last Updated:</strong> <?php echo date('d M Y, h:i A', strtotime($policy['last_updated'])); ?>
                                         </div>
                                         <div class="col-md-3 mb-2">
-                                            <strong><i class="fas fa-circle mr-1"></i> Status:</strong> 
+                                            <strong><i class="fas fa-circle mr-1"></i> Status:</strong>
                                             <span class="badge badge-<?php echo $policy['status'] ? 'success' : 'danger'; ?>">
                                                 <?php echo $policy['status'] ? 'Active' : 'Inactive'; ?>
                                             </span>
@@ -273,7 +275,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_policy'])) {
                                 <div class="form-section mb-4">
                                     <h5 class="mb-3"><i class="fas fa-clone mr-2"></i> Template Reference</h5>
                                     <p class="text-muted mb-3">Use these templates as reference or copy sections:</p>
-                                    
+
                                     <div class="row" id="templateContainer">
                                         <!-- Privacy Policy Template -->
                                         <div class="col-md-4" onclick="loadTemplateSection('privacy')">
@@ -285,7 +287,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_policy'])) {
                                                 <p class="text-muted small mb-0">Data collection and usage sections</p>
                                             </div>
                                         </div>
-                                        
+
                                         <!-- Shipping Policy Template -->
                                         <div class="col-md-4" onclick="loadTemplateSection('shipping')">
                                             <div class="template-card" data-template="shipping">
@@ -296,7 +298,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_policy'])) {
                                                 <p class="text-muted small mb-0">Delivery methods and times</p>
                                             </div>
                                         </div>
-                                        
+
                                         <!-- Return Policy Template -->
                                         <div class="col-md-4" onclick="loadTemplateSection('return')">
                                             <div class="template-card" data-template="return">
@@ -316,20 +318,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_policy'])) {
                                         <div class="col-lg-6">
                                             <div class="form-section mb-4">
                                                 <h5 class="mb-3"><i class="fas fa-info-circle mr-2"></i> Basic Information</h5>
-                                                
+
                                                 <div class="form-group">
                                                     <label class="form-label">Policy Title <span class="required-star">*</span></label>
-                                                    <input type="text" class="form-control" name="title" 
-                                                           value="<?php echo htmlspecialchars($policy['title']); ?>" 
-                                                           required maxlength="255" placeholder="e.g., Privacy Policy" id="policyTitle">
+                                                    <input type="text" class="form-control" name="title"
+                                                        value="<?php echo htmlspecialchars($policy['title']); ?>"
+                                                        required maxlength="255" placeholder="e.g., Privacy Policy" id="policyTitle">
                                                     <div class="character-count" id="titleCount"><?php echo strlen($policy['title']); ?>/255 characters</div>
                                                 </div>
-                                                
+
                                                 <div class="form-group">
                                                     <label class="form-label">Slug URL <span class="required-star">*</span></label>
-                                                    <input type="text" class="form-control" name="slug" 
-                                                           value="<?php echo htmlspecialchars($policy['slug']); ?>"
-                                                           required placeholder="e.g., privacy-policy" id="slugInput">
+                                                    <input type="text" class="form-control" name="slug"
+                                                        value="<?php echo htmlspecialchars($policy['slug']); ?>"
+                                                        required placeholder="e.g., privacy-policy" id="slugInput">
                                                     <div class="slug-warning" id="slugWarning">
                                                         <i class="fas fa-exclamation-triangle mr-1"></i>
                                                         Changing the slug may break existing links. Make sure to set up redirects if needed.
@@ -339,15 +341,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_policy'])) {
                                                     </div>
                                                     <small class="form-text text-muted">Used in URL: yourwebsite.com/policy/<?php echo htmlspecialchars($policy['slug']); ?></small>
                                                 </div>
-                                                
+
                                                 <div class="form-group">
                                                     <label class="form-label">Display Order</label>
-                                                    <input type="number" class="form-control" name="display_order" 
-                                                           value="<?php echo htmlspecialchars($policy['display_order']); ?>"
-                                                           min="0" max="999">
+                                                    <input type="number" class="form-control" name="display_order"
+                                                        value="<?php echo htmlspecialchars($policy['display_order']); ?>"
+                                                        min="0" max="999">
                                                     <small class="form-text text-muted">Lower numbers appear first in listings</small>
                                                 </div>
-                                                
+
                                                 <div class="form-group">
                                                     <label class="form-label">Status <span class="required-star">*</span></label>
                                                     <select class="form-control" name="status" required>
@@ -356,19 +358,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_policy'])) {
                                                     </select>
                                                 </div>
                                             </div>
-                                            
+
                                             <div class="form-section">
                                                 <h5 class="mb-3"><i class="fas fa-search mr-2"></i> SEO Settings</h5>
-                                                
+
                                                 <div class="form-group">
                                                     <label class="form-label">Meta Title</label>
-                                                    <input type="text" class="form-control" name="meta_title" 
-                                                           value="<?php echo htmlspecialchars($policy['meta_title']); ?>"
-                                                           maxlength="255" placeholder="Title for search engines" id="metaTitleInput">
+                                                    <input type="text" class="form-control" name="meta_title"
+                                                        value="<?php echo htmlspecialchars($policy['meta_title']); ?>"
+                                                        maxlength="255" placeholder="Title for search engines" id="metaTitleInput">
                                                     <div class="character-count" id="metaTitleCount"><?php echo strlen($policy['meta_title']); ?>/255 characters</div>
                                                     <small class="form-text text-muted">Optimal: 50-60 characters</small>
                                                 </div>
-                                                
+
                                                 <div class="form-group">
                                                     <label class="form-label">Meta Description</label>
                                                     <textarea class="form-control" name="meta_description" rows="3"
@@ -376,35 +378,35 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_policy'])) {
                                                     <div class="character-count" id="metaDescCount"><?php echo strlen($policy['meta_description']); ?>/320 characters</div>
                                                     <small class="form-text text-muted">Optimal: 150-160 characters</small>
                                                 </div>
-                                                
+
                                                 <div class="form-group">
                                                     <label class="form-label">Meta Keywords</label>
-                                                    <input type="text" class="form-control" name="meta_keywords" 
-                                                           value="<?php echo htmlspecialchars($policy['meta_keywords'] ?? ''); ?>"
-                                                           placeholder="keywords, separated by commas" maxlength="500" id="metaKeyInput">
+                                                    <input type="text" class="form-control" name="meta_keywords"
+                                                        value="<?php echo htmlspecialchars($policy['meta_keywords'] ?? ''); ?>"
+                                                        placeholder="keywords, separated by commas" maxlength="500" id="metaKeyInput">
                                                     <div class="character-count" id="metaKeyCount"><?php echo strlen($policy['meta_keywords'] ?? ''); ?>/500 characters</div>
                                                     <small class="form-text text-muted">Separate with commas (optional)</small>
                                                 </div>
                                             </div>
                                         </div>
-                                        
+
                                         <!-- Right Column: Policy Content -->
                                         <div class="col-lg-6">
                                             <div class="form-section">
                                                 <h5 class="mb-3"><i class="fas fa-file-alt mr-2"></i> Policy Content <span class="required-star">*</span></h5>
-                                                
+
                                                 <div class="alert alert-warning mb-3">
                                                     <i class="fas fa-save mr-2"></i>
                                                     <span class="last-saved" id="lastSavedTime">
                                                         Last saved: <?php echo date('d M Y, h:i A', strtotime($policy['last_updated'])); ?>
                                                     </span>
                                                 </div>
-                                                
+
                                                 <div class="form-group">
                                                     <label class="form-label">Policy Content</label>
-                                                    <textarea class="form-control summernote" name="content" id="policyContent" rows="15"><?php echo htmlspecialchars($policy['content']); ?></textarea>
+                                                    <textarea class="form-control summernote" name="content" id="short_desc" rows="15"><?php echo $policy['content']; ?></textarea>
                                                 </div>
-                                                
+
                                                 <!-- Content Tips -->
                                                 <div class="alert alert-info mt-3">
                                                     <h6><i class="fas fa-lightbulb mr-2"></i> Content Tips:</h6>
@@ -417,7 +419,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_policy'])) {
                                                     </ul>
                                                 </div>
                                             </div>
-                                            
+
                                             <!-- Preview -->
                                             <div class="preview-box" id="previewBox">
                                                 <h6 class="mb-3">Content Preview:</h6>
@@ -427,10 +429,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_policy'])) {
                                             </div>
                                         </div>
                                     </div>
-                                    
+
                                     <!-- Hidden Fields -->
                                     <input type="hidden" name="policy_id" value="<?php echo $policy['id']; ?>">
-                                    
+
                                     <!-- Action Buttons -->
                                     <div class="mt-4 pt-3 border-top">
                                         <div class="d-flex justify-content-between">
@@ -465,7 +467,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_policy'])) {
 
     <!-- Summernote JS -->
     <script src="assets/vendors/text_editor/summernote-bs4.js"></script>
-    
+
     <script>
         // Store original values
         const originalValues = {
@@ -478,32 +480,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_policy'])) {
             status: <?php echo $policy['status']; ?>,
             display_order: <?php echo $policy['display_order']; ?>
         };
-        
+
         // Initialize Summernote
         $(document).ready(function() {
-            $('.summernote').summernote({
-                height: 300,
-                toolbar: [
-                    ['style', ['style']],
-                    ['font', ['bold', 'italic', 'underline', 'clear']],
-                    ['fontname', ['fontname']],
-                    ['color', ['color']], 
-                    ['para', ['ul', 'ol', 'paragraph']],
-                    ['height', ['height']],
-                    ['table', ['table']],
-                    ['insert', ['link', 'picture', 'hr']],
-                    ['view', ['fullscreen', 'codeview', 'help']]
-                ],
-                callbacks: {
-                    onChange: function(contents, $editable) {
-                        updatePreview(contents);
-                    },
-                    onSave: function() {
-                        savePolicy();
-                    }
-                }
-            });
-            
+            CKEDITOR.replace('short_desc');
+
+
             // Character counters
             const inputs = {
                 'title': 'titleCount',
@@ -511,39 +493,39 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_policy'])) {
                 'meta_description': 'metaDescCount',
                 'meta_keywords': 'metaKeyCount'
             };
-            
+
             Object.keys(inputs).forEach(inputName => {
                 const input = document.querySelector(`[name="${inputName}"]`);
                 const counter = document.getElementById(inputs[inputName]);
-                
+
                 if (input && counter) {
                     const max = input.maxLength || 255;
                     counter.textContent = input.value.length + '/' + max;
-                    
+
                     input.addEventListener('input', function() {
                         const max = this.maxLength || 255;
                         counter.textContent = this.value.length + '/' + max;
                     });
                 }
             });
-            
+
             // Slug handling
             const titleInput = document.getElementById('policyTitle');
             const slugInput = document.getElementById('slugInput');
             const slugPreview = document.getElementById('slugPreview');
             const slugWarning = document.getElementById('slugWarning');
-            
+
             // Show warning if slug differs from original
             slugInput.addEventListener('input', function() {
                 slugPreview.textContent = this.value || 'slug-will-appear-here';
-                
+
                 if (this.value !== originalValues.slug) {
                     slugWarning.style.display = 'block';
                 } else {
                     slugWarning.style.display = 'none';
                 }
             });
-            
+
             // Auto-generate slug from title only if slug hasn't been manually modified
             let slugManuallyChanged = false;
             titleInput.addEventListener('input', function() {
@@ -554,58 +536,58 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_policy'])) {
                         .replace(/^-+|-+$/g, '');
                     slugInput.value = slug;
                     slugPreview.textContent = slug || 'slug-will-appear-here';
-                    
+
                     if (slug !== originalValues.slug) {
                         slugWarning.style.display = 'block';
                     }
                 }
             });
-            
+
             slugInput.addEventListener('change', function() {
                 slugManuallyChanged = true;
             });
-            
+
             // Update preview function
             function updatePreview(content) {
                 document.getElementById('contentPreview').innerHTML = content;
             }
-            
-          
-            
+
+
+
             // Form validation
             const form = document.getElementById('editPolicyForm');
             form.addEventListener('submit', function(e) {
                 const title = document.querySelector('input[name="title"]').value.trim();
                 const slug = document.querySelector('input[name="slug"]').value.trim();
                 const content = $('.summernote').summernote('code').trim();
-                
+
                 if (!title) {
                     e.preventDefault();
                     showNotification('Please enter a policy title.', 'error');
                     return false;
                 }
-                
+
                 if (!slug) {
                     e.preventDefault();
                     showNotification('Please enter a slug URL.', 'error');
                     return false;
                 }
-                
+
                 if (!content || content === '<p><br></p>') {
                     e.preventDefault();
                     showNotification('Please enter policy content.', 'error');
                     return false;
                 }
-                
+
                 // Confirm slug change warning
                 if (slug !== originalValues.slug && !confirm('You are changing the slug URL. This may break existing links. Are you sure you want to continue?')) {
                     e.preventDefault();
                     return false;
                 }
-                
+
                 return true;
             });
-            
+
             // Reset to original values
             window.resetToOriginal = function() {
                 if (confirm('Reset all changes to original values?')) {
@@ -617,7 +599,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_policy'])) {
                     document.querySelector('input[name="meta_keywords"]').value = originalValues.meta_keywords;
                     document.querySelector('select[name="status"]').value = originalValues.status;
                     document.querySelector('input[name="display_order"]').value = originalValues.display_order;
-                    
+
                     // Reset counters
                     Object.keys(inputs).forEach(inputName => {
                         const input = document.querySelector(`[name="${inputName}"]`);
@@ -627,26 +609,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_policy'])) {
                             counter.textContent = input.value.length + '/' + max;
                         }
                     });
-                    
+
                     // Reset slug preview and warning
                     slugPreview.textContent = originalValues.slug;
                     slugWarning.style.display = 'none';
                     slugManuallyChanged = false;
-                    
+
                     updatePreview(originalValues.content);
                     showNotification('Reset to original values', 'success');
                 }
             };
-            
+
             // Auto-save functionality (optional)
             let autoSaveTimer;
+
             function setupAutoSave() {
                 const formElements = form.querySelectorAll('input, textarea, select');
-                
+
                 formElements.forEach(element => {
                     element.addEventListener('change', function() {
                         if (autoSaveTimer) clearTimeout(autoSaveTimer);
-                        
+
                         autoSaveTimer = setTimeout(() => {
                             // Optional: Implement AJAX auto-save here
                             // showNotification('Changes saved automatically', 'info');
@@ -654,7 +637,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_policy'])) {
                     });
                 });
             }
-            
+
             // Notification function
             function showNotification(message, type = 'info') {
                 // Create notification element
@@ -668,9 +651,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_policy'])) {
                         <span aria-hidden="true">&times;</span>
                     </button>
                 `;
-                
+
                 document.body.appendChild(notification);
-                
+
                 // Auto-remove after 3 seconds
                 setTimeout(() => {
                     if (notification.parentNode) {
@@ -678,10 +661,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_policy'])) {
                     }
                 }, 3000);
             }
-            
+
             // Initialize auto-save
             setupAutoSave();
         });
     </script>
 </body>
+
 </html>

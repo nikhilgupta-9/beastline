@@ -224,7 +224,7 @@ $banners = get_banner();
     </div> -->
 
 	<div class="banner_area mb-95">
-		<div class="container">
+		<div class="container-fluid p-0">
 			<div class="row no-gutters">
 
 				<!-- Video Banner 1 -->
@@ -233,51 +233,13 @@ $banners = get_banner();
 						<div class="banner_thumb">
 							<a href="shop.html">
 								<video autoplay muted loop playsinline class="w-100">
-									<source src="assets/videos/shirt-v1.mp4" type="video/mp4">
+									<source src="assets/videos/v4.mp4" type="video/mp4">
 								</video>
 							</a>
 							<div class="banner_text1">
 								<div class="banner_text1_inner">
 									<h3>Shirt <br> Collections</h3>
 									<a href="<?= $site ?>shop/shirt/">shop now</a>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-
-				<!-- Video Banner 2 -->
-				<div class="col-lg-4 col-md-4 p-2">
-					<div class="single_banner">
-						<div class="banner_thumb">
-							<a href="shop.html">
-								<video autoplay muted loop playsinline class="w-100">
-									<source src="assets/videos/pant-v1.mp4" type="video/mp4">
-								</video>
-							</a>
-							<div class="banner_text1">
-								<div class="banner_text1_inner">
-									<h3>Pant <br> Collections</h3>
-									<a href="<?= $site ?>shop/pants/">shop now</a>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-
-				<!-- Video Banner 3 -->
-				<div class="col-lg-4 col-md-4 p-2">
-					<div class="single_banner">
-						<div class="banner_thumb">
-							<a href="shop.html">
-								<video autoplay muted loop playsinline class="w-100">
-									<source src="assets/videos/v5.mp4" type="video/mp4">
-								</video>
-							</a>
-							<div class="banner_text1">
-								<div class="banner_text1_inner">
-									<h3>Shoes <br> Collection</h3>
-									<a href="<?= $site ?>shop/shoes/">shop now</a>
 								</div>
 							</div>
 						</div>

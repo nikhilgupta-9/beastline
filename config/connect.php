@@ -17,12 +17,11 @@ if ($local) {
     $site = "http://localhost/beast-line/";
 } else {
     $host = 'localhost';
-    $username = 'u950539402_doctor_db';
-    $password = '@7:o&LZh^vF3';
-    $dbName = 'u950539402_doctor_db';
-    $site = 'https://mediumorchid-porpoise-577452.hostingersite.com/';
+    $username = 'u950539402_beastLine_db';
+    $password = 'I~H!=Sf9&';
+    $dbName = 'u950539402_beastLine_db';
+    $site = 'https://beastline.in/';
 }
-
 // Make `$site` global
 global $site;
 

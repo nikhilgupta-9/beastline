@@ -1,5 +1,5 @@
 <?php
-include_once __DIR__ . '/../models/Setting.php';
+include_once __DIR__ . '/../models/setting.php';
 
 // Initialize Settings
 $setting = new Setting($conn);

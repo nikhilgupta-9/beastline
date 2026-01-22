@@ -1,7 +1,7 @@
 <?php
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
+ini_set('display_errors', 0);
+ini_set('display_startup_errors', 0);
 // init log error on in production 
 ini_set('log_errors', 0);
 
@@ -22,12 +22,12 @@ if ($local) {
     define('ADMIN_URL', 'http://localhost/beast-line/admin/') ;
 } else {
     $host = 'localhost';
-    $username = 'u799879276_1zebulli_db';
-    $password = '6Aq0F[o*';
-    $dbName = 'u799879276_1zebulli_db';
+        $username = 'u950539402_beastLine_db';
+    $password = 'I~H!=Sf9&';
+    $dbName = 'u950539402_beastLine_db';
     // $site = 'https://zebulli.com/';
-    define('BASE_URL', 'https://localhost/beast-line/') ;
-    define('ADMIN_URL', 'https://localhost/beast-line/admin/') ;
+    define('BASE_URL', 'https://beastline.in/') ;
+    define('ADMIN_URL', 'https://beastline.in/admin/') ;
 }
 
 // Create Database Connection

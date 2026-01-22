@@ -5975,8 +5975,8 @@ input:-ms-input-placeholder, textarea:-ms-input-placeholder {
 }
 
 .product_variant.quantity {
-  display: -webkit-box;
-  display: -ms-flexbox;
+  /* display: -webkit-box; */
+  /* display: -ms-flexbox; */
   display: flex;
   align-items: center;
   margin-bottom: 20px;
@@ -6025,7 +6025,7 @@ input:-ms-input-placeholder, textarea:-ms-input-placeholder {
   height: 42px;
   line-height: 42px;
   text-transform: capitalize;
-  min-width: 270px;
+  min-width: 40px;
 }
 @media only screen and (min-width: 992px) and (max-width: 1199px) {
   .product_variant.quantity button {

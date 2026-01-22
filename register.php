@@ -449,8 +449,8 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
                                         value="1"
                                         class="register_checkbox"
                                         required>
-                                    I agree to the <a href="<?= $site ?>terms/" target="_blank" class="text-primary mx-2">Terms & Conditions</a>
-                                    and <a href="<?= $site ?>privacy/" target="_blank" class="text-primary mx-2">Privacy Policy</a> <span>*</span>
+                                    I agree to the <a href="<?= $site ?>policy/terms-conditions" target="_blank" class="text-primary mx-2">Terms & Conditions</a>
+                                    and <a href="<?= $site ?>policy/privacy-policy" target="_blank" class="text-primary mx-2">Privacy Policy</a> <span>*</span>
                                 </label>
                             </div>
 
