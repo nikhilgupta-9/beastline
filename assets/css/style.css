@@ -563,7 +563,7 @@ input:-ms-input-placeholder, textarea:-ms-input-placeholder {
 @media only screen and (max-width: 767px) {
   .canvas_open {
     right: 20px;
-    top: 27px;
+    top: 43px;
     display: inline-block;
     width: 36px;
   }

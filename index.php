@@ -147,110 +147,31 @@ $banners = get_banner();
 	<!--slider area start-->
 	<section class="slider_section mb-100">
 		<div class="slider_area owl-carousel">
-			<?php
-			foreach ($banners as $b) {
-			?>
-				<div class="single_slider d-flex align-items-center" data-bgimg="<?= $site ?>admin/<?= $b['banner_path'] ?>">
-					<div class="container">
-						<div class="row">
-							<div class="col-12">
-								<div class="slider_content">
-									<h2>Get 30% Off &amp; Free Shipping </h2>
-									<h1><?= $b['title'] ?></h1>
-									<p>
-										<?= $b['description'] ?>
-									</p>
-									<a href="<?= $site ?>shop.php">Shop Now +</a>
+
+			<?php if (!empty($banners)) {
+				foreach ($banners as $b) { ?>
+					<div class="single_slider d-flex align-items-center"
+						data-bgimg="<?= htmlspecialchars($site . "admin/" . $b['banner_path']) ?>">
+						<div class="container">
+							<div class="row">
+								<div class="col-12">
+									<div class="slider_content">
+										<h2>Get 30% Off &amp; Free Shipping</h2>
+										<h1><?= $b['title'] ?></h1>
+										<p><?= $b['description'] ?></p>
+										<a href="<?= $b['link_url'] ?>">Shop Now +</a>
+									</div>
 								</div>
 							</div>
 						</div>
 					</div>
-				</div>
-			<?php
-			}
-			?>
-			<div class="single_slider d-flex align-items-center" data-bgimg="assets/img/slider/s2.png">
-				<div class="container">
-					<div class="row">
-						<div class="col-12">
-							<div class="slider_content">
-								<h2>Big sale up to 20% off </h2>
-								<h1>london style </h1>
-								<p>
-									An exclusive selection of this season’s trends. <span>Exclusively online </span>
-								</p>
-								<a href="shop.html">Shop Now </a>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
+			<?php }
+			} ?>
+
 		</div>
 	</section>
+
 	<!--slider area end-->
-
-	<!--banner area start-->
-	<!-- <div class="banner_area mb-95">
-        <div class="container">
-            <div class="row no-gutters">
-                <div class="col-lg-6 col-md-6">
-                    <div class="single_banner">
-                        <div class="banner_thumb">
-                            <a href="shop.html"><img src="assets/img/bg/banner1.jpg" alt=""></a>
-                            <div class="banner_text1">
-                                <div class="banner_text1_inner">
-                            		<h3>Men’s <br> Collections</h3>
-                            		<a href="shop.html">shop now</a>
-                            	</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-lg-6 col-md-6">
-                    <div class="single_banner">
-                        <div class="banner_thumb">
-                            <a href="shop.html"><img src="assets/img/bg/banner2.jpg" alt=""></a>
-                            <div class="banner_text1">
-                                <div class="banner_text1_inner">
-									<h3>Women’s <br> Collections</h3>
-									<a href="shop.html">shop now</a>
-                            	</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div> -->
-
-	<div class="banner_area mb-95">
-		<div class="container-fluid p-0">
-			<div class="row no-gutters">
-
-				<!-- Video Banner 1 -->
-				<div class="col-lg-4 col-md-4 p-2">
-					<div class="single_banner">
-						<div class="banner_thumb">
-							<a href="shop.html">
-								<video autoplay muted loop playsinline class="w-100">
-									<source src="assets/videos/v4.mp4" type="video/mp4">
-								</video>
-							</a>
-							<div class="banner_text1">
-								<div class="banner_text1_inner">
-									<h3>Shirt <br> Collections</h3>
-									<a href="<?= $site ?>shop/shirt/">shop now</a>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-
-			</div>
-		</div>
-	</div>
-
-	<!--banner area end-->
 
 	<!--categories product area start-->
 	<div class="categories_product_area   mb-92">
@@ -312,43 +233,23 @@ $banners = get_banner();
 	</div>
 	<!--categories product area end-->
 
-	<!--testimonial area start-->
-	<div class="testimonial_area mb-95">
-		<div class="container">
-			<div class="row">
-				<div class="col-12">
-					<div class="section_title">
-						<h2>Testimonials</h2>
-					</div>
-				</div>
-			</div>
-			<div class="testimonial_container">
-				<div class="row">
-					<div class="col-12">
-						<div class="testimonial_wrapper  testimonial_collumn1 owl-carousel">
-							<?php
-							$testimonial = testimonial();
-							foreach ($testimonial as $test) {
-							?>
-								<div class="single_testimonial">
-									<div class="testimonial_thumb">
-										<img src="<?= $site ?>admin/uploads/testimonials/<?= $test['client_photo'] ?>" alt="">
-									</div>
-									<div class="testimonial_content">
-										<p><?= $test['testimonial_text'] ?></p>
-										<h3><a href="#"><?= $test['client_name'] ?></a></h3>
-										<span>Customer</span>
-									</div>
-								</div>
-							<?php } ?>
-
-						</div>
-					</div>
+	<!--discount banner area start-->
+	<?php
+	$home_order1 = 1;
+	$home_banner1 = get_home_other_banner1($home_order1);
+	if ($home_banner1) {
+	?>
+		<div class="discount_banner_area mb-95">
+			<div class="container-fluid p-0">
+				<div class="banner_thumb">
+					<a href="<?= $site ?>category/sale">
+					<img src="<?= $site ?>admin/<?= $home_banner1[0]['banner_path'] ?>" alt="<?= $home_banner1[0]['alt_text'] ?>" style="max-width:100%;">
+					</a>
 				</div>
 			</div>
 		</div>
-	</div>
-	<!--testimonial area end-->
+	<?php } ?>
+	<!--discount banner area end-->
 
 	<!--product area start-->
 	<div class="product_area  mb-95">
@@ -359,7 +260,7 @@ $banners = get_banner();
 						<h2>Featured products </h2>
 					</div>
 					<div class="product_shop_collection">
-						<a href="shop.html">Shop all collection</a>
+						<a href="<?= $site ?>category/sale">Shop all collection</a>
 					</div>
 				</div>
 			</div>
@@ -451,29 +352,7 @@ $banners = get_banner();
 										</div>
 									<?php endif; ?>
 
-									<!-- <div class="action_links">
-										<ul>
-											<li class="quick_button">
-												<a href="#" data-bs-toggle="modal"
-													data-bs-target="#modal_box_<?= $f_p['pro_id'] ?? $index ?>"
-													title="quick view">
-													<span class="pe-7s-search"></span>
-												</a>
-											</li>
-											<li class="wishlist">
-												<a href="wishlist.php?add_to_wishlist=<?= $f_p['pro_id'] ?? $index ?>"
-													title="Add to Wishlist">
-													<span class="pe-7s-like"></span>
-												</a>
-											</li>
-											<li class="compare">
-												<a href="compare.php?add_to_compare=<?= $f_p['pro_id'] ?? $index ?>"
-													title="Add to Compare">
-													<span class="pe-7s-edit"></span>
-												</a>
-											</li>
-										</ul>
-									</div> -->
+
 								</div>
 								<figcaption class="product_content">
 									<div class="product_content_inner">
@@ -505,7 +384,7 @@ $banners = get_banner();
 	<!--product area end-->
 
 	<!--banner area start-->
-	<div class="banner_area">
+	<!-- <div class="banner_area">
 		<div class="container-fluid p-0">
 			<div class="row no-gutters">
 				<div class="col-lg-6 col-md-6">
@@ -532,171 +411,51 @@ $banners = get_banner();
 				</div>
 			</div>
 		</div>
-	</div>
+	</div> -->
 	<!--banner area end-->
 
 	<!--discount banner area start-->
-	<div class="discount_banner_area mb-95">
-		<div class="container-fluid p-0">
-			<div class="banner_thumb">
-				<a href="shop.html"><img src="assets/img/bg/banner5.jpg" alt=""></a>
-				<div class="banner_text3">
-					<h3>Minimalist Spring Collection</h3>
-					<h2>up TO 40% off</h2>
-					<p>An exclusive selection of this season’s trends. <span>Exclusively online!</span></p>
-					<a href="shop.html">shop now</a>
+	<?php
+	$home_order1 = 2;
+	$home_banner1 = get_home_other_banner1($home_order1);
+	if ($home_banner1) {
+	?>
+		<div class="banner_area">
+			<div class="container-fluid p-0">
+				<div class="banner_thumb">
+					<a href="<?= $site ?>category/sale">
+					<img src="<?= $site ?>admin/<?= $home_banner1[0]['banner_path'] ?>" alt="">
+					</a>
 				</div>
 			</div>
 		</div>
-	</div>
+	<?php } ?>
 	<!--discount banner area end-->
 
-	<!--product area start-->
-	<div class="product_area mb-95">
-		<div class="container">
-			<div class="row">
-				<div class="col-12">
-					<div class="product_header">
-						<div class="section_title">
-							<h2>Our Categories</h2>
-						</div>
-
-						<div class="product_tab_btn">
-							<ul class="nav" role="tablist">
-								<?php
-								$cat = get_category_home();
-								$first = true;
-
-								foreach ($cat as $index => $category) {
-									$slug = 'category-' . ($index + 1);
-								?>
-									<li class="nav-item">
-										<a class="nav-link <?= $first ? 'active' : '' ?>"
-											data-bs-toggle="tab"
-											href="#<?= $slug ?>"
-											role="tab"
-											aria-controls="<?= $slug ?>"
-											aria-selected="<?= $first ? 'true' : 'false' ?>">
-											+ <?= htmlspecialchars($category['categories']) ?>
-										</a>
-									</li>
-								<?php
-									$first = false;
-								}
-								?>
-							</ul>
-						</div>
-					</div>
-				</div>
-			</div>
-
-			<div class="product_container">
-				<div class="tab-content">
-					<?php
-					$cat = get_category_home(); // Reset to first item
-					$first = true;
-
-					foreach ($cat as $index => $category) {
-						$slug = 'category-' . ($index + 1);
-						$products = get_products_by_category($category['id']);
-					?>
-						<div class="tab-pane fade <?= $first ? 'show active' : '' ?>"
-							id="<?= $slug ?>"
-							role="tabpanel">
-
-							<?php if (!empty($products)): ?>
-								<div class="row">
-									<div class="product_carousel product_column5 owl-carousel">
-										<?php foreach ($products as $product): ?>
-											<div class="col-lg-3">
-												<article class="single_product">
-													<figure>
-														<div class="product_thumb">
-															<a class="primary_img" href="product-details.php?id=<?= $product['id'] ?>">
-																<img src="<?= $site ?>admin/assets/img/uploads/<?= $product['pro_img'] ?: 'default.jpg' ?>"
-																	alt="<?= htmlspecialchars($product['pro_name']) ?>">
-															</a>
-															<?php if ($product['selling_price'] > 0): ?>
-																<div class="label_product">
-																	<span class="label_sale">
-																		<?= round((($product['mrp'] - $product['selling_price']) / $product['mrp']) * 100) ?>% Off
-																	</span>
-																</div>
-															<?php endif; ?>
-															<!-- <div class="action_links">
-																<ul>
-																	<li class="quick_button">
-																		<a href="#"
-																			data-bs-toggle="modal"
-																			data-bs-target="#quickViewModal"
-																			data-product-id="<?= $product['id'] ?>"
-																			title="quick view">
-																			<span class="pe-7s-search"></span>
-																		</a>
-																	</li>
-																	<li class="wishlist">
-																		<a href="wishlist.php?action=add&id=<?= $product['id'] ?>"
-																			title="Add to Wishlist">
-																			<span class="pe-7s-like"></span>
-																		</a>
-																	</li>
-																</ul>
-															</div> -->
-														</div>
-														<figcaption class="product_content">
-															<div class="product_content_inner">
-																<h4 class="product_name">
-																	<a href="product-details.php?id=<?= $product['id'] ?>">
-																		<?= htmlspecialchars($product['pro_name']) ?>
-																	</a>
-																</h4>
-																<div class="price_box">
-																	<?php if ($product['selling_price'] > 0): ?>
-																		<span class="old_price"><?= $product['formatted_price'] ?></span>
-																		<span class="current_price"><?= $product['formatted_sale_price'] ?></span>
-																	<?php else: ?>
-																		<span class="current_price"><?= $product['formatted_price'] ?></span>
-																	<?php endif; ?>
-																</div>
-															</div>
-															<div class="add_to_cart">
-																<!-- <a href="#"
-																	class="add-to-cart-btn"
-																	data-product-id="<?= $product['pro_id'] ?>"
-																	data-product-slug="<?= $pro['slug_url'] ?>"
-																	data-has-variants="<?= !empty($variants) ? 1 : 0 ?>">
-																	Add to cart
-																</a> -->
-																<a class="add-to-cart" href="<?= $site ?>product-details/<?= $product['slug_url'] ?>">View Product</a>
-															</div>
-														</figcaption>
-													</figure>
-												</article>
-											</div>
-										<?php endforeach; ?>
-									</div>
-								</div>
-							<?php else: ?>
-								<div class="row">
-									<div class="col-12">
-										<p class="text-center text-muted py-5">
-											No products available in this category yet.
-										</p>
-									</div>
-								</div>
-							<?php endif; ?>
-
-						</div>
-					<?php
-						$first = false;
-					}
-					?>
+	<!--discount banner area start-->
+		<?php
+	$home_order3 = 3;
+	$home_banner3 = get_home_other_banner1($home_order3);
+	if ($home_banner3) {
+	?>
+	<div class="discount_banner_area mb-95 mt-2">
+		<div class="container-fluid p-0">
+			<div class="banner_thumb">
+				<a href="<?= $home_banner3[0]['link_url'] ?>">
+					<img src="<?= $site ?>admin/<?= $home_banner3[0]['banner_path'] ?>" alt="">
+				</a>
+				<div class="banner_text3">
+					<?= $home_banner3[0]['title'] ?>
+					<p><?= $home_banner3[0]['description'] ?></p>
+					<a href="<?= $home_banner3[0]['link_url'] ?>">shop now</a>
 				</div>
 			</div>
 		</div>
 	</div>
-	<!--product area end-->
+	<?php } ?>
+	<!--discount banner area end-->
 
+	
 	<!-- Quick View Modal -->
 	<div class="modal fade" id="quickViewModal" tabindex="-1" aria-labelledby="quickViewModalLabel" aria-hidden="true">
 		<div class="modal-dialog modal-lg">
@@ -735,9 +494,48 @@ $banners = get_banner();
 				});
 			}
 
-			
+
 		});
 	</script>
+
+
+	<!--testimonial area start-->
+	<div class="testimonial_area mb-95">
+		<div class="container">
+			<div class="row">
+				<div class="col-12">
+					<div class="section_title">
+						<h2>Testimonials</h2>
+					</div>
+				</div>
+			</div>
+			<div class="testimonial_container">
+				<div class="row">
+					<div class="col-12">
+						<div class="testimonial_wrapper  testimonial_collumn1 owl-carousel">
+							<?php
+							$testimonial = testimonial();
+							foreach ($testimonial as $test) {
+							?>
+								<div class="single_testimonial">
+									<div class="testimonial_thumb">
+										<img src="<?= $site ?>admin/uploads/testimonials/<?= $test['client_photo'] ?>" alt="">
+									</div>
+									<div class="testimonial_content">
+										<p><?= $test['testimonial_text'] ?></p>
+										<h3><a href="#"><?= $test['client_name'] ?></a></h3>
+										<span>Customer</span>
+									</div>
+								</div>
+							<?php } ?>
+
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<!--testimonial area end-->
 
 	<!--shipping area start-->
 	<div class="shipping_area">

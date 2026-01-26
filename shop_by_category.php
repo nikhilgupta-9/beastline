@@ -11,12 +11,30 @@ $max_price = isset($_GET['max_price']) ? floatval($_GET['max_price']) : 100000;
 $sort_by = isset($_GET['sort']) ? $_GET['sort'] : 'newest';
 $search = isset($_GET['search']) ? mysqli_real_escape_string($conn, $_GET['search']) : '';
 
-// Build query with filters
-$sql_pro = "SELECT p.*, c.categories, b.brand_name 
-            FROM products p 
-            LEFT JOIN categories c ON p.pro_sub_cate = c.id
-            LEFT JOIN brands b ON p.brand_name = b.id
-            WHERE p.status = 1";
+// Build query with filters similar to featured products
+$sql_pro = "
+    SELECT 
+        p.pro_id,
+        p.pro_name,
+        p.mrp,
+        p.selling_price,
+        p.slug_url,
+        p.pro_sub_cate,
+        p.brand_name,
+        p.status,
+        p.stock,
+        pi.image_url AS pro_img,
+        c.categories,
+        b.brand_name as brand_name_text
+    FROM products p
+    LEFT JOIN product_images pi 
+        ON p.pro_id = pi.product_id AND pi.is_main = 1
+    LEFT JOIN categories c 
+        ON p.pro_sub_cate = c.id
+    LEFT JOIN brands b 
+        ON p.brand_name = b.id
+    WHERE p.status = 1
+";
 
 // Apply filters
 $conditions = [];
@@ -31,13 +49,13 @@ if (!empty($search)) {
 }
 
 if ($category_id > 0) {
-    $conditions[] = "p.category_id = ?";
+    $conditions[] = "p.pro_sub_cate = ?";
     $params[] = $category_id;
     $types .= "i";
 }
 
 if ($brand_id > 0) {
-    $conditions[] = "p.brand_id = ?";
+    $conditions[] = "p.brand_name = ?";
     $params[] = $brand_id;
     $types .= "i";
 }
@@ -81,28 +99,56 @@ if ($stmt) {
     $result = mysqli_stmt_get_result($stmt);
     $products = [];
     $total_products = 0;
-    
+
     while ($row = mysqli_fetch_assoc($result)) {
+        // Image fallback safety
+        if (empty($row['pro_img'])) {
+            $row['pro_img'] = 'no-image.jpg';
+        }
+        
         // Format prices
-        $row['formatted_price'] = '₹' . number_format($row['mrp'], 2);
-        $row['formatted_sale_price'] = '₹' . number_format($row['selling_price'], 2);
+        $row['formatted_mrp'] = '₹' . number_format($row['mrp'], 2);
+        $row['formatted_selling_price'] = '₹' . number_format($row['selling_price'], 2);
         $products[] = $row;
         $total_products++;
     }
     mysqli_stmt_close($stmt);
 } else {
     // Fallback to simple query
-    $result = mysqli_query($conn, "SELECT p.*, c.categories, b.brand_name 
-                                  FROM products p 
-                                  LEFT JOIN categories c ON p.pro_sub_cate = c.id
-                                  LEFT JOIN brands b ON p.brand_name = b.id
-                                  WHERE p.status = 1 
-                                  ORDER BY p.pro_id DESC");
+    $result = mysqli_query($conn, "
+        SELECT 
+            p.pro_id,
+            p.pro_name,
+            p.mrp,
+            p.selling_price,
+            p.slug_url,
+            p.pro_sub_cate,
+            p.brand_name,
+            p.status,
+            p.stock,
+            pi.image_url AS pro_img,
+            c.categories,
+            b.brand_name as brand_name_text
+        FROM products p
+        LEFT JOIN product_images pi 
+            ON p.pro_id = pi.product_id AND pi.is_main = 1
+        LEFT JOIN categories c 
+            ON p.pro_sub_cate = c.id
+        LEFT JOIN brands b 
+            ON p.brand_name = b.id
+        WHERE p.status = 1 
+        ORDER BY p.pro_id DESC
+    ");
     $products = [];
     $total_products = 0;
     while ($row = mysqli_fetch_assoc($result)) {
-        $row['formatted_price'] = '₹' . number_format($row['mrp'], 2);
-        $row['formatted_sale_price'] = '₹' . number_format($row['selling_price'], 2);
+        // Image fallback safety
+        if (empty($row['pro_img'])) {
+            $row['pro_img'] = 'no-image.jpg';
+        }
+        
+        $row['formatted_mrp'] = '₹' . number_format($row['mrp'], 2);
+        $row['formatted_selling_price'] = '₹' . number_format($row['selling_price'], 2);
         $products[] = $row;
         $total_products++;
     }
@@ -176,7 +222,7 @@ $contact = contact_us();
 
     <!--breadcrumbs area start-->
     <div class="breadcrumbs_area">
-        <div class="container">   
+        <div class="container">
             <div class="row">
                 <div class="col-12">
                     <div class="breadcrumb_content">
@@ -188,10 +234,10 @@ $contact = contact_us();
                     </div>
                 </div>
             </div>
-        </div>         
+        </div>
     </div>
     <!--breadcrumbs area end-->
-    
+
     <!--shop  area start-->
     <div class="shop_area shop_fullwidth mb-80">
         <div class="container">
@@ -199,28 +245,13 @@ $contact = contact_us();
             <div class="row mb-30">
                 <div class="col-12">
                     <div class="shop_toolbar_wrapper">
-                        <div class="row align-items-center">
-                            <!-- Left Side - Grid/List View -->
-                            <div class="col-lg-3 col-md-4">
-                                <div class="shop_toolbar_btn">
-                                    <button data-role="grid_3" type="button" class="btn-grid-3 active" data-bs-toggle="tooltip" title="3">
-                                        <i class="fa fa-th"></i>
-                                    </button>
-                                    <button data-role="grid_4" type="button" class="btn-grid-4" data-bs-toggle="tooltip" title="4">
-                                        <i class="fa fa-th-large"></i>
-                                    </button>
-                                    <button data-role="grid_list" type="button" class="btn-list" data-bs-toggle="tooltip" title="List">
-                                        <i class="fa fa-list"></i>
-                                    </button>
-                                </div>
-                            </div>
-                            
+                        <div class="row align-items-left">
                             <!-- Center - Search -->
                             <div class="col-lg-5 col-md-4">
                                 <form method="GET" action="<?= $site ?>shop/" class="search_form">
                                     <div class="input-group">
-                                        <input type="text" name="search" class="form-control" 
-                                               placeholder="Search products..." value="<?= htmlspecialchars($search) ?>">
+                                        <input type="text" name="search" class="form-control"
+                                            placeholder="Search products..." value="<?= htmlspecialchars($search) ?>">
                                         <input type="hidden" name="category" value="<?= $category_id ?>">
                                         <input type="hidden" name="brand" value="<?= $brand_id ?>">
                                         <button type="submit" class="btn btn-primary">
@@ -229,7 +260,7 @@ $contact = contact_us();
                                     </div>
                                 </form>
                             </div>
-                            
+
                             <!-- Right Side - Sort -->
                             <div class="col-lg-4 col-md-4">
                                 <div class="niceselect_option">
@@ -250,85 +281,93 @@ $contact = contact_us();
                     </div>
                 </div>
             </div>
-            
+
             <!-- Products Section -->
             <div class="row">
                 <?php if (empty($products)): ?>
-                <div class="col-12">
-                    <div class="alert alert-info text-center py-5">
-                        <h4 class="mb-3">No products found!</h4>
-                        <p class="mb-4">Try different filters or search terms.</p>
-                        <a href="<?= $site ?>shop/" class="btn btn-primary">Clear Filters</a>
+                    <div class="col-12">
+                        <div class="alert alert-info text-center py-5">
+                            <h4 class="mb-3">No products found!</h4>
+                            <p class="mb-4">Try different filters or search terms.</p>
+                            <a href="<?= $site ?>shop/" class="btn btn-primary">Clear Filters</a>
+                        </div>
                     </div>
-                </div>
                 <?php else: ?>
-                <div class="product_carousel product_column5 owl-carousel">
-                    <?php foreach ($products as $product): 
-                        $image_path = !empty($product['pro_img']) ? 
-                            $site . 'admin/assets/img/uploads/' . $product['pro_img'] : 
-                            $site . 'assets/img/s-product/product.jpg';
-                        
-                        // Calculate discount percentage
-                        $discount = 0;
-                        if ($product['mrp'] > $product['selling_price']) {
-                            $discount = round((($product['mrp'] - $product['selling_price']) / $product['mrp']) * 100);
+                    <?php foreach ($products as $index => $product): 
+                        // Determine secondary image
+                        $secondary_img_num = ($index % 4) + 2; // This will cycle through 2, 3, 4, 5, etc.
+
+                        // Calculate discount if available
+                        $show_sale = isset($product['mrp']) && isset($product['selling_price']) &&
+                            $product['mrp'] > $product['selling_price'];
+
+                        // Primary image path - similar to featured products
+                        if (isset($product['pro_img']) && strpos($product['pro_img'], 'assets/') === false) {
+                            $primary_img = $site . 'admin/assets/img/uploads/' . $product['pro_img'];
+                        } else {
+                            $primary_img = isset($product['pro_img']) ? $product['pro_img'] : "assets/img/product/product" . (($index * 2) + 1) . ".jpg";
                         }
                     ?>
-                    <div class="col-lg-3">
-                        <article class="single_product">
-                            <figure>
-                                <div class="product_thumb">
-                                    <a class="primary_img" href="<?= $site ?>product-details/<?= $product['slug_url'] ?>">
-                                        <img src="<?= $image_path ?>" alt="<?= htmlspecialchars($product['pro_name']) ?>" style="height: 250px; object-fit: cover;">
-                                    </a>
-                                    <?php if ($discount > 0): ?>
-                                    <div class="label_product">
-                                        <span class="label_sale"><?= $discount ?>% OFF</span>
-                                    </div>
-                                    <?php endif; ?>
-                                    <?php if ($product['stock'] <= 0): ?>
-                                    <div class="label_product">
-                                        <span class="label_sale" style="background: #dc3545;">Out of Stock</span>
-                                    </div>
-                                    <?php endif; ?>
-                                </div>
-                                <figcaption class="product_content">
-                                    <div class="product_content_inner">
-                                        <h4 class="product_name">
-                                            <a href="<?= $site ?>product-details/<?= $product['slug_url'] ?>">
-                                                <?= htmlspecialchars($product['pro_name']) ?>
-                                            </a>
-                                        </h4>
-                                        <?php if (!empty($product['category_name'])): ?>
-                                        <div class="product_category mb-2">
-                                            <small class="text-muted">
-                                                <a href="<?= $site ?>category/<?= $product['category_slug'] ?? '#' ?>">
-                                                    <?= htmlspecialchars($product['category_name']) ?>
-                                                </a>
-                                            </small>
-                                        </div>
-                                        <?php endif; ?>
-                                        <div class="price_box">
-                                            <?php if ($product['mrp'] > $product['selling_price']): ?>
-                                            <span class="old_price"><?= $product['formatted_price'] ?></span>
-                                            <?php endif; ?>
-                                            <span class="current_price"><?= $product['formatted_sale_price'] ?></span>
-                                        </div>
-                                    </div>
-                                    <div class="add_to_cart mt-3">
-                                        <a class="add-to-cart btn btn-primary w-100" href="<?= $site ?>product-details/<?= $product['slug_url'] ?>">
-                                            View Product
+                        <div class="col-lg-3 col-md-4 col-sm-6 col-6">
+                            <article class="single_product">
+                                <figure>
+                                    <div class="product_thumb">
+                                        <a class="primary_img" href="<?= $site ?>product-details/<?= $product['slug_url'] ?>">
+                                            <img src="<?= $primary_img ?>" alt="<?= htmlspecialchars($product['pro_name']) ?>" style="height: 300px; object-fit: cover;">
                                         </a>
+                                        <a class="secondary_img" href="<?= $site ?>product-details/<?= $product['slug_url'] ?>">
+                                            <img src="<?= $site ?>assets/img/product/product<?= $secondary_img_num ?>.jpg" alt="<?= htmlspecialchars($product['pro_name']) ?>" style="height: 300px; object-fit: cover;">
+                                        </a>
+
+                                        <?php if ($show_sale): ?>
+                                            <div class="label_product">
+                                                <span class="label_sale">Sale</span>
+                                                <?php
+                                                $discount = round((($product['mrp'] - $product['selling_price']) / $product['mrp']) * 100);
+                                                if ($discount > 0): ?>
+                                                    <span class="label_discount">-<?= $discount ?>%</span>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endif; ?>
+                                        
+                                        <?php if ($product['stock'] <= 0): ?>
+                                            <div class="label_product">
+                                                <span class="label_sale" style="background: #dc3545;">Out of Stock</span>
+                                            </div>
+                                        <?php endif; ?>
                                     </div>
-                                </figcaption>
-                            </figure>
-                        </article>
-                    </div>
+                                    <figcaption class="product_content">
+                                        <div class="product_content_inner">
+                                            <h4 class="product_name">
+                                                <a href="<?= $site ?>product-details/<?= $product['slug_url'] ?>">
+                                                    <?= htmlspecialchars($product['pro_name']) ?>
+                                                </a>
+                                            </h4>
+                                            <?php if (!empty($product['categories'])): ?>
+                                                <div class="product_category mb-2">
+                                                    <small class="text-muted">
+                                                        <?= htmlspecialchars($product['categories']) ?>
+                                                    </small>
+                                                </div>
+                                            <?php endif; ?>
+                                            <div class="price_box">
+                                                <?php if ($show_sale): ?>
+                                                    <span class="old_price"><?= $product['formatted_mrp'] ?></span>
+                                                <?php endif; ?>
+                                                <span class="current_price"><?= $product['formatted_selling_price'] ?></span>
+                                            </div>
+                                        </div>
+                                        <div class="add_to_cart">
+                                            <a class="add-to-cart" href="<?= $site ?>product-details/<?= $product['slug_url'] ?>">View Product</a>
+                                        </div>
+                                    </figcaption>
+                                </figure>
+                            </article>
+                        </div>
                     <?php endforeach; ?>
-                </div>
                 <?php endif; ?>
             </div>
-            
+
             <!-- Product Count -->
             <div class="row mt-30">
                 <div class="col-12">
@@ -340,28 +379,9 @@ $contact = contact_us();
         </div>
     </div>
     <!--shop  area end-->
-    
+
     <!--footer area start-->
     <?php include_once "includes/footer.php"; ?>
-    
-    <!-- Quick View Modal -->
-    <div class="modal fade" id="quickViewModal" tabindex="-1" role="dialog" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" role="document">
-            <div class="modal-content">
-                <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true"><i class="ion-android-close"></i></span>
-                </button>
-                <div class="modal_body" id="quickViewContent">
-                    <!-- Content loaded via AJAX -->
-                    <div class="text-center py-5">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="sr-only">Loading...</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- JS -->
     <!--jquery min js-->
@@ -378,117 +398,28 @@ $contact = contact_us();
     <script src="<?= $site ?>assets/js/jquery.magnific-popup.min.js"></script>
     <!-- Plugins JS -->
     <script src="<?= $site ?>assets/js/plugins.js"></script>
-    
+
     <!-- Shop Page JavaScript -->
     <script>
-    $(document).ready(function() {
-        // Initialize product carousel
-        $('.product_carousel').owlCarousel({
-            loop: true,
-            margin: 20,
-            nav: true,
-            navText: ['<i class="fa fa-angle-left"></i>', '<i class="fa fa-angle-right"></i>'],
-            dots: false,
-            responsive: {
-                0: {
-                    items: 1
-                },
-                480: {
-                    items: 2
-                },
-                768: {
-                    items: 3
-                },
-                992: {
-                    items: 4
-                },
-                1200: {
-                    items: 4
-                }
-            }
-        });
-        
-        // Grid/List view toggle
-        $('.shop_toolbar_btn button').click(function() {
-            $('.shop_toolbar_btn button').removeClass('active');
-            $(this).addClass('active');
-            
-            var viewType = $(this).data('role');
-            var $shopWrapper = $('.shop_wrapper');
-            var $productCarousel = $('.product_carousel');
-            
-            if (viewType === 'grid_list') {
-                // Switch to list view
-                $productCarousel.addClass('d-none');
-                $shopWrapper.removeClass('d-none');
-                $('.single_product').addClass('list_view');
-            } else {
-                // Switch to grid view
-                $productCarousel.removeClass('d-none');
-                $shopWrapper.addClass('d-none');
-                $('.single_product').removeClass('list_view');
-                
-                // Update grid columns
-                var cols = viewType.split('_')[1];
-                $('.shop_wrapper').removeClass('grid_3 grid_4').addClass('grid_' + cols);
-            }
-        });
-        
-        // Quick View Modal
-        $('#quickViewModal').on('show.bs.modal', function(event) {
-            var button = $(event.relatedTarget);
-            var productId = button.data('product-id');
-            
-            $.ajax({
-                url: '<?= $site ?>ajax/quick-view.php',
-                method: 'GET',
-                data: { product_id: productId },
-                success: function(response) {
-                    $('#quickViewContent').html(response);
-                },
-                error: function() {
-                    $('#quickViewContent').html('<div class="text-center py-5"><p>Error loading product details.</p></div>');
+        $(document).ready(function() {
+            // Price range filter
+            $('#slider-range').slider({
+                range: true,
+                min: 0,
+                max: 10000,
+                values: [<?= $min_price ?>, <?= $max_price ?>],
+                slide: function(event, ui) {
+                    $('#amount').val('₹' + ui.values[0] + ' - ₹' + ui.values[1]);
+                    $('#min_price').val(ui.values[0]);
+                    $('#max_price').val(ui.values[1]);
                 }
             });
+            $('#amount').val('₹' + $('#slider-range').slider('values', 0) + ' - ₹' + $('#slider-range').slider('values', 1));
         });
-        
-        // Add to wishlist
-        $('.add-to-wishlist').click(function(e) {
-            e.preventDefault();
-            var productId = $(this).data('product-id');
-            var $this = $(this);
-            
-            $.ajax({
-                url: '<?= $site ?>ajax/add-to-wishlist.php',
-                method: 'POST',
-                data: { product_id: productId },
-                success: function(response) {
-                    if (response.success) {
-                        alert(response.message);
-                    } else {
-                        alert(response.message);
-                    }
-                }
-            });
-        });
-        
-        // Price range filter
-        $('#slider-range').slider({
-            range: true,
-            min: 0,
-            max: 10000,
-            values: [<?= $min_price ?>, <?= $max_price ?>],
-            slide: function(event, ui) {
-                $('#amount').val('₹' + ui.values[0] + ' - ₹' + ui.values[1]);
-                $('#min_price').val(ui.values[0]);
-                $('#max_price').val(ui.values[1]);
-            }
-        });
-        $('#amount').val('₹' + $('#slider-range').slider('values', 0) + ' - ₹' + $('#slider-range').slider('values', 1));
-    });
     </script>
 
     <?php include_once "includes/footer-link.php"; ?>
 
 </body>
+
 </html>

@@ -119,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update'])) {
                 display_order = ?, 
                 status = ?, 
                 expiry_date = ?,
-                updated_at = NOW()
+                uploaded_at = NOW()
                 WHERE id = ?");
             
             $stmt->bind_param("sssssiiisi", 

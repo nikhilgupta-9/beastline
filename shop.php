@@ -1,47 +1,216 @@
 <?php
+session_start();
 include_once "config/connect.php";
 include_once "util/function.php";
 
-// Get current category from slug
-$category_slug = $_GET['alias'] ?? '';
-$category = get_category_by_slug($category_slug);
+// Get category slug from URL
+$category_slug = isset($_GET['alias']) ? mysqli_real_escape_string($conn, $_GET['alias']) : '';
+
+// Get category details
+$category_sql = "SELECT * FROM categories WHERE slug_url = '$category_slug' AND status = 1 LIMIT 1";
+$category_result = mysqli_query($conn, $category_sql);
+$category = mysqli_fetch_assoc($category_result);
 
 if (!$category) {
     // Redirect to shop page if category not found
     header("Location: " . $site . "shop/");
-    exit;
+    exit();
 }
 
 $category_id = $category['id'];
 $category_name = $category['categories'];
 
-// Get category hierarchy for breadcrumbs
-$category_hierarchy = get_category_hierarchy($category_id);
-
 // Get filter parameters
-$filters = [
-    'min_price' => $_GET['min_price'] ?? null,
-    'max_price' => $_GET['max_price'] ?? null,
-    'brands' => isset($_GET['brand']) ? (array)$_GET['brand'] : [],
-    'colors' => isset($_GET['color']) ? (array)$_GET['color'] : [],
-    'sizes' => isset($_GET['size']) ? (array)$_GET['size'] : [],
-    'materials' => isset($_GET['material']) ? (array)$_GET['material'] : [],
-    'sort' => $_GET['sort'] ?? 'newest'
-];
+$brand_id = isset($_GET['brand']) ? intval($_GET['brand']) : 0;
+$min_price = isset($_GET['min_price']) ? floatval($_GET['min_price']) : 0;
+$max_price = isset($_GET['max_price']) ? floatval($_GET['max_price']) : 100000;
+$sort_by = isset($_GET['sort']) ? $_GET['sort'] : 'newest';
 
-// Get products with filters
-$products = get_filtered_products($category_id, $filters);
+// Build query with filters similar to shop page
+$sql_pro = "
+    SELECT 
+        p.pro_id,
+        p.pro_name,
+        p.mrp,
+        p.selling_price,
+        p.slug_url,
+        p.pro_sub_cate,
+        p.brand_name,
+        p.status,
+        p.stock,
+        p.short_desc,
+        pi.image_url AS pro_img,
+        c.categories,
+        b.brand_name as brand_name_text
+    FROM products p
+    LEFT JOIN product_images pi 
+        ON p.pro_id = pi.product_id AND pi.is_main = 1
+    LEFT JOIN categories c 
+        ON p.pro_sub_cate = c.id
+    LEFT JOIN brands b 
+        ON p.brand_name = b.id
+    WHERE p.status = 1 AND p.pro_sub_cate = ? OR p.pro_cate = ?
+";
 
-// Get filter data
-$categories = get_categories_for_sidebar();
-$brands = get_brands_for_filter();
-$colors = get_colors_for_filter();
-$sizes = get_sizes_for_filter();
-$price_range = get_price_range($category_id);
+// Apply filters
+$conditions = [];
+$params = [$category_id, $category_id];
+$types = "ii";
 
-$contact = contact_us();
+if ($brand_id > 0) {
+    $conditions[] = "p.brand_name = ?";
+    $params[] = $brand_id;
+    $types .= "i";
+}
+
+if (!empty($conditions)) {
+    $sql_pro .= " AND " . implode(" AND ", $conditions);
+}
+
+// Add price range filter
+$sql_pro .= " AND p.selling_price BETWEEN ? AND ?";
+$params[] = $min_price;
+$params[] = $max_price;
+$types .= "dd";
+
+// Add sorting
+switch ($sort_by) {
+    case 'price_low':
+        $sql_pro .= " ORDER BY p.selling_price ASC";
+        break;
+    case 'price_high':
+        $sql_pro .= " ORDER BY p.selling_price DESC";
+        break;
+    case 'popular':
+        $sql_pro .= " ORDER BY p.pro_id DESC";
+        break;
+    case 'rating':
+        $sql_pro .= " ORDER BY p.pro_id DESC";
+        break;
+    default: // 'newest'
+        $sql_pro .= " ORDER BY p.pro_id DESC";
+        break;
+}
+
+// Prepare and execute query
+$stmt = mysqli_prepare($conn, $sql_pro);
+if ($stmt) {
+    mysqli_stmt_bind_param($stmt, $types, ...$params);
+    mysqli_stmt_execute($stmt);
+    $result = mysqli_stmt_get_result($stmt);
+    $products = [];
+    $total_products = 0;
+
+    while ($row = mysqli_fetch_assoc($result)) {
+        // Image fallback safety
+        if (empty($row['pro_img'])) {
+            $row['pro_img'] = 'no-image.jpg';
+        }
+        
+        // Format prices
+        $row['formatted_mrp'] = '₹' . number_format($row['mrp'], 2);
+        $row['formatted_selling_price'] = '₹' . number_format($row['selling_price'], 2);
+        
+        // Calculate discount
+        if ($row['mrp'] > $row['selling_price']) {
+            $row['discount'] = round((($row['mrp'] - $row['selling_price']) / $row['mrp']) * 100);
+        } else {
+            $row['discount'] = 0;
+        }
+        
+        $products[] = $row;
+        $total_products++;
+    }
+    mysqli_stmt_close($stmt);
+} else {
+    // Fallback to simple query
+    $fallback_sql = "
+        SELECT 
+            p.pro_id,
+            p.pro_name,
+            p.mrp,
+            p.selling_price,
+            p.slug_url,
+            p.pro_sub_cate,
+            p.brand_name,
+            p.status,
+            p.stock,
+            p.short_desc,
+            pi.image_url AS pro_img,
+            c.categories,
+            b.brand_name as brand_name_text
+        FROM products p
+        LEFT JOIN product_images pi 
+            ON p.pro_id = pi.product_id AND pi.is_main = 1
+        LEFT JOIN categories c 
+            ON p.pro_sub_cate = c.id
+        LEFT JOIN brands b 
+            ON p.brand_name = b.id
+        WHERE p.status = 1 AND p.pro_sub_cate = $category_id
+        ORDER BY p.pro_id DESC
+    ";
+    
+    $result = mysqli_query($conn, $fallback_sql);
+    $products = [];
+    $total_products = 0;
+    if ($result) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            // Image fallback safety
+            if (empty($row['pro_img'])) {
+                $row['pro_img'] = 'no-image.jpg';
+            }
+            
+            $row['formatted_mrp'] = '₹' . number_format($row['mrp'], 2);
+            $row['formatted_selling_price'] = '₹' . number_format($row['selling_price'], 2);
+            
+            // Calculate discount
+            if ($row['mrp'] > $row['selling_price']) {
+                $row['discount'] = round((($row['mrp'] - $row['selling_price']) / $row['mrp']) * 100);
+            } else {
+                $row['discount'] = 0;
+            }
+            
+            $products[] = $row;
+            $total_products++;
+        }
+    }
+}
+
+// Get brands for this category
+$brands_sql = "
+    SELECT DISTINCT b.*, 
+           (SELECT COUNT(*) FROM products p2 WHERE p2.brand_name = b.id AND p2.pro_sub_cate = $category_id AND p2.status = 1) as product_count
+    FROM brands b
+    LEFT JOIN products p ON b.id = p.brand_name
+    WHERE p.pro_sub_cate = $category_id AND p.status = 1
+    ORDER BY b.brand_name
+";
+$brands_result = mysqli_query($conn, $brands_sql);
+$brands = [];
+while ($brand = mysqli_fetch_assoc($brands_result)) {
+    $brands[] = $brand;
+}
+
+// Get price range for this category
+$price_sql = "
+    SELECT 
+        MIN(selling_price) as min_price,
+        MAX(selling_price) as max_price
+    FROM products 
+    WHERE pro_sub_cate = $category_id AND status = 1
+";
+$price_result = mysqli_query($conn, $price_sql);
+$price_range = mysqli_fetch_assoc($price_result);
+
+// Get categories for sidebar
+$categories_sql = "SELECT * FROM categories WHERE status = 1 AND parent_id = 0 ORDER BY categories";
+$categories_result = mysqli_query($conn, $categories_sql);
+$categories = [];
+while ($cat = mysqli_fetch_assoc($categories_result)) {
+    $categories[] = $cat;
+}
+
 ?>
-
 <!doctype html>
 <html class="no-js" lang="en">
 
@@ -49,15 +218,13 @@ $contact = contact_us();
     <meta charset="utf-8">
     <meta http-equiv="x-ua-compatible" content="ie=edge">
     <title><?= htmlspecialchars($category_name) ?> | Beastline</title>
-    <meta name="description" content="<?= htmlspecialchars($category['meta_description'] ?? '') ?>">
-    <meta name="keywords" content="<?= htmlspecialchars($category['meta_keywords'] ?? '') ?>">
+    <meta name="description" content="<?= htmlspecialchars($category['meta_description'] ?? 'Browse our collection of ' . $category_name) ?>">
+    <meta name="keywords" content="<?= htmlspecialchars($category['meta_keywords'] ?? $category_name . ', products, shop, buy') ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <!-- Favicon -->
     <link rel="shortcut icon" type="image/x-icon" href="<?= $site ?>assets/img/favicon/favicon.ico">
 
     <!-- CSS -->
-    <!-- CSS 
-    ========================= -->
     <!--bootstrap min css-->
     <link rel="stylesheet" href="<?= $site ?>assets/css/bootstrap.min.css">
     <!--owl carousel min css-->
@@ -84,6 +251,7 @@ $contact = contact_us();
 
     <!--modernizr min js here-->
     <script src="<?= $site ?>assets/js/vendor/modernizr-3.7.1.min.js"></script>
+
 </head>
 
 <body>
@@ -98,10 +266,11 @@ $contact = contact_us();
             <div class="row">
                 <div class="col-12">
                     <div class="breadcrumb_content">
-                        <h3><?= $category['categories'] ?? 'Shop' ?></h3>
+                        <h3><?= htmlspecialchars($category_name) ?></h3>
                         <ul>
                             <li><a href="<?= $site ?>">home</a></li>
-                            <li><?= $category['categories'] ?? 'shop' ?></li>
+                            <li><a href="<?= $site ?>shop/">Shop</a></li>
+                            <li><?= htmlspecialchars($category_name) ?></li>
                         </ul>
                     </div>
                 </div>
@@ -111,279 +280,105 @@ $contact = contact_us();
     <!--breadcrumbs area end-->
 
     <!--shop area start-->
-    <div class="shop_area shop_reverse mb-80">
+    <div class="shop_area shop_fullwidth mb-80">
         <div class="container">
-            <div class="row">
-                <div class="col-lg-3 col-md-12">
-                    <!--sidebar widget start-->
-                    <aside class="sidebar_widget">
-                        <div class="widget_inner">
-                            <!-- Categories -->
-                            <div class="widget_list widget_categories">
-                                <h3>Categories</h3>
-                                <ul>
-                                    <?php foreach ($categories as $cat): ?>
-                                        <li class="widget_sub_categories sub_categories<?= $cat['id'] ?>">
-                                            <a href="javascript:void(0)"><?= htmlspecialchars($cat['categories']) ?>
-                                                <span>(<?= $cat['product_count'] ?>)</span>
-                                            </a>
-                                            <?php
-                                            $subcategories = get_subcategories($cat['id']);
-                                            if (!empty($subcategories)):
-                                            ?>
-                                                <ul class="widget_dropdown_categories dropdown_categories<?= $cat['id'] ?>">
-                                                    <?php foreach ($subcategories as $subcat): ?>
-                                                        <li>
-                                                            <a href="<?= $site ?>category/<?= $subcat['slug'] ?>">
-                                                                <?= htmlspecialchars($subcat['categories']) ?>
-                                                            </a>
-                                                        </li>
-                                                    <?php endforeach; ?>
-                                                </ul>
-                                            <?php endif; ?>
-                                        </li>
-                                    <?php endforeach; ?>
-                                </ul>
-                            </div>
-
-                            <!-- Price Filter -->
-                            <div class="widget_list widget_filter">
-                                <h3>Filter by price</h3>
-                                <form id="priceFilterForm">
-                                    <div id="slider-range"
-                                        data-min="<?= $price_range['min_price'] ?? 0 ?>"
-                                        data-max="<?= $price_range['max_price'] ?? 10000 ?>"></div>
-                                    <button type="button" id="applyPriceFilter">Filter</button>
-                                    <input type="text" name="price_range" id="amount" readonly />
-                                </form>
-                            </div>
-
-                            <!-- Color Filter -->
-                            <div class="widget_list widget_color">
-                                <h3>Select By Color</h3>
-                                <ul>
-                                    <?php foreach ($colors as $color): ?>
-                                        <li>
-                                            <label class="color_filter">
-                                                <input type="checkbox" name="color" value="<?= htmlspecialchars($color['color']) ?>"
-                                                    class="filter-checkbox" <?= in_array($color['color'], $filters['colors']) ? 'checked' : '' ?>>
-                                                <span class="color_dot" style="background-color: <?= strtolower($color['color']) ?>"></span>
-                                                <?= htmlspecialchars($color['color']) ?>
-                                                <span>(<?= $color['product_count'] ?>)</span>
-                                            </label>
-                                        </li>
-                                    <?php endforeach; ?>
-                                </ul>
-                            </div>
-
-                            <!-- Size Filter -->
-                            <div class="widget_list widget_color">
-                                <h3>Select By Size</h3>
-                                <ul>
-                                    <?php foreach ($sizes as $size): ?>
-                                        <li>
-                                            <label class="size_filter">
-                                                <input type="checkbox" name="size" value="<?= htmlspecialchars($size['size']) ?>"
-                                                    class="filter-checkbox" <?= in_array($size['size'], $filters['sizes']) ? 'checked' : '' ?>>
-                                                <?= htmlspecialchars($size['size']) ?>
-                                                <span>(<?= $size['product_count'] ?>)</span>
-                                            </label>
-                                        </li>
-                                    <?php endforeach; ?>
-                                </ul>
-                            </div>
-
-                            <!-- Brand Filter -->
-                            <div class="widget_list widget_brand">
-                                <h3>Brand</h3>
-                                <ul>
-                                    <?php foreach ($brands as $brand): ?>
-                                        <li>
-                                            <label class="brand_filter">
-                                                <input type="checkbox" name="brand" value="<?= $brand['id'] ?>"
-                                                    class="filter-checkbox" <?= in_array($brand['id'], $filters['brands']) ? 'checked' : '' ?>>
-                                                <?= htmlspecialchars($brand['brand_name']) ?>
-                                                <span>(<?= $brand['product_count'] ?>)</span>
-                                            </label>
-                                        </li>
-                                    <?php endforeach; ?>
-                                </ul>
-                            </div>
-
-                            <!-- Tags -->
-                            <div class="widget_list tags_widget">
-                                <h3>Product tags</h3>
-                                <div class="tag_cloud">
-                                    <a href="#" class="tag-filter" data-tag="men">Men</a>
-                                    <a href="#" class="tag-filter" data-tag="women">Women</a>
-                                    <a href="#" class="tag-filter" data-tag="new">New</a>
-                                    <a href="#" class="tag-filter" data-tag="sale">Sale</a>
-                                    <a href="#" class="tag-filter" data-tag="trending">Trending</a>
-                                </div>
-                            </div>
-
-                            <!-- Clear Filters -->
-                            <div class="widget_list">
-                                <button type="button" id="clearFilters" class="btn btn-outline-secondary btn-sm">Clear All Filters</button>
-                            </div>
-                        </div>
-                    </aside>
-                    <!--sidebar widget end-->
+            <!-- Category Description -->
+            <?php if (!empty($category['category_desc'])): ?>
+            <div class="row mb-30">
+                <div class="col-12">
+                    <div class="category_description bg-light p-4 rounded">
+                        <h4 class="mb-3">About <?= htmlspecialchars($category_name) ?></h4>
+                        <p class="mb-0"><?= htmlspecialchars($category['category_desc']) ?></p>
+                    </div>
                 </div>
+            </div>
+            <?php endif; ?>
 
-                <div class="col-lg-9 col-md-12">
-                    <!--shop toolbar start-->
-                    <div class="shop_toolbar_wrapper">
-                        <div class="shop_toolbar_btn">
-                            <button data-role="grid_4" type="button" class="active btn-grid-4" data-bs-toggle="tooltip" title="4"></button>
-                            <button data-role="grid_3" type="button" class="btn-grid-3" data-bs-toggle="tooltip" title="3"></button>
-                            <button data-role="grid_list" type="button" class="btn-list" data-bs-toggle="tooltip" title="List"></button>
-                        </div>
-                        <div class="niceselect_option">
-                            <form id="sortForm">
-                                <select name="sort" id="sortSelect" class="filter-select">
-                                    <option value="newest" <?= $filters['sort'] == 'newest' ? 'selected' : '' ?>>Sort by newness</option>
-                                    <option value="price_low_high" <?= $filters['sort'] == 'price_low_high' ? 'selected' : '' ?>>Sort by price: low to high</option>
-                                    <option value="price_high_low" <?= $filters['sort'] == 'price_high_low' ? 'selected' : '' ?>>Sort by price: high to low</option>
-                                    <option value="name_asc" <?= $filters['sort'] == 'name_asc' ? 'selected' : '' ?>>Sort by name: A-Z</option>
-                                    <option value="name_desc" <?= $filters['sort'] == 'name_desc' ? 'selected' : '' ?>>Sort by name: Z-A</option>
-                                    <option value="popular" <?= $filters['sort'] == 'popular' ? 'selected' : '' ?>>Sort by popularity</option>
-                                </select>
-                            </form>
-                        </div>
-                        <div class="page_amount">
-                            <p>Showing <span id="productCount"><?= count($products) ?></span> results</p>
+           
+            <!-- Products Section -->
+            <div class="row">
+                <?php if (empty($products)): ?>
+                    <div class="col-12">
+                        <div class="alert alert-info text-center py-5">
+                            <h4 class="mb-3">No products found in <?= htmlspecialchars($category_name) ?>!</h4>
+                            <p class="mb-4">Try different filters or browse other categories.</p>
+                            <a href="<?= $site ?>category/sale" class="btn btn-primary">Browse All Products</a>
                         </div>
                     </div>
-                    <!--shop toolbar end-->
+                <?php else: ?>
+                    <?php foreach ($products as $index => $product): 
+                        // Determine secondary image
+                        $secondary_img_num = ($index % 4) + 2; // This will cycle through 2, 3, 4, 5, etc.
 
-                    <!-- Products Grid -->
-                    <div id="productsContainer" class="row shop_wrapper">
-                        <?php if (empty($products)): ?>
-                            <div class="col-12">
-                                <div class="alert alert-info">No products found in this category.</div>
-                            </div>
-                        <?php else: ?>
-                            <?php foreach ($products as $pro):
-                                // Get product variants for quick view
-                                $variants_sql = "SELECT * FROM product_variants WHERE product_id = {$pro['pro_id']}";
-                                $variants_result = mysqli_query($conn, $variants_sql);
-                                $variants = [];
-                                while ($variant = mysqli_fetch_assoc($variants_result)) {
-                                    $variants[] = $variant;
-                                }
-                            ?>
-                                <div class="col-lg-4 col-md-4 col-sm-6 col-12 ">
-                                    <div class="single_product" data-product-id="<?= $pro['pro_id'] ?>">
-                                        <div class="product_thumb">
-                                            <a class="primary_img" href="<?= $site ?>product-details/<?= $pro['slug_url'] ?>">
-                                                <img src="<?= $site ?>admin/assets/img/uploads/<?= $pro['pro_img'] ?>" alt="<?= htmlspecialchars($pro['pro_name']) ?>">
-                                            </a>
-                                            <a class="secondary_img" href="<?= $site ?>product-details/<?= $pro['slug_url'] ?>">
-                                                <?php
-                                                // Get secondary image
-                                                $secondary_img_sql = "SELECT image_url FROM product_images 
-                                                                 WHERE product_id = {$pro['pro_id']} AND is_main = 0 
-                                                                 ORDER BY display_order LIMIT 1";
-                                                $secondary_result = mysqli_query($conn, $secondary_img_sql);
-                                                if ($secondary_img = mysqli_fetch_assoc($secondary_result)): ?>
-                                                    <img src="<?= $site ?>admin/assets/img/uploads/<?= $secondary_img['image_url'] ?>" alt="<?= htmlspecialchars($pro['pro_name']) ?>">
-                                                <?php else: ?>
-                                                    <img src="<?= $site ?>assets/img/product/product2.jpg" alt="<?= htmlspecialchars($pro['pro_name']) ?>">
+                        // Calculate discount if available
+                        $show_sale = isset($product['mrp']) && isset($product['selling_price']) &&
+                            $product['mrp'] > $product['selling_price'];
+
+                        // Primary image path - similar to featured products
+                        if (isset($product['pro_img']) && strpos($product['pro_img'], 'assets/') === false) {
+                            $primary_img = $site . 'admin/assets/img/uploads/' . $product['pro_img'];
+                        } else {
+                            $primary_img = isset($product['pro_img']) ? $product['pro_img'] : "assets/img/product/product" . (($index * 2) + 1) . ".jpg";
+                        }
+                    ?>
+                        <div class="col-lg-3 col-md-4 col-sm-6 col-6 mb-4">
+                            <article class="single_product">
+                                <figure>
+                                    <div class="product_thumb">
+                                        <a class="primary_img" href="<?= $site ?>product-details/<?= $product['slug_url'] ?>">
+                                            <img src="<?= $primary_img ?>" alt="<?= htmlspecialchars($product['pro_name']) ?>" style="height: 300px; object-fit: cover;">
+                                        </a>
+                                        <a class="secondary_img" href="<?= $site ?>product-details/<?= $product['slug_url'] ?>">
+                                            <img src="<?= $site ?>assets/img/product/product<?= $secondary_img_num ?>.jpg" alt="<?= htmlspecialchars($product['pro_name']) ?>" style="height: 300px; object-fit: cover;">
+                                        </a>
+
+                                        <?php if ($show_sale): ?>
+                                            <div class="label_product">
+                                                <span class="label_sale">Sale</span>
+                                                <?php if ($product['discount'] > 0): ?>
+                                                    <span class="label_discount">-<?= $product['discount'] ?>%</span>
                                                 <?php endif; ?>
-                                            </a>
-                                            <?php if ($pro['mrp'] > $pro['selling_price']): ?>
-                                                <div class="label_product">
-                                                    <span class="label_sale">Sale</span>
-                                                    <?php
-                                                    $discount = round((($pro['mrp'] - $pro['selling_price']) / $pro['mrp']) * 100);
-                                                    if ($discount > 0): ?>
-                                                        <span class="label_discount">-<?= $discount ?>%</span>
-                                                    <?php endif; ?>
-                                                </div>
-                                            <?php endif; ?>
-                                            <div class="action_links">
-                                                <ul>
-                                                    <li class="quick_button">
-                                                        <a href="#" data-bs-toggle="modal" data-bs-target="#quickViewModal"
-                                                            data-product-id="<?= $pro['pro_id'] ?>" title="quick view">
-                                                            <span class="pe-7s-search"></span>
-                                                        </a>
-                                                    </li>
-                                                    <li class="wishlist">
-                                                        <a href="#" class="add-to-wishlist" data-product-id="<?= $pro['pro_id'] ?>" title="Add to Wishlist">
-                                                            <span class="pe-7s-like"></span>
-                                                        </a>
-                                                    </li>
-                                                    <li class="compare">
-                                                        <a href="#" class="add-to-compare" data-product-id="<?= $pro['pro_id'] ?>" title="Add to Compare">
-                                                            <span class="pe-7s-edit"></span>
-                                                        </a>
-                                                    </li>
-                                                </ul>
                                             </div>
-                                        </div>
-                                        <div class="product_content grid_content">
-                                            <div class="product_content_inner">
-                                                <h4 class="product_name">
-                                                    <a href="<?= $site ?>product-details/<?= $pro['slug_url'] ?>">
-                                                        <?= htmlspecialchars($pro['pro_name']) ?>
-                                                    </a>
-                                                </h4>
-                                                <div class="price_box">
-                                                    <?php if ($pro['mrp'] > $pro['selling_price']): ?>
-                                                        <span class="old_price">₹ <?= number_format($pro['mrp'], 2) ?></span>
-                                                    <?php endif; ?>
-                                                    <span class="current_price">₹ <?= number_format($pro['selling_price'], 2) ?></span>
-                                                </div>
+                                        <?php endif; ?>
+                                        
+                                        <?php if ($product['stock'] <= 0): ?>
+                                            <div class="label_product">
+                                                <span class="label_sale" style="background: #dc3545;">Out of Stock</span>
                                             </div>
-                                            <div class="add_to_cart">
-                                                <a href="#"
-                                                    class="add-to-cart-btn"
-                                                    data-product-id="<?= $pro['pro_id'] ?>"
-                                                    data-product-slug="<?= $pro['slug_url'] ?>"
-                                                    data-has-variants="<?= !empty($variants) ? 1 : 0 ?>">
-                                                    Add to cart
-                                                </a>
-                                            </div>
-                                        </div>
-                                        <div class="product_content list_content">
+                                        <?php endif; ?>
+                                    </div>
+                                    <figcaption class="product_content">
+                                        <div class="product_content_inner">
                                             <h4 class="product_name">
-                                                <a href="<?= $site ?>product-details/<?= $pro['slug_url'] ?>">
-                                                    <?= htmlspecialchars($pro['pro_name']) ?>
+                                                <a href="<?= $site ?>product-details/<?= $product['slug_url'] ?>">
+                                                    <?= htmlspecialchars($product['pro_name']) ?>
                                                 </a>
                                             </h4>
+                                            
+                                        
                                             <div class="price_box">
-                                                <?php if ($pro['mrp'] > $pro['selling_price']): ?>
-                                                    <span class="old_price">₹ <?= number_format($pro['mrp'], 2) ?></span>
+                                                <?php if ($show_sale): ?>
+                                                    <span class="old_price"><?= $product['formatted_mrp'] ?></span>
                                                 <?php endif; ?>
-                                                <span class="current_price">₹ <?= number_format($pro['selling_price'], 2) ?></span>
-                                            </div>
-                                            <div class="product_rating">
-                                                <ul>
-                                                    <!-- Add rating stars here -->
-                                                </ul>
-                                            </div>
-                                            <div class="product_desc">
-                                                <p><?= htmlspecialchars(substr($pro['short_desc'], 0, 150)) ?>...</p>
-                                            </div>
-                                            <div class="add_to_cart shop_list_cart">
-                                                <a href="#" class="add-to-cart-btn" data-product-id="<?= $pro['pro_id'] ?>">Add to cart</a>
+                                                <span class="current_price"><?= $product['formatted_selling_price'] ?></span>
                                             </div>
                                         </div>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
-                        <?php endif; ?>
-                    </div>
-
-                    <!-- Pagination -->
-                    <div class="shop_toolbar t_bottom">
-                        <div class="pagination">
-                            <ul id="pagination">
-                                <!-- Pagination will be loaded via JavaScript -->
-                            </ul>
+                                        <div class="add_to_cart">
+                                            <a class="add-to-cart" href="<?= $site ?>product-details/<?= $product['slug_url'] ?>">View Product</a>
+                                        </div>
+                                    </figcaption>
+                                </figure>
+                            </article>
                         </div>
+                    <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
+
+            <!-- Product Count -->
+            <div class="row mt-30">
+                <div class="col-12">
+                    <div class="page_amount">
+                        <p>Showing <?= count($products) ?> of <?= $total_products ?> results in <?= htmlspecialchars($category_name) ?></p>
                     </div>
                 </div>
             </div>
@@ -391,54 +386,150 @@ $contact = contact_us();
     </div>
     <!--shop area end-->
 
-    <!--footer area start-->
-    <?php include_once "includes/footer.php"; ?>
-
-    <!--footer area end-->
-
-    <!-- Quick View Modal -->
-    <div class="modal fade" id="quickViewModal" tabindex="-1" role="dialog" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
-            <div class="modal-content">
-                <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true"><i class="ion-android-close"></i></span>
-                </button>
-                <div class="modal_body">
-                    <div class="container">
-                        <div class="row" id="quickViewContent">
-                            <!-- Quick view content will be loaded via AJAX -->
-                        </div>
+    <!-- Related Categories (Optional) -->
+    <?php
+    // Get related categories (same parent or sibling categories)
+    $related_categories_sql = "
+        SELECT c.* FROM categories c 
+        WHERE c.status = 1 AND c.id != $category_id 
+        ORDER BY RAND() LIMIT 4
+    ";
+    $related_result = mysqli_query($conn, $related_categories_sql);
+    $related_categories = [];
+    while ($cat = mysqli_fetch_assoc($related_result)) {
+        $related_categories[] = $cat;
+    }
+    
+    if (!empty($related_categories)):
+    ?>
+    <div class="related_categories_area mb-80">
+        <div class="container">
+            <div class="row">
+                <div class="col-12">
+                    <div class="section_title text-center mb-40">
+                        <h3>Explore Related Categories</h3>
                     </div>
                 </div>
             </div>
+            <div class="row">
+                <?php foreach ($related_categories as $related_cat): 
+                    $related_slug = !empty($related_cat['slug_url']) ? $related_cat['slug_url'] : 
+                                    strtolower(str_replace(' ', '-', $related_cat['categories']));
+                ?>
+                    <div class="col-lg-3 col-md-3 col-sm-6">
+                        <div class="single_category text-center mb-30">
+                            <div class="category_thumb">
+                                <a href="<?= $site ?>category/<?= $related_slug ?>">
+                                    <img src="<?= $site ?>admin/uploads/category/<?= $related_cat['image'] ?>" alt="<?= htmlspecialchars($related_cat['categories']) ?>">
+                                </a>
+                            </div>
+                            <div class="category_name mt-3">
+                                <h4><a href="<?= $site ?>category/<?= $related_slug ?>"><?= htmlspecialchars($related_cat['categories']) ?></a></h4>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
         </div>
     </div>
+    <?php endif; ?>
 
-    <!-- Mini Cart Dropdown -->
-    <div class="mini_cart_wrapper" id="miniCartDropdown" style="display: none;">
-        <div class="mini_cart_inner">
-            <div class="mini_cart_header">
-                <h3>Shopping Cart</h3>
-            </div>
-            <div class="mini_cart_body" id="miniCartItems">
-                <!-- Cart items will be loaded here -->
-            </div>
-            <div class="mini_cart_footer">
-                <div class="cart_total">
-                    <span>Total:</span>
-                    <span class="price" id="cartTotal">₹0.00</span>
-                </div>
-                <div class="cart_buttons">
-                    <a href="<?= $site ?>cart/" class="btn btn-outline-dark">View Cart</a>
-                    <a href="<?= $site ?>checkout/" class="btn btn-dark">Checkout</a>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!--footer area start-->
+    <?php include_once "includes/footer.php"; ?>
+
+    <!-- JS -->
+    <!--jquery min js-->
+    <script src="<?= $site ?>assets/js/vendor/jquery-3.4.1.min.js"></script>
+    <!--popper min js-->
+    <script src="<?= $site ?>assets/js/popper.js"></script>
+    <!--bootstrap min js-->
+    <script src="<?= $site ?>assets/js/bootstrap.min.js"></script>
+    <!--owl carousel min js-->
+    <script src="<?= $site ?>assets/js/owl.carousel.min.js"></script>
+    <!--slick min js-->
+    <script src="<?= $site ?>assets/js/slick.min.js"></script>
+    <!--magnific popup min js-->
+    <script src="<?= $site ?>assets/js/jquery.magnific-popup.min.js"></script>
+    <!-- Plugins JS -->
+    <script src="<?= $site ?>assets/js/plugins.js"></script>
+
+    <!-- Category Page JavaScript -->
+    <script>
+        $(document).ready(function() {
+            // Mobile filter toggle
+            $('.mobile-filter-toggle').click(function() {
+                $('.filter_sidebar').toggleClass('d-none');
+            });
+
+            // Price range slider (if you want to use slider instead of inputs)
+            <?php if ($price_range['min_price'] !== null && $price_range['max_price'] !== null): ?>
+            $('#price-slider').slider({
+                range: true,
+                min: <?= $price_range['min_price'] ?? 0 ?>,
+                max: <?= $price_range['max_price'] ?? 10000 ?>,
+                values: [<?= $min_price ?>, <?= $max_price ?>],
+                slide: function(event, ui) {
+                    $('#min-price-display').text('₹' + ui.values[0]);
+                    $('#max-price-display').text('₹' + ui.values[1]);
+                    $('#min_price').val(ui.values[0]);
+                    $('#max_price').val(ui.values[1]);
+                }
+            });
+            <?php endif; ?>
+        });
+    </script>
+
+    <style>
+        .filter_sidebar {
+            transition: all 0.3s ease;
+        }
+        
+        .product_brand small {
+            font-size: 12px;
+        }
+        
+        .category_description {
+            background: linear-gradient(to right, #f8f9fa, #e9ecef);
+        }
+        
+        .single_category img {
+            width: 100%;
+            height: 480px;
+            object-fit: cover;
+            border-radius: 8px;
+            transition: transform 0.3s ease;
+        }
+        
+        .single_category img:hover {
+            transform: scale(1.05);
+        }
+        
+        @media (max-width: 768px) {
+            .filter_sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                overflow-y: auto;
+                z-index: 1050;
+                background: white;
+                padding: 20px;
+                display: none;
+            }
+            
+            .filter_sidebar:not(.d-none) {
+                display: block;
+            }
+            
+            .mobile-filter-toggle {
+                display: block;
+                margin-bottom: 15px;
+            }
+        }
+    </style>
 
     <?php include_once "includes/footer-link.php"; ?>
-
-
 
 </body>
 

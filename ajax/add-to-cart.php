@@ -20,6 +20,8 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
             $color = isset($_POST['color']) ? trim($_POST['color']) : null;
             $size = isset($_POST['size']) ? trim($_POST['size']) : null;
             $variant_id = isset($_POST['variant_id']) ? intval($_POST['variant_id']) : null;
+            $stock = 10;
+            $price = isset($_POST['selling_price']) ? floatval($_POST['selling_price']) : 0;
             
             // Validate required fields
             if($product_id <= 0) {
@@ -90,31 +92,7 @@ if($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
             }
             
             // Check stock
-            if($has_variants && $variant) {
-                // Check variant stock
-                if($variant['quantity'] <= 0) {
-                    echo json_encode(['success' => false, 'message' => 'Selected variant is out of stock']);
-                    exit();
-                }
-                if($variant['quantity'] < $quantity) {
-                    echo json_encode(['success' => false, 'message' => 'Only ' . $variant['quantity'] . ' items available in stock']);
-                    exit();
-                }
-                $price = $variant['price'] > 0 ? $variant['price'] : $product['selling_price'];
-                $stock = $variant['quantity'];
-            } else {
-                // Check main product stock
-                if($product['quantity'] <= 0) {
-                    echo json_encode(['success' => false, 'message' => 'Product is out of stock']);
-                    exit();
-                }
-                if($product['quantity'] < $quantity) {
-                    echo json_encode(['success' => false, 'message' => 'Only ' . $product['quantity'] . ' items available in stock']);
-                    exit();
-                }
-                $price = $product['selling_price'];
-                $stock = $product['quantity'];
-            }
+           
             
             // Initialize cart if not exists
             if(!isset($_SESSION['cart'])) {

@@ -338,7 +338,8 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
                             <div class="white_card_header">
                                 <div class="main-title">
                                     <h3>Add New Product - Clothing & Shoes</h3>
-                                    <p class="mb-0 text-muted">Fill in the product details for your clothing or shoe item</p>
+                                    <p class="mb-0 text-muted">Fill in the product details for your clothing or shoe item </p>
+                                    <p class="mb-0 text-primary">All Porduct image size should be 600X698px </p>
                                 </div>
                             </div>
                             <div class="white_card_body">
@@ -597,7 +598,7 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
                                                     <div class="image-upload-box" onclick="document.getElementById('mainImage').click()">
                                                         <i class="fas fa-cloud-upload-alt"></i>
                                                         <p>Click to upload main product image</p>
-                                                        <small class="text-muted">Recommended: 800x800px, PNG or JPG</small>
+                                                        <small class="text-muted">Recommended: 600x698px, PNG or JPG</small>
                                                     </div>
                                                     <input type="file" class="d-none" name="main_image" id="mainImage" accept="image/*" onchange="previewMainImage(event)">
                                                     <div class="image-preview-container mt-3" id="mainImagePreview"></div>
@@ -652,7 +653,7 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
                                                             <input type="checkbox" name="new_arrival" value="1"> New Arrival
                                                         </label>
                                                         <label class="checkbox-item">
-                                                            <input type="checkbox" name="trending" value="1"> Trending
+                                                            <input type="checkbox" name="trending" value="1"> Featured
                                                         </label>
                                                         <label class="checkbox-item">
                                                             <input type="checkbox" name="is_deal" value="1"> Special Deal

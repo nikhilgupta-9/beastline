@@ -90,36 +90,27 @@ while ($variant = $variants_result->fetch_assoc()) {
 $has_variants = !empty($variants);
 $total_stock = $has_variants ? $variant_stock : $product['stock'];
 
-// Get related products (products from same category)
-$related_sql = "SELECT p.*, 
-                       c.categories as category_name
-                FROM products p
-                LEFT JOIN categories c ON p.pro_cate = c.id
-                WHERE p.pro_cate = ? 
-                AND p.pro_id != ? 
-                AND p.status = 1 
-                ORDER BY RAND() 
-                LIMIT 8";
-$related_stmt = $conn->prepare($related_sql);
-$related_stmt->bind_param("ii", $product['pro_cate'], $product_id);
-$related_stmt->execute();
-$related_result = $related_stmt->get_result();
-$related_products = [];
 
-while ($related = $related_result->fetch_assoc()) {
-    $related_products[] = $related;
-}
-
-// Get upsell products (featured or trending)
-$upsell_sql = "SELECT p.*, 
-                      c.categories as category_name
+// Get upsell products with proper column names
+$upsell_sql = "SELECT 
+                    p.pro_id,
+                    p.pro_name,
+                    p.mrp,
+                    p.selling_price,
+                    p.slug_url,
+                    p.trending,
+                    p.new_arrival,
+                    p.is_deal,
+                    p.deal_of_the_day,
+                    pi.image_url as pro_img
                FROM products p
-               LEFT JOIN categories c ON p.pro_cate = c.id
+               LEFT JOIN product_images pi ON p.pro_id = pi.product_id AND pi.is_main = 1
                WHERE (p.trending = 1 OR p.new_arrival = 1 OR p.is_deal = 1 OR p.deal_of_the_day = 1)
                AND p.pro_id != ? 
                AND p.status = 1 
                ORDER BY RAND() 
                LIMIT 6";
+
 $upsell_stmt = $conn->prepare($upsell_sql);
 $upsell_stmt->bind_param("i", $product_id);
 $upsell_stmt->execute();
@@ -127,12 +118,17 @@ $upsell_result = $upsell_stmt->get_result();
 $upsell_products = [];
 
 while ($upsell = $upsell_result->fetch_assoc()) {
+    // Ensure we have a valid image
+    if (empty($upsell['pro_img'])) {
+        $upsell['pro_img'] = 'no-image.jpg';
+    }
     $upsell_products[] = $upsell;
 }
+$upsell_stmt->close();
 
 // Get product reviews count and average rating
 $reviews_sql = "SELECT COUNT(*) as review_count, 
-                       AVG(rating) as avg_rating 
+                       COALESCE(AVG(rating), 0) as avg_rating 
                 FROM product_reviews 
                 WHERE product_id = ? AND status = 1";
 $reviews_stmt = $conn->prepare($reviews_sql);
@@ -146,12 +142,19 @@ if (!$review_stats) {
 }
 
 // Get recent reviews
-$recent_reviews_sql = "SELECT pr.*, u.first_name, u.last_name 
-                       FROM product_reviews pr
-                       LEFT JOIN users u ON pr.user_id = u.id
-                       WHERE pr.product_id = ? AND pr.status = 1
-                       ORDER BY pr.created_at DESC 
-                       LIMIT 5";
+$recent_reviews_sql = "
+SELECT 
+    pr.rating,
+    pr.review_message,
+    pr.reviewer_name,
+    pr.reviewver_img,
+    pr.created_at
+FROM product_reviews pr
+WHERE pr.product_id = ? AND pr.status = 1
+ORDER BY pr.created_at DESC
+LIMIT 5
+";
+
 $recent_reviews_stmt = $conn->prepare($recent_reviews_sql);
 $recent_reviews_stmt->bind_param("i", $product_id);
 $recent_reviews_stmt->execute();
@@ -262,7 +265,6 @@ $colorMap = [
     </div>
     <!--breadcrumbs area end-->
     <style>
-        
         /* Active/Selected color */
         .color-option.selected {
             position: relative;
@@ -434,10 +436,18 @@ $colorMap = [
                 </div>
                 <div class="col-lg-7 col-md-7">
                     <div class="product_d_right">
-                        <form id="productForm" method="POST" action="<?= $site ?>ajax/add-to-cart.php">
+                        <form id="productForm">
+                            <!-- REQUIRED -->
                             <input type="hidden" name="action" value="add_to_cart">
                             <input type="hidden" name="product_id" value="<?= $product_id ?>">
-                            <input type="hidden" id="selected_variant_id" name="variant_id" value="">
+                            <input type="hidden" name="selling_price" value="<?= $product['selling_price'] ?>">
+
+                            <!-- Variant related -->
+                            <input type="hidden" name="variant_id" id="selected_variant_id">
+                            <!-- <input type="hidden" name="color" id="selected_color">
+                            <input type="hidden" name="size" id="selected_size"> -->
+
+
 
                             <div class="productd_title_nav">
                                 <h1><a href="#"><?= htmlspecialchars($product['pro_name']) ?></a></h1>
@@ -590,11 +600,8 @@ $colorMap = [
                                 </div>
 
                                 <!-- Add to Cart Button -->
-                                <button type="submit" class="button add-to-cart-btn"
+                                <button id="addToCartBtn" type="submit" class="button add-to-cart-btn"
                                     style="margin-left: 20px;"
-                                    data-product-id="<?= $product_id ?>"
-                                    data-has-variants="<?= $has_variants ? 1 : 0 ?>"
-                                    data-product-page="true"
                                     <?= $total_stock == 0 ? 'disabled' : '' ?>>
                                     <?= $total_stock > 0 ? 'Add to cart' : 'Out of Stock' ?>
                                 </button>
@@ -742,11 +749,11 @@ $colorMap = [
                                     <div class="reviews_summary mb-30">
                                         <h3>Customer Reviews</h3>
                                         <div class="average_rating">
-                                            <h4><?= number_format($review_stats['rating'], 1) ?> out of 5</h4>
+                                            <h4><?= number_format($review_stats['avg_rating'] ?? 0, 1) ?> out of 5</h4>
                                             <div class="product_ratting" style="margin: 10px 0;">
                                                 <ul>
                                                     <?php for ($i = 1; $i <= 5; $i++):
-                                                        if ($i <= floor($review_stats['avg_rating'])): ?>
+                                                        if ($i <= floor($review_stats['avg_rating'] ?? 0)): ?>
                                                             <li><a href="#"><i class="ion-android-star"></i></a></li>
                                                         <?php else: ?>
                                                             <li><a href="#"><i class="ion-android-star-outline"></i></a></li>
@@ -763,7 +770,8 @@ $colorMap = [
                                         <?php foreach ($recent_reviews as $review): ?>
                                             <div class="reviews_comment_box">
                                                 <div class="comment_thmb">
-                                                    <img src="<?= $site ?>assets/img/blog/comment2.jpg" alt="">
+                                                    <img src="<?= $review['reviewver_img'] ?: $site . 'assets/img/blog/comment2.jpg' ?>">
+
                                                 </div>
                                                 <div class="comment_text">
                                                     <div class="reviews_meta">
@@ -780,11 +788,11 @@ $colorMap = [
                                                         </div>
                                                         <p>
                                                             <strong>
-                                                                <?= htmlspecialchars($review['first_name'] . ' ' . $review['last_name']) ?>
+                                                                <?= htmlspecialchars($review['reviewer_name']) ?>
                                                             </strong>
                                                             - <?= date('F d, Y', strtotime($review['created_at'])) ?>
                                                         </p>
-                                                        <p><?= htmlspecialchars($review['comment']) ?></p>
+                                                        <p><?= htmlspecialchars($review['review_message']) ?></p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -826,7 +834,7 @@ $colorMap = [
                                             </form>
                                         </div>
                                     <?php else: ?>
-                                        <p>Please <a href="<?= $site ?>login/">login</a> to write a review.</p>
+                                        <p>Please <a href="<?= $site ?>user-login/" class="text-primary text-bold">login</a> to write a review.</p>
                                     <?php endif; ?>
                                 </div>
                             </div>
@@ -838,107 +846,6 @@ $colorMap = [
     </div>
     <!--product info end-->
 
-    <!-- Related Products -->
-    <?php if (count($related_products) > 0): ?>
-        <section class="product_area related_products">
-            <div class="container">
-                <div class="row">
-                    <div class="col-12">
-                        <div class="section_title psec_title">
-                            <h2>Related Products</h2>
-                        </div>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="product_carousel product_column5 owl-carousel">
-                        <?php foreach ($related_products as $related):
-                            $related_discount = $related['mrp'] > $related['selling_price'] ?
-                                round((($related['mrp'] - $related['selling_price']) / $related['mrp']) * 100) : 0;
-                        ?>
-                            <div class="col-lg-3">
-                                <article class="single_product">
-                                    <figure>
-                                        <div class="product_thumb">
-                                            <a class="primary_img" href="<?= $site ?>product-details/<?= $related['slug_url'] ?>">
-                                                <img src="<?= $site ?>admin/assets/img/uploads/<?= $related['pro_img'] ?>" alt="<?= htmlspecialchars($related['pro_name']) ?>">
-                                            </a>
-                                            <a class="secondary_img" href="<?= $site ?>product-details/<?= $related['slug_url'] ?>">
-                                                <?php
-                                                // Get secondary image
-                                                $sec_img_sql = "SELECT image_url FROM product_images 
-                                                     WHERE product_id = ? AND is_main = 0 
-                                                     ORDER BY display_order LIMIT 1";
-                                                $sec_stmt = $conn->prepare($sec_img_sql);
-                                                $sec_stmt->bind_param("i", $related['pro_id']);
-                                                $sec_stmt->execute();
-                                                $sec_result = $sec_stmt->get_result();
-                                                if ($sec_img = $sec_result->fetch_assoc()): ?>
-                                                    <img src="<?= $site ?>admin/assets/img/uploads/<?= $sec_img['image_url'] ?>" alt="<?= htmlspecialchars($related['pro_name']) ?>">
-                                                <?php else: ?>
-                                                    <img src="<?= $site ?>assets/img/product/product2.jpg" alt="<?= htmlspecialchars($related['pro_name']) ?>">
-                                                <?php endif; ?>
-                                            </a>
-
-                                            <?php if ($related_discount > 0): ?>
-                                                <div class="label_product">
-                                                    <span class="label_sale">Sale</span>
-                                                    <span class="label_discount">-<?= $related_discount ?>%</span>
-                                                </div>
-                                            <?php endif; ?>
-
-                                            <div class="action_links">
-                                                <ul>
-                                                    <li class="quick_button">
-                                                        <a href="#" data-bs-toggle="modal" data-bs-target="#quickViewModal"
-                                                            data-product-id="<?= $related['pro_id'] ?>" title="quick view">
-                                                            <span class="pe-7s-search"></span>
-                                                        </a>
-                                                    </li>
-                                                    <li class="wishlist">
-                                                        <a href="#" class="add-to-wishlist" data-product-id="<?= $related['pro_id'] ?>" title="Add to Wishlist">
-                                                            <span class="pe-7s-like"></span>
-                                                        </a>
-                                                    </li>
-                                                    <li class="compare">
-                                                        <a href="#" class="add-to-compare" data-product-id="<?= $related['pro_id'] ?>" title="Add to Compare">
-                                                            <span class="pe-7s-edit"></span>
-                                                        </a>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                        <figcaption class="product_content">
-                                            <div class="product_content_inner">
-                                                <h4 class="product_name">
-                                                    <a href="<?= $site ?>product-details/<?= $related['slug_url'] ?>">
-                                                        <?= htmlspecialchars($related['pro_name']) ?>
-                                                    </a>
-                                                </h4>
-                                                <div class="price_box">
-                                                    <?php if ($related['mrp'] > $related['selling_price']): ?>
-                                                        <span class="old_price">₹ <?= number_format($related['mrp'], 2) ?></span>
-                                                    <?php endif; ?>
-                                                    <span class="current_price">₹ <?= number_format($related['selling_price'], 2) ?></span>
-                                                </div>
-                                            </div>
-                                            <div class="add_to_cart">
-                                                <a href="#" class="add-to-cart-btn"
-                                                    data-product-id="<?= $related['pro_id'] ?>"
-                                                    data-product-slug="<?= $related['slug_url'] ?>"
-                                                    data-has-variants="<?= !empty($variants) ? 1 : 0 ?>">
-                                                    Add to cart
-                                                </a>
-                                            </div>
-                                        </figcaption>
-                                    </figure>
-                                </article>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-            </div>
-        </section>
-    <?php endif; ?>
 
     <!-- Upsell Products -->
     <?php if (count($upsell_products) > 0): ?>
@@ -953,32 +860,44 @@ $colorMap = [
                 </div>
                 <div class="row">
                     <div class="product_carousel product_column5 owl-carousel">
-                        <?php foreach ($upsell_products as $upsell):
+                        <?php foreach ($upsell_products as $index => $upsell):
                             $upsell_discount = $upsell['mrp'] > $upsell['selling_price'] ?
                                 round((($upsell['mrp'] - $upsell['selling_price']) / $upsell['mrp']) * 100) : 0;
+
+                            // Determine secondary image - use pattern or database
+                            $secondary_img_num = ($index % 4) + 2;
                         ?>
                             <div class="col-lg-3">
                                 <article class="single_product">
                                     <figure>
                                         <div class="product_thumb">
                                             <a class="primary_img" href="<?= $site ?>product-details/<?= $upsell['slug_url'] ?>">
-                                                <img src="<?= $site ?>admin/assets/img/uploads/<?= $upsell['pro_img'] ?>" alt="<?= htmlspecialchars($upsell['pro_name']) ?>">
+                                                <img src="<?= $site ?>admin/assets/img/uploads/<?= $upsell['pro_img'] ?>"
+                                                    alt="<?= htmlspecialchars($upsell['pro_name']) ?>"
+                                                    style="height: 300px; object-fit: cover;">
                                             </a>
                                             <a class="secondary_img" href="<?= $site ?>product-details/<?= $upsell['slug_url'] ?>">
                                                 <?php
-                                                // Get secondary image
+                                                // Get secondary image from database
                                                 $sec_img_sql = "SELECT image_url FROM product_images 
-                                                     WHERE product_id = ? AND is_main = 0 
-                                                     ORDER BY display_order LIMIT 1";
+                                                            WHERE product_id = ? AND is_main = 0 
+                                                            ORDER BY display_order LIMIT 1";
                                                 $sec_stmt = $conn->prepare($sec_img_sql);
                                                 $sec_stmt->bind_param("i", $upsell['pro_id']);
                                                 $sec_stmt->execute();
                                                 $sec_result = $sec_stmt->get_result();
                                                 if ($sec_img = $sec_result->fetch_assoc()): ?>
-                                                    <img src="<?= $site ?>admin/assets/img/uploads/<?= $sec_img['image_url'] ?>" alt="<?= htmlspecialchars($upsell['pro_name']) ?>">
+                                                    <img src="<?= $site ?>admin/assets/img/uploads/<?= $sec_img['image_url'] ?>"
+                                                        alt="<?= htmlspecialchars($upsell['pro_name']) ?>"
+                                                        style="height: 300px; object-fit: cover;">
                                                 <?php else: ?>
-                                                    <img src="<?= $site ?>assets/img/product/product2.jpg" alt="<?= htmlspecialchars($upsell['pro_name']) ?>">
-                                                <?php endif; ?>
+                                                    <!-- Fallback to pattern-based images -->
+                                                    <img src="<?= $site ?>assets/img/product/product<?= $secondary_img_num ?>.jpg"
+                                                        alt="<?= htmlspecialchars($upsell['pro_name']) ?>"
+                                                        style="height: 300px; object-fit: cover;">
+                                                <?php endif;
+                                                $sec_stmt->close();
+                                                ?>
                                             </a>
 
                                             <?php if ($upsell['trending'] == 1): ?>
@@ -996,26 +915,6 @@ $colorMap = [
                                                 </div>
                                             <?php endif; ?>
 
-                                            <div class="action_links">
-                                                <ul>
-                                                    <li class="quick_button">
-                                                        <a href="#" data-bs-toggle="modal" data-bs-target="#quickViewModal"
-                                                            data-product-id="<?= $upsell['pro_id'] ?>" title="quick view">
-                                                            <span class="pe-7s-search"></span>
-                                                        </a>
-                                                    </li>
-                                                    <li class="wishlist">
-                                                        <a href="#" class="add-to-wishlist" data-product-id="<?= $upsell['pro_id'] ?>" title="Add to Wishlist">
-                                                            <span class="pe-7s-like"></span>
-                                                        </a>
-                                                    </li>
-                                                    <li class="compare">
-                                                        <a href="#" class="add-to-compare" data-product-id="<?= $upsell['pro_id'] ?>" title="Add to Compare">
-                                                            <span class="pe-7s-edit"></span>
-                                                        </a>
-                                                    </li>
-                                                </ul>
-                                            </div>
                                         </div>
                                         <figcaption class="product_content">
                                             <div class="product_content_inner">
@@ -1032,12 +931,7 @@ $colorMap = [
                                                 </div>
                                             </div>
                                             <div class="add_to_cart">
-                                                <a href="#" class="add-to-cart-btn"
-                                                    data-product-id="<?= $upsell['pro_id'] ?>"
-                                                    data-product-slug="<?= $upsell['slug_url'] ?>"
-                                                    data-has-variants="<?= !empty($variants) ? 1 : 0 ?>">
-                                                    Add to cart
-                                                </a>
+                                                <a class="add-to-cart" href="<?= $site ?>product-details/<?= $upsell['slug_url'] ?>">View Product</a>
                                             </div>
                                         </figcaption>
                                     </figure>
@@ -1161,114 +1055,105 @@ $colorMap = [
                     $.ajax({
                         url: '<?= $site ?>ajax/get-variant-details.php',
                         method: 'POST',
+                        dataType: 'json', // ✅ REQUIRED
                         data: {
                             product_id: <?= $product_id ?>,
                             color: color,
                             size: size
                         },
                         success: function(response) {
+                            console.log('Variant response:', response); // debug
+
                             if (response.success && response.variant) {
+
+                                // ✅ SET VARIANT ID
                                 $('#selected_variant_id').val(response.variant.id);
 
-                                // Update price if different
-                                if (response.variant.price && response.variant.price > 0) {
+                                console.log('Variant ID set:', response.variant.id);
+
+                                // price
+                                if (response.variant.price > 0) {
                                     $('#variantPrice').html('Price: <strong>₹ ' + response.variant.price + '</strong>');
                                 } else {
                                     $('#variantPrice').html('');
                                 }
 
-                                // Update stock
+                                // stock
                                 if (response.variant.stock <= 10) {
-                                    $('#variantStock').html('Stock: <span style="color: #ffc107;">Only ' + response.variant.stock + ' left</span>');
+                                    $('#variantStock').html('Stock: <span style="color:#ffc107;">Only ' + response.variant.stock + ' left</span>');
                                 } else {
-                                    $('#variantStock').html('Stock: <span style="color: #28a745;">In Stock</span>');
+                                    $('#variantStock').html('Stock: <span style="color:#28a745;">In Stock</span>');
                                 }
 
-                                // Update quantity max
                                 $('#quantity').attr('max', response.variant.stock);
-
-                                // Show variant details
                                 $('#selectedVariantDetails').show();
+                            } else {
+                                console.log('Variant not found');
                             }
                         }
                     });
+
                 }
             }
 
-            // Add to cart on product details page
+            // add to cart function 
             $('#productForm').submit(function(e) {
                 e.preventDefault();
 
-                var form = $(this);
                 var button = $('#addToCartBtn');
 
-                // Validate variant selection
                 var hasVariants = <?= $has_variants ? 'true' : 'false' ?>;
                 if (hasVariants) {
-                    var selectedColor = $('#selected_color').val();
-                    var selectedSize = $('#selected_size').val();
-
-                    if (!selectedColor || !selectedSize) {
+                    if (!$('#selected_color').val() || !$('#selected_size').val()) {
                         $('#variantNotification').show();
                         return false;
                     }
                 }
 
-                // Get form data
-                var formData = form.serialize();
+                var formData = $(this).serialize();
 
-                // Add variant_id to form data
-                var selectedVariantId = $('#selected_variant_id').val();
-                if (selectedVariantId) {
-                    formData += '&variant_id=' + encodeURIComponent(selectedVariantId);
-                }
-
-                // Disable button and show loading
                 button.html('<span class="spinner-border spinner-border-sm"></span> Adding...');
                 button.prop('disabled', true);
 
                 $.ajax({
                     url: '<?= $site ?>ajax/add-to-cart.php',
-                    method: 'POST',
+                    type: 'POST',
                     data: formData,
-                    dataType: 'json', // Expect JSON response
+                    dataType: 'json',
+
                     success: function(response) {
-                        console.log(response); // For debugging
 
                         if (response.success) {
-                            button.html('<i class="fa fa-check"></i> Added to Cart');
 
-                            // Update cart count
+                            button.html('Added ✓');
+
                             if (response.cart_count !== undefined) {
                                 $('.item_count').text(response.cart_count);
                             }
 
-                            // Show success message
-                            showNotification(response.message || 'Product added to cart successfully!', 'success');
+                            showNotification(response.message, 'success');
 
-                            // Revert button after delay
                             setTimeout(function() {
                                 button.html('Add to cart');
                                 button.prop('disabled', false);
-                            }, 2000);
+                            }, 1500);
+
                         } else {
                             button.html('Add to cart');
                             button.prop('disabled', false);
-                            showNotification(response.message || 'Error adding to cart', 'error');
+                            showNotification(response.message, 'error');
                         }
                     },
-                    error: function(xhr, status, error) {
-                        console.error('AJAX Error:', error);
-                        console.error('Response:', xhr.responseText);
 
+                    error: function(xhr) {
+                        console.error(xhr.responseText);
                         button.html('Add to cart');
                         button.prop('disabled', false);
-
-                        showNotification('Error adding to cart. Please try again.', 'error');
+                        showNotification('Server error occurred', 'error');
                     }
-
                 });
             });
+
 
             // Rating stars for review form
             $('.rating-stars .star').click(function(e) {
@@ -1348,6 +1233,51 @@ $colorMap = [
                 // You can implement actual sharing functionality here
                 alert('Share this product on ' + platform);
             });
+        });
+    </script>
+    <script>
+        $(function() {
+
+            $('.rating-stars .star').click(function(e) {
+                e.preventDefault();
+                let val = $(this).data('value');
+                $('#rating').val(val);
+
+                $('.rating-stars .star i')
+                    .removeClass('ion-android-star')
+                    .addClass('ion-android-star-outline');
+
+                $('.rating-stars .star').each(function() {
+                    if ($(this).data('value') <= val) {
+                        $(this).find('i')
+                            .removeClass('ion-android-star-outline')
+                            .addClass('ion-android-star');
+                    }
+                });
+            });
+
+            $('#reviewForm').submit(function(e) {
+                e.preventDefault();
+
+                $.ajax({
+                    url: $(this).attr('action'),
+                    method: 'POST',
+                    data: $(this).serialize(),
+                    dataType: 'json',
+                    success: function(res) {
+                        if (res.success) {
+                            alert(res.message);
+                            location.reload();
+                        } else {
+                            alert(res.message);
+                        }
+                    },
+                    error: function() {
+                        alert('Server error. Please try again.');
+                    }
+                });
+            });
+
         });
     </script>
 

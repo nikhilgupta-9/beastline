@@ -19,11 +19,14 @@ $sql = "SELECT p.*,
                c.categories as category_name,
                sc.categories as subcategory_name,
                b.brand_name as brand_display,
-               p.added_on as created_at
+               p.added_on as created_at,
+                pi.image_url AS pro_main_image
         FROM products p
         LEFT JOIN categories c ON p.pro_cate = c.cate_id
         LEFT JOIN categories sc ON p.pro_sub_cate = sc.cate_id
         LEFT JOIN pro_brands b ON p.brand_name = b.id
+         LEFT JOIN product_images pi 
+               ON p.pro_id = pi.product_id AND pi.is_main = 1
         WHERE p.pro_id = '$product_id' LIMIT 1";
 
 $result = mysqli_query($conn, $sql);
@@ -36,7 +39,7 @@ if (mysqli_num_rows($result) == 0) {
 $product = mysqli_fetch_assoc($result);
 
 // Parse product images
-$main_images = !empty($product['pro_img']) ? explode(",", $product['pro_img']) : [];
+$main_images = !empty($product['pro_main_image']) ? $product['pro_main_image'] : [];
 $additional_images = !empty($product['additional_images']) ? json_decode($product['additional_images'], true) : [];
 
 // Parse variants if exists
@@ -413,8 +416,8 @@ $updated_at = !empty($product['updated_on']) ? date('d M Y, h:i A', strtotime($p
                                     <div class="image-gallery">
                                         <!-- Main Image -->
                                         <div id="mainImageContainer">
-                                            <?php if (!empty($main_images[0])): ?>
-                                                <img src="assets/img/uploads/<?= htmlspecialchars($main_images[0]) ?>" 
+                                            <?php if (!empty($main_images)): ?>
+                                                <img src="assets/img/uploads/<?= htmlspecialchars($main_images) ?>" 
                                                      alt="<?= htmlspecialchars($product['pro_name']) ?>" 
                                                      class="main-image" id="mainImage">
                                             <?php else: ?>
@@ -424,28 +427,7 @@ $updated_at = !empty($product['updated_on']) ? date('d M Y, h:i A', strtotime($p
                                             <?php endif; ?>
                                         </div>
                                         
-                                        <!-- Thumbnails -->
-                                        <?php if (count($main_images) > 1 || count($additional_images) > 0): ?>
-                                            <div class="thumbnails">
-                                                <?php foreach ($main_images as $index => $image): ?>
-                                                    <img src="assets/img/uploads/<?= htmlspecialchars($image) ?>" 
-                                                         alt="Product Image <?= $index + 1 ?>"
-                                                         class="thumbnail <?= $index == 0 ? 'active' : '' ?>"
-                                                         data-image="assets/img/uploads/<?= htmlspecialchars($image) ?>"
-                                                         onclick="changeMainImage(this)">
-                                                <?php endforeach; ?>
-                                                
-                                                <?php if (!empty($additional_images)): ?>
-                                                    <?php foreach ($additional_images as $image): ?>
-                                                        <img src="<?= htmlspecialchars($image) ?>" 
-                                                             alt="Additional Image"
-                                                             class="thumbnail"
-                                                             data-image="<?= htmlspecialchars($image) ?>"
-                                                             onclick="changeMainImage(this)">
-                                                    <?php endforeach; ?>
-                                                <?php endif; ?>
-                                            </div>
-                                        <?php endif; ?>
+                                        
                                     </div>
                                     
                                     <!-- Product Description -->
@@ -656,7 +638,7 @@ $updated_at = !empty($product['updated_on']) ? date('d M Y, h:i A', strtotime($p
                                                     <div class="detail-item">
                                                         <span class="detail-label">Slug URL</span>
                                                         <span class="detail-value">
-                                                            <a href="<?= htmlspecialchars($product['slug_url']) ?>" target="_blank">
+                                                            <a href="<?= BASE_URL ?>product-details/<?= $product['slug_url'] ?>" target="_blank">
                                                                 View Product Page
                                                             </a>
                                                         </span>

@@ -8,8 +8,8 @@ $subtotal = 0;
 $total_quantity = 0;
 $cart_items = [];
 
-if(isset($_SESSION['cart']) && !empty($_SESSION['cart'])) {
-    foreach($_SESSION['cart'] as $cart_item_id => $item) {
+if (isset($_SESSION['cart']) && !empty($_SESSION['cart'])) {
+    foreach ($_SESSION['cart'] as $cart_item_id => $item) {
         // Get product details from database
         $sql = "SELECT p.*, c.categories, b.brand_name 
                 FROM products p 
@@ -20,13 +20,13 @@ if(isset($_SESSION['cart']) && !empty($_SESSION['cart'])) {
         $stmt->bind_param("i", $item['product_id']);
         $stmt->execute();
         $result = $stmt->get_result();
-        
-        if($result->num_rows > 0) {
+
+        if ($result->num_rows > 0) {
             $product = $result->fetch_assoc();
-            
+
             // Get variant details if exists
             $variant_details = [];
-            if($item['variant_id']) {
+            if ($item['variant_id']) {
                 $variant_sql = "SELECT * FROM product_variants WHERE id = ?";
                 $variant_stmt = $conn->prepare($variant_sql);
                 $variant_stmt->bind_param("i", $item['variant_id']);
@@ -34,12 +34,12 @@ if(isset($_SESSION['cart']) && !empty($_SESSION['cart'])) {
                 $variant_result = $variant_stmt->get_result();
                 $variant_details = $variant_result->fetch_assoc();
             }
-            
+
             // Calculate item total
             $item_total = $item['price'] * $item['quantity'];
             $subtotal += $item_total;
             $total_quantity += $item['quantity'];
-            
+
             $cart_items[$cart_item_id] = [
                 'product' => $product,
                 'variant' => $variant_details,
@@ -59,7 +59,7 @@ $discount_percentage = 0;
 $promotion_code = '';
 
 // Check for promotions
-if(isset($_SESSION['promotion_code'])) {
+if (isset($_SESSION['promotion_code'])) {
     // You can implement coupon/promotion logic here
     $promotion_code = $_SESSION['promotion_code'];
     $discount_percentage = 15; // Example: 15% off
@@ -116,10 +116,10 @@ $contact = contact_us();
             background: #fff;
             border-radius: 8px;
             margin-bottom: 15px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
             overflow: hidden;
         }
-        
+
         .mobile-cart-header {
             background: #f8f9fa;
             padding: 15px;
@@ -127,16 +127,16 @@ $contact = contact_us();
             font-weight: 600;
             font-size: 16px;
         }
-        
+
         .mobile-cart-content {
             padding: 15px;
         }
-        
+
         .mobile-product-info {
             display: flex;
             margin-bottom: 15px;
         }
-        
+
         .mobile-product-image {
             width: 80px;
             height: 80px;
@@ -145,43 +145,43 @@ $contact = contact_us();
             margin-right: 15px;
             flex-shrink: 0;
         }
-        
+
         .mobile-product-image img {
             width: 100%;
             height: 100%;
             object-fit: cover;
         }
-        
+
         .mobile-product-details {
             flex: 1;
         }
-        
+
         .mobile-product-title {
             font-weight: 600;
             font-size: 14px;
             margin-bottom: 5px;
             color: #333;
         }
-        
+
         .mobile-product-variants {
             font-size: 12px;
             color: #666;
             margin-bottom: 5px;
         }
-        
+
         .mobile-product-price {
             font-weight: 600;
             color: #e50010;
             font-size: 14px;
         }
-        
+
         .mobile-old-price {
             font-size: 12px;
             color: #999;
             text-decoration: line-through;
             margin-right: 5px;
         }
-        
+
         .mobile-cart-actions {
             display: flex;
             justify-content: space-between;
@@ -189,12 +189,12 @@ $contact = contact_us();
             padding-top: 15px;
             border-top: 1px solid #eee;
         }
-        
+
         .mobile-quantity-control {
             display: flex;
             align-items: center;
         }
-        
+
         .quantity-btn-mobile {
             width: 30px;
             height: 30px;
@@ -207,7 +207,7 @@ $contact = contact_us();
             cursor: pointer;
             font-size: 18px;
         }
-        
+
         .quantity-input-mobile {
             width: 40px;
             height: 30px;
@@ -215,7 +215,7 @@ $contact = contact_us();
             border: 1px solid #ddd;
             margin: 0 5px;
         }
-        
+
         .mobile-remove-btn {
             color: #dc3545;
             font-size: 14px;
@@ -223,19 +223,19 @@ $contact = contact_us();
             display: flex;
             align-items: center;
         }
-        
+
         .mobile-remove-btn i {
             margin-right: 5px;
         }
-        
+
         .mobile-order-summary {
             display: none;
             background: #fff;
             border-radius: 8px;
             margin-top: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
-        
+
         .mobile-summary-header {
             background: #f8f9fa;
             padding: 15px;
@@ -243,34 +243,34 @@ $contact = contact_us();
             font-weight: 600;
             font-size: 16px;
         }
-        
+
         .mobile-summary-content {
             padding: 15px;
         }
-        
+
         .summary-row {
             display: flex;
             justify-content: space-between;
             margin-bottom: 10px;
             font-size: 14px;
         }
-        
+
         .summary-label {
             color: #666;
         }
-        
+
         .summary-value {
             font-weight: 500;
         }
-        
+
         .discount-row {
             color: #28a745;
         }
-        
+
         .shipping-row {
             color: #666;
         }
-        
+
         .total-row {
             font-weight: 600;
             font-size: 16px;
@@ -278,24 +278,24 @@ $contact = contact_us();
             padding-top: 10px;
             border-top: 1px solid #eee;
         }
-        
+
         .promo-section {
             margin: 20px 0;
             padding: 15px;
             background: #f8f9fa;
             border-radius: 8px;
         }
-        
+
         .promo-title {
             font-weight: 600;
             margin-bottom: 10px;
             font-size: 14px;
         }
-        
+
         .promo-input-group {
             display: flex;
         }
-        
+
         .promo-input {
             flex: 1;
             padding: 10px;
@@ -303,7 +303,7 @@ $contact = contact_us();
             border-radius: 4px 0 0 4px;
             font-size: 14px;
         }
-        
+
         .promo-btn {
             padding: 10px 15px;
             background: #e50010;
@@ -313,7 +313,7 @@ $contact = contact_us();
             cursor: pointer;
             font-weight: 500;
         }
-        
+
         .checkout-btn-mobile {
             display: block;
             width: 100%;
@@ -327,64 +327,65 @@ $contact = contact_us();
             margin-top: 20px;
             text-decoration: none;
         }
-        
+
         /* Show mobile view on small screens */
         @media (max-width: 768px) {
             .table_desc {
                 display: none;
             }
-            
+
             .coupon_area {
                 display: none;
             }
-            
+
             .mobile-cart-item {
                 display: block;
             }
-            
+
             .mobile-order-summary {
                 display: block;
             }
-            
+
             .shopping_cart_area .container {
                 padding: 15px;
             }
-            
+
             .breadcrumbs_area {
                 padding: 20px 0;
             }
         }
-        
+
         /* Desktop styles remain the same */
         @media (min-width: 769px) {
+
             .mobile-cart-item,
             .mobile-order-summary {
                 display: none;
             }
         }
-        
+
         /* Cart empty state */
         .cart-empty {
             text-align: center;
             padding: 60px 20px;
         }
-        
+
         .cart-empty-icon {
             font-size: 60px;
             color: #ddd;
             margin-bottom: 20px;
         }
-        
+
         .cart-empty h3 {
             margin-bottom: 15px;
             color: #333;
         }
-        
+
         .cart-empty p {
             color: #666;
             margin-bottom: 30px;
         }
-        
+
         .continue-shopping-btn {
             display: inline-block;
             padding: 12px 30px;
@@ -394,7 +395,7 @@ $contact = contact_us();
             text-decoration: none;
             font-weight: 500;
         }
-        
+
         /* Promotion banner */
         .promotion-banner {
             background: linear-gradient(90deg, #e50010, #ff6b6b);
@@ -451,18 +452,18 @@ $contact = contact_us();
     <!--breadcrumbs area end-->
 
     <!-- Promotion Banner -->
-    <?php if($discount_percentage > 0): ?>
-    <div class="container">
-        <div class="promotion-banner">
-            <i class="fa fa-tag"></i> <?= $discount_percentage ?>% OFF YOUR ORDER
+    <?php if ($discount_percentage > 0): ?>
+        <div class="container">
+            <div class="promotion-banner">
+                <i class="fa fa-tag"></i> <?= $discount_percentage ?>% OFF YOUR ORDER
+            </div>
         </div>
-    </div>
     <?php endif; ?>
 
     <!--shopping cart area start -->
     <div class="shopping_cart_area">
         <div class="container">
-            <?php if(empty($cart_items)): ?>
+            <?php if (empty($cart_items)): ?>
                 <!-- Empty Cart State -->
                 <div class="cart-empty">
                     <div class="cart-empty-icon">
@@ -477,67 +478,75 @@ $contact = contact_us();
             <?php else: ?>
                 <!-- Mobile View (Visible on screens < 768px) -->
                 <div class="mobile-cart-items">
-                    <?php foreach($cart_items as $cart_item_id => $item_data): 
+                    <?php foreach ($cart_items as $cart_item_id => $item_data):
                         $product = $item_data['product'];
                         $variant = $item_data['variant'];
                         $cart_item = $item_data['cart_item'];
                         $item_total = $item_data['item_total'];
-                        
+
                         // Get image
-                        $image_path = !empty($product['pro_img']) ? 
-                            $site . 'admin/assets/img/uploads/' . $product['pro_img'] : 
-                            $site . 'assets/img/s-product/product.jpg';
+                        if (!empty($variant) && !empty($variant['image'])) {
+                            // Variant image
+                            $image_path = $site . 'admin/assets/img/uploads/variants/' . $variant['image'];
+                        } elseif (!empty($product['pro_img'])) {
+                            // Product image
+                            $image_path = $site . 'admin/assets/img/uploads/' . $product['pro_img'];
+                        } else {
+                            // Fallback
+                            $image_path = $site . 'assets/img/s-product/product.jpg';
+                        }
+
                     ?>
-                    <div class="mobile-cart-item p-2" data-cart-item-id="<?= $cart_item_id ?>">
-                        <div class="mobile-product-info">
-                            <div class="mobile-product-image">
-                                <img src="<?= $image_path ?>" alt="<?= htmlspecialchars($product['pro_name']) ?>">
-                            </div>
-                            <div class="mobile-product-details">
-                                <div class="mobile-product-title"><?= htmlspecialchars($product['pro_name']) ?></div>
-                                <?php if(!empty($variant)): ?>
-                                <div class="mobile-product-variants">
-                                    <?php if(!empty($variant['color'])): ?>
-                                        <div>Color: <?= htmlspecialchars($variant['color']) ?></div>
-                                    <?php endif; ?>
-                                    <?php if(!empty($variant['size'])): ?>
-                                        <div>Size: <?= htmlspecialchars($variant['size']) ?></div>
-                                    <?php endif; ?>
-                                    <?php if(!empty($product['sku'])): ?>
-                                        <div>Art. no: <?= htmlspecialchars($product['sku']) ?></div>
-                                    <?php endif; ?>
+                        <div class="mobile-cart-item p-2" data-cart-item-id="<?= $cart_item_id ?>">
+                            <div class="mobile-product-info">
+                                <div class="mobile-product-image">
+                                    <img src="<?= $image_path ?>" alt="<?= htmlspecialchars($product['pro_name']) ?>">
                                 </div>
-                                <?php endif; ?>
-                                <div class="mobile-product-price">
-                                    <?php if($product['mrp'] > $product['selling_price']): ?>
-                                        <span class="mobile-old-price">₹<?= number_format($product['mrp'], 2) ?></span>
+                                <div class="mobile-product-details">
+                                    <div class="mobile-product-title"><?= htmlspecialchars($product['pro_name']) ?></div>
+                                    <?php if (!empty($variant)): ?>
+                                        <div class="mobile-product-variants">
+                                            <?php if (!empty($variant['color'])): ?>
+                                                <div>Color: <?= htmlspecialchars($variant['color']) ?></div>
+                                            <?php endif; ?>
+                                            <?php if (!empty($variant['size'])): ?>
+                                                <div>Size: <?= htmlspecialchars($variant['size']) ?></div>
+                                            <?php endif; ?>
+                                            <?php if (!empty($product['sku'])): ?>
+                                                <div>Art. no: <?= htmlspecialchars($product['sku']) ?></div>
+                                            <?php endif; ?>
+                                        </div>
                                     <?php endif; ?>
-                                    ₹<?= number_format($cart_item['price'], 2) ?>
+                                    <div class="mobile-product-price">
+                                        <?php if ($product['mrp'] > $product['selling_price']): ?>
+                                            <span class="mobile-old-price">₹<?= number_format($product['mrp'], 2) ?></span>
+                                        <?php endif; ?>
+                                        ₹<?= number_format($cart_item['price'], 2) ?>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        
-                        <div class="mobile-cart-actions">
-                            <div class="mobile-quantity-control">
-                                <button class="quantity-btn-mobile minus" data-cart-item-id="<?= $cart_item_id ?>">-</button>
-                                <input type="number" class="quantity-input-mobile" 
-                                       value="<?= $cart_item['quantity'] ?>" 
-                                       min="1" 
-                                       max="<?= $variant ? $variant['quantity'] : $product['quantity'] ?>"
-                                       data-cart-item-id="<?= $cart_item_id ?>">
-                                <button class="quantity-btn-mobile plus" data-cart-item-id="<?= $cart_item_id ?>">+</button>
+
+                            <div class="mobile-cart-actions">
+                                <div class="mobile-quantity-control">
+                                    <button class="quantity-btn-mobile minus" data-cart-item-id="<?= $cart_item_id ?>">-</button>
+                                    <input type="number" class="quantity-input-mobile"
+                                        value="<?= $cart_item['quantity'] ?>"
+                                        min="1"
+                                        max="<?= $variant ? $variant['quantity'] : $product['quantity'] ?>"
+                                        data-cart-item-id="<?= $cart_item_id ?>">
+                                    <button class="quantity-btn-mobile plus" data-cart-item-id="<?= $cart_item_id ?>">+</button>
+                                </div>
+                                <div class="mobile-product-total">
+                                    ₹<?= number_format($item_total, 2) ?>
+                                </div>
                             </div>
-                            <div class="mobile-product-total">
-                                ₹<?= number_format($item_total, 2) ?>
+
+                            <div style="text-align: right; margin-top: 10px;">
+                                <span class="mobile-remove-btn" data-cart-item-id="<?= $cart_item_id ?>">
+                                    <i class="fa fa-trash"></i> Remove
+                                </span>
                             </div>
                         </div>
-                        
-                        <div style="text-align: right; margin-top: 10px;">
-                            <span class="mobile-remove-btn" data-cart-item-id="<?= $cart_item_id ?>">
-                                <i class="fa fa-trash"></i> Remove
-                            </span>
-                        </div>
-                    </div>
                     <?php endforeach; ?>
                 </div>
 
@@ -559,58 +568,65 @@ $contact = contact_us();
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <?php foreach($cart_items as $cart_item_id => $item_data): 
+                                            <?php foreach ($cart_items as $cart_item_id => $item_data):
                                                 $product = $item_data['product'];
                                                 $variant = $item_data['variant'];
                                                 $cart_item = $item_data['cart_item'];
                                                 $item_total = $item_data['item_total'];
-                                                
-                                                $image_path = !empty($product['pro_img']) ? 
-                                                    $site . 'admin/assets/img/uploads/' . $product['pro_img'] : 
-                                                    $site . 'assets/img/s-product/product.jpg';
+                                                if (!empty($variant) && !empty($variant['image'])) {
+                                                    // Variant image
+                                                    $image_path = $site . 'admin/assets/img/uploads/variants/' . $variant['image'];
+                                                } elseif (!empty($product['pro_img'])) {
+                                                    // Product image
+                                                    $image_path = $site . 'admin/assets/img/uploads/' . $product['pro_img'];
+                                                } else {
+                                                    // Fallback
+                                                    $image_path = $site . 'assets/img/s-product/product.jpg';
+                                                }
+
                                             ?>
-                                            <tr data-cart-item-id="<?= $cart_item_id ?>">
-                                                <td class="product_remove">
-                                                    <a href="#" class="remove-cart-item" data-cart-item-id="<?= $cart_item_id ?>">
-                                                        <i class="fa fa-trash-o"></i>
-                                                    </a>
-                                                </td>
-                                                <td class="product_thumb">
-                                                    <a href="<?= $site ?>product/<?= $product['slug_url'] ?>">
-                                                        <img src="<?= $image_path ?>" alt="<?= htmlspecialchars($product['pro_name']) ?>" style="width: 70px; height: 70px; object-fit: cover;">
-                                                    </a>
-                                                </td>
-                                                <td class="product_name">
-                                                    <a href="<?= $site ?>product/<?= $product['slug_url'] ?>"><?= htmlspecialchars($product['pro_name']) ?></a>
-                                                    <?php if(!empty($variant)): ?>
-                                                    <div class="variant-details" style="font-size: 12px; color: #666; margin-top: 5px;">
-                                                        <?php if(!empty($variant['color'])): ?>
-                                                            <div>Color: <?= htmlspecialchars($variant['color']) ?></div>
+                                                <tr data-cart-item-id="<?= $cart_item_id ?>">
+                                                    <td class="product_remove">
+                                                        <a href="#" class="remove-cart-item" data-cart-item-id="<?= $cart_item_id ?>">
+                                                            <i class="fa fa-trash-o"></i>
+                                                        </a>
+                                                    </td>
+                                                    <td class="product_thumb">
+                                                        <a href="<?= $site ?>product/<?= $product['slug_url'] ?>">
+                                                            <img src="<?= $image_path ?>" alt="<?= htmlspecialchars($product['pro_name']) ?>" style="width: 70px; height: 70px; object-fit: cover;">
+                                                        </a>
+                                                    </td>
+                                                    <td class="product_name">
+                                                        <a href="<?= $site ?>product/<?= $product['slug_url'] ?>"><?= htmlspecialchars($product['pro_name']) ?></a>
+                                                        <?php if (!empty($variant)): ?>
+                                                            <div class="variant-details" style="font-size: 12px; color: #666; margin-top: 5px;">
+                                                                <?php if (!empty($variant['color'])): ?>
+                                                                    <div>Color: <?= htmlspecialchars($variant['color']) ?></div>
+                                                                <?php endif; ?>
+                                                                <?php if (!empty($variant['size'])): ?>
+                                                                    <div>Size: <?= htmlspecialchars($variant['size']) ?></div>
+                                                                <?php endif; ?>
+                                                                <?php if (!empty($product['sku'])): ?>
+                                                                    <div>SKU: <?= htmlspecialchars($product['sku']) ?></div>
+                                                                <?php endif; ?>
+                                                            </div>
                                                         <?php endif; ?>
-                                                        <?php if(!empty($variant['size'])): ?>
-                                                            <div>Size: <?= htmlspecialchars($variant['size']) ?></div>
-                                                        <?php endif; ?>
-                                                        <?php if(!empty($product['sku'])): ?>
-                                                            <div>SKU: <?= htmlspecialchars($product['sku']) ?></div>
-                                                        <?php endif; ?>
-                                                    </div>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td class="product-price">₹<?= number_format($cart_item['price'], 2) ?></td>
-                                                <td class="product_quantity">
-                                                    <div class="quantity-control">
-                                                        <button type="button" class="quantity-btn minus" data-cart-item-id="<?= $cart_item_id ?>">-</button>
-                                                        <input type="number" 
-                                                               name="quantity[<?= $cart_item_id ?>]" 
-                                                               value="<?= $cart_item['quantity'] ?>" 
-                                                               min="1" 
-                                                               max="<?= $variant ? $variant['quantity'] : $product['quantity'] ?>"
-                                                               class="quantity-input">
-                                                        <button type="button" class="quantity-btn plus" data-cart-item-id="<?= $cart_item_id ?>">+</button>
-                                                    </div>
-                                                </td>
-                                                <td class="product_total">₹<?= number_format($item_total, 2) ?></td>
-                                            </tr>
+                                                    </td>
+                                                    <td class="product-price">₹<?= number_format($cart_item['price'], 2) ?></td>
+                                                    <td class="product_quantity">
+                                                        <div class="quantity-control">
+                                                            <button type="button" class="quantity-btn minus" data-cart-item-id="<?= $cart_item_id ?>">-</button>
+                                                            <input type="number"
+                                                                name="quantity[<?= $cart_item_id ?>]"
+                                                                value="<?= $cart_item['quantity'] ?>"
+                                                                min="1"
+                                                                max="<?= $variant ? $variant['quantity'] : $product['quantity'] ?>"
+                                                                class="quantity-input">
+                                                            <button type="button" class="quantity-btn plus" data-cart-item-id="<?= $cart_item_id ?>">+</button>
+                                                        </div>
+                                                    </td>
+                                                    <td class="product_total">₹<?= number_format($item_total, 2) ?></td>
+                                                </tr>
                                             <?php endforeach; ?>
                                         </tbody>
                                     </table>
@@ -637,29 +653,29 @@ $contact = contact_us();
                                 <button type="button" class="promo-btn" id="mobileApplyPromo">APPLY</button>
                             </div>
                         </div>
-                        
+
                         <div class="summary-row">
                             <span class="summary-label">Order value</span>
                             <span class="summary-value">₹<?= number_format($subtotal, 2) ?></span>
                         </div>
-                        
-                        <?php if($discount > 0): ?>
-                        <div class="summary-row discount-row">
-                            <span class="summary-label">Promotion (<?= $discount_percentage ?>% off)</span>
-                            <span class="summary-value">-₹<?= number_format($discount, 2) ?></span>
-                        </div>
+
+                        <?php if ($discount > 0): ?>
+                            <div class="summary-row discount-row">
+                                <span class="summary-label">Promotion (<?= $discount_percentage ?>% off)</span>
+                                <span class="summary-value">-₹<?= number_format($discount, 2) ?></span>
+                            </div>
                         <?php endif; ?>
-                        
+
                         <div class="summary-row shipping-row">
                             <span class="summary-label">Shipping fee</span>
                             <span class="summary-value">₹<?= number_format($shipping_fee, 2) ?></span>
                         </div>
-                        
+
                         <div class="summary-row total-row">
                             <span class="summary-label">TOTAL</span>
                             <span class="summary-value">₹<?= number_format($total, 2) ?></span>
                         </div>
-                        
+
                         <a href="<?= $site ?>checkout" class="checkout-btn-mobile">
                             CONTINUE TO CHECKOUT
                         </a>
@@ -687,27 +703,27 @@ $contact = contact_us();
                                         <p>Subtotal</p>
                                         <p class="cart_amount">₹<?= number_format($subtotal, 2) ?></p>
                                     </div>
-                                    
-                                    <?php if($discount > 0): ?>
-                                    <div class="cart_subtotal">
-                                        <p>Discount (<?= $discount_percentage ?>% off)</p>
-                                        <p class="cart_amount" style="color: #28a745;">-₹<?= number_format($discount, 2) ?></p>
-                                    </div>
+
+                                    <?php if ($discount > 0): ?>
+                                        <div class="cart_subtotal">
+                                            <p>Discount (<?= $discount_percentage ?>% off)</p>
+                                            <p class="cart_amount" style="color: #28a745;">-₹<?= number_format($discount, 2) ?></p>
+                                        </div>
                                     <?php endif; ?>
-                                    
+
                                     <div class="cart_subtotal">
                                         <p>Shipping</p>
                                         <p class="cart_amount">
-                                            <span><?= ($subtotal >= 1000) ? 'Free Shipping' : 'Flat Rate' ?>:</span> 
+                                            <span><?= ($subtotal >= 1000) ? 'Free Shipping' : 'Flat Rate' ?>:</span>
                                             ₹<?= number_format($shipping_fee, 2) ?>
                                         </p>
                                     </div>
-                                    
+
                                     <div class="cart_subtotal">
                                         <p>Total</p>
                                         <p class="cart_amount">₹<?= number_format($total, 2) ?></p>
                                     </div>
-                                    
+
                                     <div class="checkout_btn">
                                         <a href="<?= $site ?>checkout">Proceed to Checkout</a>
                                     </div>
@@ -725,9 +741,10 @@ $contact = contact_us();
     <!--footer area start-->
     <?php include_once "includes/footer.php"; ?>
     <?php include_once "includes/footer-link.php"; ?>
-    
+
     <!-- Cart JavaScript -->
-    <script>
+   <!-- Cart JavaScript -->
+<script>
     $(document).ready(function() {
         // Update quantity (desktop)
         $('.quantity-btn').click(function() {
@@ -736,21 +753,24 @@ $contact = contact_us();
             var currentVal = parseInt(input.val());
             var maxVal = parseInt(input.attr('max'));
             var minVal = parseInt(input.attr('min'));
-            
-            if($(this).hasClass('plus')) {
-                if(currentVal < maxVal) {
-                    input.val(currentVal + 1);
+
+            if ($(this).hasClass('plus')) {
+                if (currentVal < maxVal) {
+                    var newVal = currentVal + 1;
+                    input.val(newVal);
+                    updateCartItem(cartItemId, newVal);
+                } else {
+                    alert('Maximum available quantity reached');
                 }
-            } else if($(this).hasClass('minus')) {
-                if(currentVal > minVal) {
-                    input.val(currentVal - 1);
+            } else if ($(this).hasClass('minus')) {
+                if (currentVal > minVal) {
+                    var newVal = currentVal - 1;
+                    input.val(newVal);
+                    updateCartItem(cartItemId, newVal);
                 }
             }
-            
-            // Update cart immediately
-            updateCartItem(cartItemId, input.val());
         });
-        
+
         // Update quantity (mobile)
         $('.quantity-btn-mobile').click(function() {
             var cartItemId = $(this).data('cart-item-id');
@@ -758,67 +778,86 @@ $contact = contact_us();
             var currentVal = parseInt(input.val());
             var maxVal = parseInt(input.attr('max'));
             var minVal = parseInt(input.attr('min'));
-            
-            if($(this).hasClass('plus')) {
-                if(currentVal < maxVal) {
-                    input.val(currentVal + 1);
+
+            if ($(this).hasClass('plus')) {
+                if (currentVal < maxVal) {
+                    var newVal = currentVal + 1;
+                    input.val(newVal);
+                    updateCartItem(cartItemId, newVal);
+                } else {
+                    alert('Maximum available quantity reached');
                 }
-            } else if($(this).hasClass('minus')) {
-                if(currentVal > minVal) {
-                    input.val(currentVal - 1);
+            } else if ($(this).hasClass('minus')) {
+                if (currentVal > minVal) {
+                    var newVal = currentVal - 1;
+                    input.val(newVal);
+                    updateCartItem(cartItemId, newVal);
                 }
             }
-            
-            // Update cart immediately
-            updateCartItem(cartItemId, input.val());
         });
-        
+
         // Quantity input change (desktop)
         $('.quantity-input').change(function() {
             var cartItemId = $(this).closest('tr').data('cart-item-id');
-            updateCartItem(cartItemId, $(this).val());
+            var newVal = parseInt($(this).val());
+            var maxVal = parseInt($(this).attr('max'));
+            var minVal = parseInt($(this).attr('min'));
+            
+            if (newVal < minVal) newVal = minVal;
+            if (newVal > maxVal) newVal = maxVal;
+            
+            $(this).val(newVal);
+            updateCartItem(cartItemId, newVal);
         });
-        
+
         // Quantity input change (mobile)
         $('.quantity-input-mobile').change(function() {
             var cartItemId = $(this).data('cart-item-id');
-            updateCartItem(cartItemId, $(this).val());
+            var newVal = parseInt($(this).val());
+            var maxVal = parseInt($(this).attr('max'));
+            var minVal = parseInt($(this).attr('min'));
+            
+            if (newVal < minVal) newVal = minVal;
+            if (newVal > maxVal) newVal = maxVal;
+            
+            $(this).val(newVal);
+            updateCartItem(cartItemId, newVal);
         });
-        
+
         // Remove item (desktop)
         $('.remove-cart-item').click(function(e) {
             e.preventDefault();
             var cartItemId = $(this).data('cart-item-id');
             removeCartItem(cartItemId);
         });
-        
+
         // Remove item (mobile)
         $('.mobile-remove-btn').click(function() {
             var cartItemId = $(this).data('cart-item-id');
             removeCartItem(cartItemId);
         });
-        
+
         // Apply coupon (desktop)
         $('#applyCoupon').click(function() {
             var couponCode = $('#couponCode').val();
             applyCoupon(couponCode);
         });
-        
+
         // Apply coupon (mobile)
         $('#mobileApplyPromo').click(function() {
             var couponCode = $('#mobilePromoCode').val();
             applyCoupon(couponCode);
         });
-        
+
         // Update cart button
         $('#updateCartBtn').click(function() {
             updateCart();
         });
-        
+
         // Functions
         function updateCartItem(cartItemId, quantity) {
             $.ajax({
-                url: '<?= $site ?>ajax/remove-from-cart.php',
+                url: '<?= $site ?>ajax/update-cart.php',
                 method: 'POST',
                 data: {
                     action: 'update_quantity',
@@ -826,18 +865,37 @@ $contact = contact_us();
                     quantity: quantity
                 },
                 success: function(response) {
-                    if(response.success) {
-                        // Reload page to update totals
-                        location.reload();
+                    if (response.success) {
+                        // Update item total in desktop view
+                        var row = $('tr[data-cart-item-id="' + cartItemId + '"]');
+                        var price = parseFloat(row.find('.product-price').text().replace('₹', ''));
+                        var itemTotal = price * quantity;
+                        row.find('.product_total').text('₹' + response.item_total);
+                        
+                        // Update item total in mobile view
+                        var mobileItem = $('.mobile-cart-item[data-cart-item-id="' + cartItemId + '"]');
+                        mobileItem.find('.mobile-product-total').text('₹' + response.item_total);
+                        
+                        // Update cart totals
+                        $('.cart_amount:first').text('₹' + response.subtotal);
+                        $('.item_count').text(response.cart_count);
+                        
+                        // Reload page to update all totals
+                        setTimeout(function() {
+                            location.reload();
+                        }, 500);
                     } else {
                         alert(response.message || 'Error updating cart');
                     }
+                },
+                error: function() {
+                    alert('Server error. Please try again.');
                 }
             });
         }
-        
+
         function removeCartItem(cartItemId) {
-            if(confirm('Are you sure you want to remove this item from cart?')) {
+            if (confirm('Are you sure you want to remove this item from cart?')) {
                 $.ajax({
                     url: '<?= $site ?>ajax/remove-from-cart.php',
                     method: 'POST',
@@ -846,28 +904,33 @@ $contact = contact_us();
                         cart_item_id: cartItemId
                     },
                     success: function(response) {
-                        if(response.success) {
+                        if (response.success) {
                             // Remove item from DOM
                             $('[data-cart-item-id="' + cartItemId + '"]').remove();
+                            
                             // Update cart count in header
-                            if(response.cart_count !== undefined) {
-                                $('.item_count').text(response.cart_count);
-                            }
-                            // Reload page if cart is empty
-                            if(response.cart_count == 0) {
+                            $('.item_count').text(response.cart_count);
+                            
+                            // If cart is empty, reload page
+                            if (response.is_cart_empty) {
                                 location.reload();
                             } else {
                                 // Reload to update totals
-                                location.reload();
+                                setTimeout(function() {
+                                    location.reload();
+                                }, 500);
                             }
                         } else {
                             alert(response.message || 'Error removing item');
                         }
+                    },
+                    error: function() {
+                        alert('Server error. Please try again.');
                     }
                 });
             }
         }
-        
+
         function applyCoupon(couponCode) {
             $.ajax({
                 url: '<?= $site ?>ajax/update-cart.php',
@@ -877,34 +940,40 @@ $contact = contact_us();
                     coupon_code: couponCode
                 },
                 success: function(response) {
-                    if(response.success) {
+                    if (response.success) {
                         location.reload();
                     } else {
                         alert(response.message || 'Invalid coupon code');
                     }
+                },
+                error: function() {
+                    alert('Server error. Please try again.');
                 }
             });
         }
-        
+
         function updateCart() {
             var formData = $('#cartForm').serialize();
             formData += '&action=update_cart';
-            
+
             $.ajax({
-                url: '<?= $site ?>ajax/remove-from-cart.php',
+                url: '<?= $site ?>ajax/update-cart.php',
                 method: 'POST',
                 data: formData,
                 success: function(response) {
-                    if(response.success) {
+                    if (response.success) {
                         location.reload();
                     } else {
                         alert(response.message || 'Error updating cart');
                     }
+                },
+                error: function() {
+                    alert('Server error. Please try again.');
                 }
             });
         }
     });
-    </script>
+</script>
 
 
 </body>

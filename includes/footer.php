@@ -1,5 +1,5 @@
 <?php
-include_once(__DIR__. "/../models/WebsiteSettings.php");
+include_once(__DIR__ . "/../models/WebsiteSettings.php");
 $setting = new Setting($conn);
 ?>
 <!-- Footer Start -->
@@ -42,17 +42,69 @@ $setting = new Setting($conn);
         <div class="footer_middle py-5" style="border-top: 1px solid #333333; border-bottom: 1px solid #333333;">
             <div class="row">
                 <!-- Shop Section -->
+                <?php
+                // Fetch main categories or shop categories
+                // Option 1: Fetch top-level categories
+                $shop_categories_sql = "SELECT c.*, 
+                               (SELECT COUNT(*) FROM products p WHERE p.pro_sub_cate = c.id AND p.status = 1) as product_count
+                        FROM categories c 
+                        WHERE c.status = 1 AND c.parent_id = 0
+                        ORDER BY c.display_order, c.categories 
+                        LIMIT 7";
+
+               
+
+                $shop_categories_result = mysqli_query($conn, $shop_categories_sql);
+                $shop_categories = [];
+                while ($cat = mysqli_fetch_assoc($shop_categories_result)) {
+                    $shop_categories[] = $cat;
+                }
+                ?>
+
                 <div class="col-lg-3 col-md-6 col-sm-6 mb-4 mb-md-0">
                     <div class="footer_widget">
                         <h3 class="footer_title mb-4" style="color: #ffffff; font-size: 16px; font-weight: 600; text-transform: uppercase;">SHOP</h3>
                         <ul class="footer_links list-unstyled">
-                            <li class="mb-2"><a href="<?= $site ?>category/men" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Men's Clothing</a></li>
-                            <li class="mb-2"><a href="<?= $site ?>category/women" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Women's Clothing</a></li>
-                            <li class="mb-2"><a href="<?= $site ?>category/shoes" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Shoes</a></li>
-                            <li class="mb-2"><a href="<?= $site ?>category/perfume" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Perfumes</a></li>
-                            <li class="mb-2"><a href="<?= $site ?>category/new-arrivals" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">New Arrivals</a></li>
-                            <li class="mb-2"><a href="<?= $site ?>category/bestsellers" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Bestsellers</a></li>
-                            <li class="mb-2"><a href="<?= $site ?>category/sale" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Sale</a></li>
+                            <?php if (!empty($shop_categories)): ?>
+                                <?php foreach ($shop_categories as $category):
+                                    // Generate slug if not exists
+                                    $slug = !empty($category['slug_url']) ? $category['slug_url'] :
+                                        strtolower(str_replace(' ', '-', $category['categories']));
+                                ?>
+                                    <li class="mb-2">
+                                        <a href="<?= $site ?>category/<?= $slug ?>"
+                                            style="color: #cccccc; text-decoration: none; transition: color 0.3s;"
+                                            onmouseover="this.style.color='#ffffff'"
+                                            onmouseout="this.style.color='#cccccc'">
+                                            <?= htmlspecialchars($category['categories']) ?>
+                                            <?php if (isset($category['product_count']) && $category['product_count'] > 0): ?>
+                                                <span class="badge bg-secondary ms-1" style="font-size: 10px; padding: 2px 5px;">
+                                                    <?= $category['product_count'] ?>
+                                                </span>
+                                            <?php endif; ?>
+                                        </a>
+                                    </li>
+                                <?php endforeach; ?>
+
+                                <!-- Optional: Add "View All" link -->
+                                <li class="mb-2 mt-3">
+                                    <a href="<?= $site ?>category/sale"
+                                        style="color: #e74c3c; text-decoration: none; font-weight: 500; transition: color 0.3s;"
+                                        onmouseover="this.style.color='#ff6b6b'"
+                                        onmouseout="this.style.color='#e74c3c'">
+                                        <i class="fas fa-arrow-right me-1"></i> View All Categories
+                                    </a>
+                                </li>
+                            <?php else: ?>
+                                <!-- Fallback static links if no categories found -->
+                                <li class="mb-2"><a href="<?= $site ?>category/men" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Men's Clothing</a></li>
+                                <li class="mb-2"><a href="<?= $site ?>category/women" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Women's Clothing</a></li>
+                                <li class="mb-2"><a href="<?= $site ?>category/shoes" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Shoes</a></li>
+                                <li class="mb-2"><a href="<?= $site ?>category/perfume" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Perfumes</a></li>
+                                <li class="mb-2"><a href="<?= $site ?>category/new-arrivals" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">New Arrivals</a></li>
+                                <li class="mb-2"><a href="<?= $site ?>category/bestsellers" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Bestsellers</a></li>
+                                <li class="mb-2"><a href="<?= $site ?>category/sale" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Sale</a></li>
+                            <?php endif; ?>
                         </ul>
                     </div>
                 </div>
@@ -65,9 +117,9 @@ $setting = new Setting($conn);
                             <li class="mb-2"><a href="<?= $site ?>contact/" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Contact Us</a></li>
                             <li class="mb-2"><a href="<?= $site ?>policy/shipping-policy" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Shipping & Delivery</a></li>
                             <li class="mb-2"><a href="<?= $site ?>policy/return-refund-policy" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Returns & Exchanges</a></li>
-                            <li class="mb-2"><a href="<?= $site ?>size-guide" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Size Guide</a></li>
                             <li class="mb-2"><a href="<?= $site ?>faq/" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">FAQ</a></li>
                             <li class="mb-2"><a href="<?= $site ?>policy/privacy-policy" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Privacy Policy</a></li>
+                            <li class="mb-2"><a href="<?= $site ?>policy/terms-conditions" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Terms & Conditions</a></li>
                         </ul>
                     </div>
                 </div>
@@ -81,8 +133,7 @@ $setting = new Setting($conn);
                             <li class="mb-2"><a href="<?= $site ?>blogs/" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Blogs</a></li>
                             <li class="mb-2"><a href="<?= $site ?>user-login/" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Login</a></li>
                             <li class="mb-2"><a href="<?= $site ?>register/" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Register</a></li>
-                            <!-- <li class="mb-2"><a href="<?= $site ?>store-locator" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Store Locator</a></li> -->
-                            <li class="mb-2"><a href="<?= $site ?>gift-cards" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Gift Cards</a></li>
+
                             <li class="mb-2"><a href="<?= $site ?>my-account/" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">My Account</a></li>
                         </ul>
                     </div>
@@ -94,46 +145,69 @@ $setting = new Setting($conn);
                         <h3 class="footer_title mb-4" style="color: #ffffff; font-size: 16px; font-weight: 600; text-transform: uppercase;">FOLLOW US</h3>
                         <div class="footer_social mb-4">
                             <ul class="list-unstyled">
-                                <li class="mb-2">
-                                    <a href="<?= htmlspecialchars($setting->get('facebook_url')) ?>"
-                                        style="color: #cccccc; text-decoration: none; display: flex; align-items: center; transition: color 0.3s; justify-content: center;">
-                                        <i class="fa fa-facebook mr-2" aria-hidden="true" style="width: 20px;"></i>
-                                    </a>
-                                </li>
-                                <li class="mb-2">
-                                    <a href="<?= htmlspecialchars($setting->get('instagram_url')) ?>"
-                                        style="color: #cccccc; text-decoration: none; display: flex; align-items: center; transition: color 0.3s; justify-content: center;">
-                                        <i class="fa fa-instagram mr-2" aria-hidden="true" style="width: 20px;"></i>
-                                    </a>
-                                </li>
-                                <li class="mb-2">
-                                    <a href="<?= htmlspecialchars($setting->get('twitter_url')) ?>"
-                                        style="color: #cccccc; text-decoration: none; display: flex; align-items: center; transition: color 0.3s; justify-content: center;">
-                                        <i class="fa fa-twitter mr-2" aria-hidden="true" style="width: 20px;"></i>
-                                    </a>
-                                </li>
-                                <li class="mb-2">
-                                    <a href="<?= htmlspecialchars($setting->get('youtube_url')) ?>"
-                                        style="color: #cccccc; text-decoration: none; display: flex; align-items: center; transition: color 0.3s; justify-content: center;">
-                                        <i class="fa fa-youtube-play mr-2" aria-hidden="true" style="width: 20px;"></i>
-                                    </a>
-                                </li>
-                                <li class="mb-2">
-                                    <a href="<?= htmlspecialchars($setting->get('pinterest_url')) ?>"
-                                        style="color: #cccccc; text-decoration: none; display: flex; align-items: center; transition: color 0.3s; justify-content: center;">
-                                        <i class="fa fa-pinterest mr-2" aria-hidden="true" style="width: 20px;"></i>
-                                    </a>
-                                </li>
+                                <?php if (!empty($setting->get('facebook_url'))): ?>
+                                    <li class="mb-2">
+                                        <a href="<?= htmlspecialchars($setting->get('facebook_url')) ?>"
+                                            style="color: #cccccc; text-decoration: none; display: flex; align-items: center; transition: color 0.3s; justify-content: center;">
+                                            <i class="fa fa-facebook mr-2" aria-hidden="true" style="width: 20px;"></i>
+                                        </a>
+                                    </li>
+                                <?php endif; ?>
+
+                                <?php if (!empty($setting->get('instagram_url'))): ?>
+                                    <li class="mb-2">
+                                        <a href="<?= htmlspecialchars($setting->get('instagram_url')) ?>"
+                                            style="color: #cccccc; text-decoration: none; display: flex; align-items: center; transition: color 0.3s; justify-content: center;">
+                                            <i class="fa fa-instagram mr-2" aria-hidden="true" style="width: 20px;"></i>
+                                        </a>
+                                    </li>
+                                <?php endif; ?>
+
+                                <?php if (!empty($setting->get('twitter_url'))): ?>
+                                    <li class="mb-2">
+                                        <a href="<?= htmlspecialchars($setting->get('twitter_url')) ?>"
+                                            style="color: #cccccc; text-decoration: none; display: flex; align-items: center; transition: color 0.3s; justify-content: center;">
+                                            <i class="fa fa-twitter mr-2" aria-hidden="true" style="width: 20px;"></i>
+                                        </a>
+                                    </li>
+                                <?php endif; ?>
+
+                                <?php if (!empty($setting->get('youtube_url'))): ?>
+                                    <li class="mb-2">
+                                        <a href="<?= htmlspecialchars($setting->get('youtube_url')) ?>"
+                                            style="color: #cccccc; text-decoration: none; display: flex; align-items: center; transition: color 0.3s; justify-content: center;">
+                                            <i class="fa fa-youtube-play mr-2" aria-hidden="true" style="width: 20px;"></i>
+                                        </a>
+                                    </li>
+                                <?php endif; ?>
+
+                                <?php if (!empty($setting->get('pinterest_url'))): ?>
+                                    <li class="mb-2">
+                                        <a href="<?= htmlspecialchars($setting->get('pinterest_url')) ?>"
+                                            style="color: #cccccc; text-decoration: none; display: flex; align-items: center; transition: color 0.3s; justify-content: center;">
+                                            <i class="fa fa-pinterest mr-2" aria-hidden="true" style="width: 20px;"></i>
+                                        </a>
+                                    </li>
+                                <?php endif; ?>
+
+                                <?php if (!empty($setting->get('linkedin_url'))): ?>
+                                    <li class="mb-2">
+                                        <a href="<?= htmlspecialchars($setting->get('linkedin_url')) ?>"
+                                            style="color: #cccccc; text-decoration: none; display: flex; align-items: center; transition: color 0.3s; justify-content: center;">
+                                            <i class="fa fa-linkedin mr-2" aria-hidden="true" style="width: 20px;"></i>
+                                        </a>
+                                    </li>
+                                <?php endif; ?>
                             </ul>
                         </div>
 
                         <div class="app_download mt-4">
                             <h3 class="footer_title mb-3" style="color: #ffffff; font-size: 16px; font-weight: 600; text-transform: uppercase;">DOWNLOAD OUR APP</h3>
                             <div class="app_links d-flex flex-column">
-                                <a href="#" class="app_store mb-2">
+                                <a href="<?= $site ?>comming-soon.html" class="app_store mb-2">
                                     <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Download_on_the_App_Store_RGB_blk.svg/1024px-Download_on_the_App_Store_RGB_blk.svg.png" alt="App Store" style="max-width: 120px;">
                                 </a>
-                                <a href="#" class="play_store">
+                                <a href="<?= $site ?>comming-soon.html" class="play_store">
                                     <img src="https://c.clc2l.com/t/g/o/google-playstore-Iauj7q.png" alt="Google Play" style="max-width: 50px;">
                                 </a>
                             </div>
@@ -172,7 +246,7 @@ $setting = new Setting($conn);
                                 <img src="<?= $site ?>assets/img/icon/payment.png" alt="Payment Methods" style="max-width: 200px;">
                             </a>
                         </div>
-                        
+
                     </div>
                 </div>
             </div>
@@ -180,6 +254,11 @@ $setting = new Setting($conn);
     </div>
 </footer>
 <!-- Footer End -->
+
+
+
+
+
 
 <!-- Modal area start-->
 <div class="modal fade" id="modal_box" tabindex="-1" role="dialog" aria-hidden="true">

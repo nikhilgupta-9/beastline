@@ -263,6 +263,7 @@ if ($result) {
                                                     <th width="15%">Image</th>
                                                     <th width="20%">Title & Details</th>
                                                     <th width="10%">Order</th>
+                                                    <th width="10%">Place</th>
                                                     <th width="15%">Dates</th>
                                                     <th width="10%">Status</th>
                                                     <th width="25%" class="text-center">Actions</th>
@@ -307,6 +308,11 @@ if ($result) {
                                                     <td>
                                                         <span class="badge badge-info p-2">
                                                             <i class="fas fa-sort-numeric-down"></i> <?php echo $banner['display_order']; ?>
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <span class="badge badge-info p-2">
+                                                             <?php echo $banner['location']; ?>
                                                         </span>
                                                     </td>
                                                     <td>

@@ -51,6 +51,65 @@
         <!--    </ul>-->
         <!--</li>-->
 
+        
+
+        <!--<li>-->
+        <!--    <a class="has-arrow" href="#"><i class="fas fa-info-circle" style="color: #d35400;"></i> <span>About Us Page</span></a>-->
+        <!--    <ul>-->
+        <!--        <li><a href="about_us.php">Add About</a></li>-->
+        <!--        <li><a href="add-about-us-section.php">Add About sections</a></li>-->
+        <!--    </ul>-->
+        <!--</li>-->
+
+        
+
+        <!-- <li>
+            <a class="has-arrow" href="#"><i class="fas fa-envelope" style="color: #27ae60;"></i> <span>Contact Page</span></a>
+            <ul>
+                <li><a href="add_contact.php">Edit Contact Info</a></li>
+                <li><a href="new-leads.php">Inquiries</a></li>
+            </ul>
+        </li> -->
+
+
+        <li>
+            <a class="has-arrow" href="#"><i class="fas fa-users" style="color: #c0392b;"></i> <span>Customers</span></a>
+            <ul>
+                <li><a href="all-customers.php">All Customers</a></li>
+            </ul>
+        </li>
+
+        <li><a href="orders.php"><i class="fas fa-shopping-cart" style="color: #e67e22;"></i> <span>Orders</span></a></li>
+        
+
+        <li>
+            <a class="has-arrow" href="#"><i class="fas fa-cog" style="color: #17a1e6;"></i> <span>Settings</span></a>
+            <ul>
+                <li><a href="setting.php">Website Settings</a></li>
+                <li><a href="payment-smtp-settings.php">Payment & Email</a></li>
+                <!-- Other settings -->
+            </ul>
+        </li>
+        <li><a href="view-policies.php"><i class="fas fa-shipping-fast" style="color:#c41b91;"></i><span>Policies</span></a></li>
+
+        <li>
+            <a class="has-arrow" href="#"><i class="fas fa-user-cog" style="color: #7f8c8d;"></i> <span>Users</span></a>
+            <ul>
+                <li><a href="all-admin.php">All Users</a></li>
+                <li><a href="admin-create.php">Create Admin</a></li>
+            </ul>
+        </li>
+        <li><a href="about_us.php"><i class="fas fa-info-circle" style="color:  #d35400;"></i> <span>About Us Page</span></a></li>
+        <li><a href="new-leads.php"><i class="fas fa-envelope" style="color: #27ae60;"></i> <span>Inquiries</span></a></li>
+        <li><a href="add-gallery.php"><i class="fas fa-images" style="color: #8e44ad;"></i> <span>Gallery</span></a></li>
+
+        <li>
+            <a class="has-arrow" href="#"><i class="fas fa-quote-left" style="color: #16a085;"></i> <span>Testimonials</span></a>
+            <ul>
+                <li><a href="add-testimonial.php">Add Testimonials</a></li>
+                <li><a href="view-testimonials.php">View Testimonials</a></li>
+            </ul>
+        </li>
         <li>
             <a class="has-arrow" href="#"><i class="fas fa-blog" style="color: #9b59b6;"></i> <span>Blogs & News</span></a>
             <ul>
@@ -64,63 +123,6 @@
             <ul>
                 <li><a href="our-best-brand.php">Add Brands</a></li>
                 <li><a href="view_brands.php">View Brands</a></li>
-            </ul>
-        </li>
-
-        <!--<li>-->
-        <!--    <a class="has-arrow" href="#"><i class="fas fa-info-circle" style="color: #d35400;"></i> <span>About Us Page</span></a>-->
-        <!--    <ul>-->
-        <!--        <li><a href="about_us.php">Add About</a></li>-->
-        <!--        <li><a href="add-about-us-section.php">Add About sections</a></li>-->
-        <!--    </ul>-->
-        <!--</li>-->
-
-        <li><a href="about_us.php"><i class="fas fa-info-circle" style="color:  #d35400;"></i> <span>About Us Page</span></a></li>
-        <li><a href="new-leads.php"><i class="fas fa-envelope" style="color: #27ae60;"></i> <span>Inquiries</span></a></li>
-
-        <!-- <li>
-            <a class="has-arrow" href="#"><i class="fas fa-envelope" style="color: #27ae60;"></i> <span>Contact Page</span></a>
-            <ul>
-                <li><a href="add_contact.php">Edit Contact Info</a></li>
-                <li><a href="new-leads.php">Inquiries</a></li>
-            </ul>
-        </li> -->
-
-        <li><a href="add-gallery.php"><i class="fas fa-images" style="color: #8e44ad;"></i> <span>Gallery</span></a></li>
-
-        <li>
-            <a class="has-arrow" href="#"><i class="fas fa-quote-left" style="color: #16a085;"></i> <span>Testimonials</span></a>
-            <ul>
-                <li><a href="add-testimonial.php">Add Testimonials</a></li>
-                <li><a href="view-testimonials.php">View Testimonials</a></li>
-            </ul>
-        </li>
-
-        <li>
-            <a class="has-arrow" href="#"><i class="fas fa-users" style="color: #c0392b;"></i> <span>Customers</span></a>
-            <ul>
-                <li><a href="all-customers.php">All Customers</a></li>
-            </ul>
-        </li>
-
-        <li><a href="orders.php"><i class="fas fa-shopping-cart" style="color: #e67e22;"></i> <span>Orders</span></a></li>
-        <li><a href="view-policies.php"><i class="fas fa-shipping-fast" style="color:#c41b91;"></i>
- <span>Policies</span></a></li>
-
-        <li>
-            <a class="has-arrow" href="#"><i class="fas fa-user-cog" style="color: #7f8c8d;"></i> <span>Users</span></a>
-            <ul>
-                <li><a href="all-admin.php">All Users</a></li>
-                <li><a href="admin-create.php">Create Admin</a></li>
-            </ul>
-        </li>
-
-        <li>
-            <a class="has-arrow" href="#"><i class="fas fa-cog" style="color: #17a1e6;"></i> <span>Settings</span></a>
-            <ul>
-                <li><a href="setting.php">Website Settings</a></li>
-                <li><a href="payment-smtp-settings.php">Payment & Email</a></li>
-                <!-- Other settings -->
             </ul>
         </li>
         <li><a href="auth/logout.php"><i class="fas fa-sign-out-alt" style="color: #e74c3c;"></i> <span>Log Out</span></a></li>

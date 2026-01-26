@@ -1,7 +1,7 @@
 <?php 
 require_once __DIR__ . '/config/db-conn.php';
 require_once __DIR__ . '/auth/admin-auth.php';
-require_once __DIR__ . '/models/Setting.php';
+require_once __DIR__ . '/models/setting.php';
 
 // Initialize
 $setting = new Setting($conn);

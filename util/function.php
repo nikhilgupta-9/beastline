@@ -83,16 +83,38 @@ function get_footer_logo()
 // logo end 
 
 
-// fetch banners 
 function get_banner()
 {
     global $conn;
 
     $banners = [];
-    $sql_banner = "SELECT * FROM `banners` order by display_order";
+    $sql_banner = "SELECT * FROM banners where `location` = 'home_slider' ORDER BY display_order ASC";
     $res_banner = mysqli_query($conn, $sql_banner);
 
-    if ($res_banner) {
+    if ($res_banner && mysqli_num_rows($res_banner) > 0) {
+        while ($row_banner = mysqli_fetch_assoc($res_banner)) {
+            $banners[] = $row_banner;
+        }
+    }
+
+    return $banners;
+}
+
+function get_home_other_banner1($order)
+{
+    global $conn;
+
+    $banners = [];
+    $order = (int)$order;
+
+    $sql_banner = "SELECT * FROM banners 
+                   WHERE location = 'home_sidebar' 
+                   AND display_order = $order 
+                   LIMIT 1";
+
+    $res_banner = mysqli_query($conn, $sql_banner);
+
+    if ($res_banner && mysqli_num_rows($res_banner) > 0) {
         while ($row_banner = mysqli_fetch_assoc($res_banner)) {
             $banners[] = $row_banner;
         }
@@ -201,27 +223,48 @@ function get_sub_category()
     return $sub_category;
 }
 
-// fetching trending product 
 function get_featured_product()
 {
     global $conn;
 
-    $sql = "SELECT * FROM `products` where `trending` = 1 order by id desc limit 8";
-    $res = mysqli_query($conn, $sql);
+    $sql = "
+        SELECT 
+            p.pro_id,
+            p.pro_name,
+            p.mrp,
+            p.selling_price,
+            p.slug_url,
+            pi.image_url AS pro_img
+        FROM products p
+        LEFT JOIN product_images pi 
+            ON p.pro_id = pi.product_id AND pi.is_main = 1
+        WHERE p.trending = 1
+        ORDER BY p.pro_id DESC
+        LIMIT 8
+    ";
 
+    $res = mysqli_query($conn, $sql);
 
     if (!$res) {
         header("Location: 500.php");
         exit();
     }
 
-    $trendingProducts = []; // ✅ Initialize the array before using
+    $products = [];
+
     while ($row = mysqli_fetch_assoc($res)) {
-        $trendingProducts[] = $row;
+
+        // Image fallback safety
+        if (empty($row['pro_img'])) {
+            $row['pro_img'] = 'no-image.jpg';
+        }
+
+        $products[] = $row;
     }
 
-    return $trendingProducts; // ✅ Return the result
+    return $products;
 }
+
 
 // blog fetch for home page 
 function get_blog_home()
@@ -507,40 +550,6 @@ function get_category_by_slug($slug) {
     
     return null;
 }
-
-// Get products by category slug
-function get_products_by_category_slug($slug) {
-    global $conn;
-    
-    $category = get_category_by_slug($slug);
-    if (!$category) {
-        return [];
-    }
-    
-    $category_id = $category['id'];
-    $sql = "SELECT p.*, c.categories as category_name
-            FROM products p
-            LEFT JOIN categories c ON p.pro_cate = c.id
-            WHERE p.pro_cate = $category_id 
-            AND p.status = 1 
-            ORDER BY p.created_on DESC";
-    
-    $result = mysqli_query($conn, $sql);
-    $products = [];
-    
-    while ($row = mysqli_fetch_assoc($result)) {
-        $products[] = $row;
-    }
-    
-    return $products;
-}
-
-// If you already have get_product_by_category function, update it like this:
-function get_product_by_category($slug) {
-    // For backward compatibility, call the new function
-    return get_products_by_category_slug($slug);
-}
-
 
 
 // Get category hierarchy for breadcrumbs

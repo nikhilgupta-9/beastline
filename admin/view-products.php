@@ -19,12 +19,16 @@ $offset = ($page - 1) * $perPage;
 
 // Build query with filters
 $sql = "SELECT p.*, 
-               c.categories as category_name,
-               b.brand_name as brand_name
+               c.categories AS category_name,
+               b.brand_name AS brand_name,
+               pi.image_url AS pro_main_image
         FROM products p
         LEFT JOIN categories c ON p.pro_cate = c.cate_id
         LEFT JOIN pro_brands b ON p.brand_name = b.id
+        LEFT JOIN product_images pi 
+               ON p.pro_id = pi.product_id AND pi.is_main = 1
         WHERE 1=1";
+
 
 $countSql = "SELECT COUNT(*) as total 
              FROM products p
@@ -434,9 +438,9 @@ $totalPages = ceil($totalRows / $perPage);
                                             <?php while($row = mysqli_fetch_assoc($result)): ?>
                                                 <?php 
                                                 // Parse image array
-                                                $images = !empty($row['pro_img']) ? explode(",", $row['pro_img']) : [];
-                                                $first_image = !empty($images) ? $images[0] : 'no-image.jpg';
-                                                
+                                                $first_image = !empty($row['pro_main_image']) 
+                                                                ? $row['pro_main_image'] 
+                                                                : 'no-image.jpg';                                                
                                                 // Calculate discount percentage
                                                 $discount = 0;
                                                 if($row['mrp'] > 0 && $row['selling_price'] > 0) {
