@@ -313,12 +313,9 @@ $contact = contact_us();
                                 <figure>
                                     <div class="product_thumb">
                                         <a class="primary_img" href="<?= $site ?>product-details/<?= $product['slug_url'] ?>">
-                                            <img src="<?= $primary_img ?>" alt="<?= htmlspecialchars($product['pro_name']) ?>" style="height: 300px; object-fit: cover;">
+                                            <img src="<?= $primary_img ?>" alt="<?= htmlspecialchars($product['pro_name']) ?>" >
                                         </a>
-                                        <a class="secondary_img" href="<?= $site ?>product-details/<?= $product['slug_url'] ?>">
-                                            <img src="<?= $site ?>assets/img/product/product<?= $secondary_img_num ?>.jpg" alt="<?= htmlspecialchars($product['pro_name']) ?>" style="height: 300px; object-fit: cover;">
-                                        </a>
-
+                                       
                                         <?php if ($show_sale): ?>
                                             <div class="label_product">
                                                 <span class="label_sale">Sale</span>
@@ -357,9 +354,9 @@ $contact = contact_us();
                                                 <span class="current_price"><?= $product['formatted_selling_price'] ?></span>
                                             </div>
                                         </div>
-                                        <div class="add_to_cart">
+                                        <!-- <div class="add_to_cart">
                                             <a class="add-to-cart" href="<?= $site ?>product-details/<?= $product['slug_url'] ?>">View Product</a>
-                                        </div>
+                                        </div> -->
                                     </figcaption>
                                 </figure>
                             </article>

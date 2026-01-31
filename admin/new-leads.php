@@ -64,9 +64,9 @@ $total_results = mysqli_num_rows($result);
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <title>Customer Inquiries | Admin Panel</title>
     <link rel="icon" href="<?php echo htmlspecialchars($setting->get('favicon', 'assets/img/logo.png')); ?>" type="image/png">
-    
+
     <?php include "links.php"; ?>
-    
+
     <style>
         .inquiry-avatar {
             width: 40px;
@@ -80,39 +80,47 @@ $total_results = mysqli_num_rows($result);
             font-weight: bold;
             font-size: 14px;
         }
+
         .status-badge {
             padding: 4px 12px;
             border-radius: 20px;
             font-size: 12px;
             font-weight: 600;
         }
-        .badge-new { 
-            background: #e3f2fd; 
-            color: #1976d2; 
+
+        .badge-new {
+            background: #e3f2fd;
+            color: #1976d2;
         }
-        .badge-read { 
-            background: #e8f5e9; 
-            color: #388e3c; 
+
+        .badge-read {
+            background: #e8f5e9;
+            color: #388e3c;
         }
-        .badge-urgent { 
-            background: #ffebee; 
-            color: #c62828; 
+
+        .badge-urgent {
+            background: #ffebee;
+            color: #c62828;
         }
+
         .search-box {
             max-width: 300px;
         }
+
         .stats-card {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border-radius: 10px;
             padding: 20px;
         }
+
         .message-preview {
             max-width: 200px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
+
         .message-preview:hover {
             white-space: normal;
             overflow: visible;
@@ -121,10 +129,11 @@ $total_results = mysqli_num_rows($result);
             padding: 10px;
             border: 1px solid #dee2e6;
             border-radius: 5px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
             z-index: 1000;
             max-width: 300px;
         }
+
         .action-btn {
             padding: 5px 10px;
             border: none;
@@ -132,9 +141,11 @@ $total_results = mysqli_num_rows($result);
             margin: 2px;
             transition: all 0.3s ease;
         }
+
         .action-btn:hover {
             transform: translateY(-1px);
         }
+
         .table-hover tbody tr:hover {
             background-color: rgba(102, 126, 234, 0.05);
         }
@@ -143,7 +154,7 @@ $total_results = mysqli_num_rows($result);
 
 <body class="crm_body_bg">
     <?php include "includes/header.php"; ?>
-    
+
     <section class="main_content dashboard_part large_header_bg">
         <div class="container-fluid g-0">
             <div class="row">
@@ -157,7 +168,7 @@ $total_results = mysqli_num_rows($result);
             <div class="container-fluid p-0">
                 <div class="row justify-content-center">
                     <div class="col-12">
-                    
+
                         <div class="white_card card_height_100 mb_30">
                             <div class="card-header bg-white border-0 py-3">
                                 <div class="d-flex justify-content-between align-items-center flex-wrap">
@@ -169,9 +180,9 @@ $total_results = mysqli_num_rows($result);
                                         <!-- Search Form -->
                                         <form method="GET" class="d-flex search-box">
                                             <div class="input-group">
-                                                <input type="text" name="search" class="form-control" 
-                                                       placeholder="Search inquiries..." 
-                                                       value="<?= htmlspecialchars($search) ?>">
+                                                <input type="text" name="search" class="form-control"
+                                                    placeholder="Search inquiries..."
+                                                    value="<?= htmlspecialchars($search) ?>">
                                                 <button class="btn btn-primary" type="submit">
                                                     <i class="fas fa-search"></i>
                                                 </button>
@@ -182,31 +193,33 @@ $total_results = mysqli_num_rows($result);
                                                 <?php endif; ?>
                                             </div>
                                         </form>
-                                        
+
                                         <!-- Export Button -->
-                                        
+
                                     </div>
                                 </div>
                             </div>
-                            
+
                             <div class="white_card_body">
                                 <!-- Success/Error Messages -->
                                 <?php if (isset($_SESSION['success'])): ?>
                                     <div class="alert alert-success alert-dismissible fade show" role="alert">
                                         <i class="fas fa-check-circle me-2"></i>
-                                        <?= $_SESSION['success']; unset($_SESSION['success']); ?>
+                                        <?= $_SESSION['success'];
+                                        unset($_SESSION['success']); ?>
                                         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                                     </div>
                                 <?php endif; ?>
-                                
+
                                 <?php if (isset($_SESSION['error'])): ?>
                                     <div class="alert alert-danger alert-dismissible fade show" role="alert">
                                         <i class="fas fa-exclamation-triangle me-2"></i>
-                                        <?= $_SESSION['error']; unset($_SESSION['error']); ?>
+                                        <?= $_SESSION['error'];
+                                        unset($_SESSION['error']); ?>
                                         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                                     </div>
                                 <?php endif; ?>
-                                
+
                                 <?php if (!empty($search)): ?>
                                     <div class="alert alert-info d-flex justify-content-between align-items-center">
                                         <div>
@@ -216,7 +229,7 @@ $total_results = mysqli_num_rows($result);
                                         <a href="?" class="btn btn-sm btn-outline-info">Clear Search</a>
                                     </div>
                                 <?php endif; ?>
-                                
+
                                 <div class="QA_section">
                                     <div class="QA_table mb_30">
                                         <!-- Responsive Table Container -->
@@ -244,7 +257,7 @@ $total_results = mysqli_num_rows($result);
                                                             $created_time = date('g:i A', strtotime($row['created_at']));
                                                             $status_class = $row['status'] == 'read' ? 'badge-read' : 'badge-new';
                                                             $status_text = $row['status'] == 'read' ? 'Read' : 'New';
-                                                            ?>
+                                                    ?>
                                                             <tr>
                                                                 <td>
                                                                     <div class="form-check">
@@ -296,33 +309,34 @@ $total_results = mysqli_num_rows($result);
                                                                 </td>
                                                                 <td class="text-center">
                                                                     <div class="btn-group" role="group">
-                                                                        <a href="view_inquiry.php?id=<?= $row['id'] ?>" 
-                                                                           class="btn btn-sm btn-outline-primary action-btn" 
-                                                                           data-bs-toggle="tooltip" title="View Details">
+                                                                        <!-- <a href="view_inquiry.php?id=<?= $row['id'] ?>"
+                                                                            class="btn btn-sm btn-outline-primary action-btn"
+                                                                            data-bs-toggle="tooltip" title="View Details">
                                                                             <i class="fas fa-eye"></i>
-                                                                        </a>
-                                                                        <a href="reply_inquiry.php?id=<?= $row['id'] ?>" 
-                                                                           class="btn btn-sm btn-outline-info action-btn"
-                                                                           data-bs-toggle="tooltip" title="Reply">
+                                                                        </a> -->
+                                                                        <a href="mailto:<?= htmlspecialchars($row['email']) ?>"
+                                                                            class="btn btn-sm btn-outline-info action-btn"
+                                                                            data-bs-toggle="tooltip" title="Reply">
                                                                             <i class="fas fa-reply"></i>
                                                                         </a>
+
                                                                         <?php if ($row['status'] == 'new'): ?>
-                                                                            <a href="?mark_read=<?= $row['id'] ?>" 
-                                                                               class="btn btn-sm btn-outline-success action-btn"
-                                                                               data-bs-toggle="tooltip" title="Mark as Read">
+                                                                            <a href="?mark_read=<?= $row['id'] ?>"
+                                                                                class="btn btn-sm btn-outline-success action-btn"
+                                                                                data-bs-toggle="tooltip" title="Mark as Read">
                                                                                 <i class="fas fa-check"></i>
                                                                             </a>
                                                                         <?php endif; ?>
-                                                                        <a href="?delete=<?= $row['id'] ?>" 
-                                                                           class="btn btn-sm btn-outline-danger action-btn"
-                                                                           data-bs-toggle="tooltip" title="Delete" 
-                                                                           onclick="return confirm('Are you sure you want to delete this inquiry?');">
+                                                                        <a href="?delete=<?= $row['id'] ?>"
+                                                                            class="btn btn-sm btn-outline-danger action-btn"
+                                                                            data-bs-toggle="tooltip" title="Delete"
+                                                                            onclick="return confirm('Are you sure you want to delete this inquiry?');">
                                                                             <i class="fas fa-trash"></i>
                                                                         </a>
                                                                     </div>
                                                                 </td>
                                                             </tr>
-                                                            <?php
+                                                        <?php
                                                             $no++;
                                                         }
                                                     } else {
@@ -339,32 +353,14 @@ $total_results = mysqli_num_rows($result);
                                                                 </div>
                                                             </td>
                                                         </tr>
-                                                        <?php
+                                                    <?php
                                                     }
                                                     ?>
                                                 </tbody>
                                             </table>
                                         </div>
-                                        
-                                        <!-- Table Footer with Pagination -->
-                                        <div class="d-flex justify-content-between align-items-center mt-3">
-                                            <div class="text-muted">
-                                                Showing <?= min($no - 1, $total_results) ?> of <?= $total_results ?> inquiries
-                                            </div>
-                                            <nav>
-                                                <ul class="pagination pagination-sm mb-0">
-                                                    <li class="page-item disabled">
-                                                        <a class="page-link" href="#" tabindex="-1">Previous</a>
-                                                    </li>
-                                                    <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                                                    <li class="page-item"><a class="page-link" href="#">2</a></li>
-                                                    <li class="page-item"><a class="page-link" href="#">3</a></li>
-                                                    <li class="page-item">
-                                                        <a class="page-link" href="#">Next</a>
-                                                    </li>
-                                                </ul>
-                                            </nav>
-                                        </div>
+
+                                       
                                     </div>
                                 </div>
                             </div>
@@ -380,7 +376,7 @@ $total_results = mysqli_num_rows($result);
     <script>
         // Initialize tooltips
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        var tooltipList = tooltipTriggerList.map(function(tooltipTriggerEl) {
             return new bootstrap.Tooltip(tooltipTriggerEl)
         });
 
@@ -416,7 +412,7 @@ $total_results = mysqli_num_rows($result);
                 this.style.zIndex = '1000';
                 this.style.maxWidth = '300px';
             });
-            
+
             preview.addEventListener('mouseleave', function() {
                 this.style.whiteSpace = 'nowrap';
                 this.style.overflow = 'hidden';
@@ -433,4 +429,5 @@ $total_results = mysqli_num_rows($result);
     </script>
 
 </body>
+
 </html>

@@ -46,20 +46,12 @@ $is_logged_in = isset($_SESSION['user_id']);
                             </li>
 
                             <li class="menu-item-has-children active">
-                                <a href="<?= $site ?>">All Categories</a>
+                                <a href="<?= $site ?>category/sale">All Categories</a>
                             </li>
 
                             <li><a href="<?= $site ?>about/">About us</a></li>
 
-                            <li class="menu-item-has-children">
-                                <a href="<?= $site ?>blog/">Blog</a>
-                                <ul class="sub-menu">
-                                    <li><a href="<?= $site ?>blog/">Blog Grid</a></li>
-                                    <li><a href="<?= $site ?>blog/single-post/">Blog Single</a></li>
-                                </ul>
-                            </li>
-
-                            
+                            <li><a href="<?= $site ?>contact/">Contact Us</a></li>
 
                             <?php if ($is_logged_in): ?>
                                 <li class="menu-item-has-children">
@@ -77,13 +69,19 @@ $is_logged_in = isset($_SESSION['user_id']);
                                 <li><a href="<?= $site ?>register/">Register</a></li>
                             <?php endif; ?>
 
-                            <li><a href="<?= $site ?>contact/">Contact Us</a></li>
                         </ul>
                     </div>
                     <div class="offcanvas_footer">
-                        <span><a href="mailto:<?php echo htmlspecialchars($setting->get('business_email')); ?>">
+                        <span>
+                            <a href="mailto:<?php echo htmlspecialchars($setting->get('business_email')); ?>">
                                 <i class="fa fa-envelope-o"></i> <?php echo htmlspecialchars($setting->get('business_email')); ?>
-                            </a></span>
+                            </a>
+                        </span><br>
+                        <span>
+                            <a href="mailto:<?php echo htmlspecialchars($setting->get('support_phone')); ?>">
+                                <i class="fa fa-phone"></i> <?php echo htmlspecialchars($setting->get('support_phone')); ?>
+                            </a>
+                        </span>
                     </div>
                 </div>
             </div>
@@ -110,13 +108,13 @@ $is_logged_in = isset($_SESSION['user_id']);
                         <nav>
                             <ul>
                                 <li><a href="<?= $site ?>">Home</a></li>
-                                <li><a href="<?= $site ?>category/sale">All Products</a></li>
+                                <li><a href="<?= $site ?>category/sale">All Categories</a></li>
 
 
 
                                 <li><a href="<?= $site ?>about/">About us</a></li>
 
-                                <li>
+                                <!-- <li>
                                     <a href="<?= $site ?>blog/">Blog <i class="fa fa-angle-down"></i></a>
                                     <ul class="sub_menu pages">
                                         <li><a href="<?= $site ?>blog/">Blog Grid</a></li>
@@ -125,7 +123,7 @@ $is_logged_in = isset($_SESSION['user_id']);
                                         <li><a href="<?= $site ?>blog/category/lifestyle/">Lifestyle</a></li>
                                         <li><a href="<?= $site ?>blog/category/tips/">Shopping Tips</a></li>
                                     </ul>
-                                </li>
+                                </li> -->
 
                                 <li><a href="<?= $site ?>contact/">Contact Us</a></li>
 

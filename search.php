@@ -461,9 +461,7 @@ $contact = contact_us();
                                         <a class="primary_img" href="<?= $site ?>product-details/<?= $product['slug_url'] ?>">
                                             <img src="<?= $primary_img ?>" alt="<?= htmlspecialchars($product['pro_name']) ?>" style="height: 300px; object-fit: cover;">
                                         </a>
-                                        <a class="secondary_img" href="<?= $site ?>product-details/<?= $product['slug_url'] ?>">
-                                            <img src="<?= $site ?>assets/img/product/product<?= $secondary_img_num ?>.jpg" alt="<?= htmlspecialchars($product['pro_name']) ?>" style="height: 300px; object-fit: cover;">
-                                        </a>
+                                       
 
                                         <?php if ($show_sale): ?>
                                             <div class="label_product">
@@ -506,9 +504,7 @@ $contact = contact_us();
                                                 <span class="current_price"><?= $product['formatted_selling_price'] ?></span>
                                             </div>
                                         </div>
-                                        <div class="add_to_cart">
-                                            <a class="add-to-cart" href="<?= $site ?>product-details/<?= $product['slug_url'] ?>">View Product</a>
-                                        </div>
+                                       
                                     </figcaption>
                                 </figure>
                             </article>

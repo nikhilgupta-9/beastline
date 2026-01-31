@@ -1,11 +1,30 @@
 <?php
+// Start session at the very top
+session_start();
+
 include_once "config/connect.php";
 include_once "util/function.php";
 include_once(__DIR__ . "/models/WebsiteSettings.php");
 
 $setting = new Setting($conn);
 
-$contact = contact_us();
+// Handle form submission
+if (isset($_POST['submit_contact'])) {
+    // Process form and store result in session
+    $result = handleContactForm($conn);
+    echo "form submitted";
+    if ($result === true) {
+        // Success - redirect to prevent form resubmission
+        header('Location: ' . $site . 'contact/?success=1');
+        exit;
+    }
+}
+
+// Check for success parameter
+$success_message = '';
+if (isset($_GET['success']) && $_GET['success'] == 1) {
+    $success_message = 'Thank you for your inquiry! We will get back to you soon.';
+}
 ?>
 <!doctype html>
 <html class="no-js" lang="en">
@@ -78,7 +97,6 @@ $contact = contact_us();
     <div class="contact_map">
         <div class="map-area">
             <?php echo $setting->get('google_maps'); ?>
-
         </div>
     </div>
     <!--contact map end-->
@@ -89,8 +107,11 @@ $contact = contact_us();
             <div class="row">
                 <div class="col-lg-6 col-md-6">
                     <div class="contact_message content">
-                        <h3>contact us</h3>
-                        <p>Claritas est etiam processus dynamicus, qui sequitur mutationem consuetudium lectorum. Mirum est notare quam littera gothica, quam nunc putamus parum claram anteposuerit litterarum formas human. qui sequitur mutationem consuetudium lectorum. Mirum est notare quam</p>
+                        <h3 class="fw-bold">contact us</h3>
+                        <p>At Beastline, we're not just building a brand; we're building a community of men who refuse to settle. We've cut out the middlemen to bring you premium products directly, and we're just as direct when it comes to hearing from you.
+                            <br>
+                            Whether you're curious about a specific fit or want to track your latest upgrade, we're here to ensure your experience stays Above Average.
+                        </p>
                         <ul>
                             <li><i class="fa fa-fax"></i> Address : <?php echo htmlspecialchars($setting->get('business_address')); ?></li>
                             <li><i class="fa fa-phone"></i> <a href="mailto:<?php echo htmlspecialchars($setting->get('business_email')); ?>"><?php echo htmlspecialchars($setting->get('business_email')); ?></a></li>
@@ -100,26 +121,73 @@ $contact = contact_us();
                 </div>
                 <div class="col-lg-6 col-md-6">
                     <div class="contact_message form">
-                        <h3>Tell us your project</h3>
-                        <form id="contact-form" method="POST" action="https://htmldemo.net/braga/braga/assets/mail.php">
-                            <p>
-                                <label> Your Name (required)</label>
-                                <input name="name" placeholder="Name *" type="text">
-                            </p>
-                            <p>
-                                <label> Your Email (required)</label>
-                                <input name="email" placeholder="Email *" type="email">
-                            </p>
-                            <p>
-                                <label> Subject</label>
-                                <input name="subject" placeholder="Subject *" type="text">
-                            </p>
-                            <div class="contact_textarea">
-                                <label> Your Message</label>
-                                <textarea placeholder="Message *" name="message" class="form-control2"></textarea>
+                        <h3 class="fw-bold">Ask Query</h3>
+
+                        <!-- Success/Error Messages -->
+                        <?php if (!empty($success_message)): ?>
+                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                <?php echo $success_message; ?>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                             </div>
-                            <button type="submit"> Send</button>
-                            <p class="form-messege"></p>
+                        <?php endif; ?>
+
+                        <?php if (isset($_SESSION['error_msg'])): ?>
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                <?php
+                                echo $_SESSION['error_msg'];
+                                unset($_SESSION['error_msg']);
+                                ?>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        <?php endif; ?>
+
+                        <form method="POST" action="<?= $site ?>contact/">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p>
+                                        <label>Your Name (required)</label>
+                                        <input name="name" placeholder="Name *" type="text" required minlength="2" maxlength="100"
+                                            value="<?php echo isset($_SESSION['form_data']['name']) ? htmlspecialchars($_SESSION['form_data']['name']) : ''; ?>">
+                                        <span class="text-danger small"><?php echo isset($_SESSION['errors']['name']) ? $_SESSION['errors']['name'] : ''; ?></span>
+                                    </p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p>
+                                        <label>Your Email (required)</label>
+                                        <input name="email" placeholder="Email *" type="email" required maxlength="255"
+                                            value="<?php echo isset($_SESSION['form_data']['email']) ? htmlspecialchars($_SESSION['form_data']['email']) : ''; ?>">
+                                        <span class="text-danger small"><?php echo isset($_SESSION['errors']['email']) ? $_SESSION['errors']['email'] : ''; ?></span>
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p>
+                                        <label>Phone Number</label>
+                                        <input name="phone" placeholder="Phone (optional)" type="tel" maxlength="20"
+                                            value="<?php echo isset($_SESSION['form_data']['phone']) ? htmlspecialchars($_SESSION['form_data']['phone']) : ''; ?>">
+                                        <span class="text-danger small"><?php echo isset($_SESSION['errors']['phone']) ? $_SESSION['errors']['phone'] : ''; ?></span>
+                                    </p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p>
+                                        <label>Subject</label>
+                                        <input name="subject" placeholder="Subject *" type="text" required maxlength="255"
+                                            value="<?php echo isset($_SESSION['form_data']['subject']) ? htmlspecialchars($_SESSION['form_data']['subject']) : ''; ?>">
+                                        <span class="text-danger small"><?php echo isset($_SESSION['errors']['subject']) ? $_SESSION['errors']['subject'] : ''; ?></span>
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="contact_textarea">
+                                <label>Your Message (required)</label>
+                                <textarea placeholder="Message *" name="message" class="form-control2" required minlength="10" maxlength="2000"><?php echo isset($_SESSION['form_data']['message']) ? htmlspecialchars($_SESSION['form_data']['message']) : ''; ?></textarea>
+                                <span class="text-danger small"><?php echo isset($_SESSION['errors']['message']) ? $_SESSION['errors']['message'] : ''; ?></span>
+                            </div>
+
+                            <button type="submit" name="submit_contact" class="btn btn-dark">Send Message</button>
+                            <p class="form-messege mt-2"></p>
                         </form>
 
                     </div>
@@ -129,13 +197,79 @@ $contact = contact_us();
     </div>
     <!--contact area end-->
 
-
-
     <!--footer area start-->
-
     <?php include_once "includes/footer.php"; ?>
     <?php include_once "includes/footer-link.php"; ?>
 
+    <!-- Add SweetAlert for better notifications -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        // Show success message if exists
+        <?php if (!empty($success_message)): ?>
+            Swal.fire({
+                icon: 'success',
+                title: 'Success!',
+                text: '<?php echo addslashes($success_message); ?>',
+                timer: 3000,
+                showConfirmButton: false
+            }).then(() => {
+                // Clear form after successful submission
+                document.getElementById('contact-form').reset();
+            });
+        <?php endif; ?>
+
+        // Show error message if exists
+        <?php if (isset($_SESSION['error_msg']) && !empty($_SESSION['error_msg'])): ?>
+            Swal.fire({
+                icon: 'error',
+                title: 'Error!',
+                text: '<?php echo addslashes($_SESSION["error_msg"]); ?>',
+                timer: 3000,
+                showConfirmButton: false
+            });
+        <?php endif; ?>
+
+        // Clear session data after displaying
+        <?php
+        unset($_SESSION['form_data']);
+        unset($_SESSION['errors']);
+        unset($_SESSION['error_msg']);
+        ?>
+
+        // Form validation
+        $(document).ready(function() {
+            $('#contact-form').on('submit', function(e) {
+                // Basic validation
+                var valid = true;
+                $(this).find('input[required], textarea[required]').each(function() {
+                    if ($(this).val().trim() === '') {
+                        $(this).addClass('is-invalid');
+                        valid = false;
+                    } else {
+                        $(this).removeClass('is-invalid');
+                    }
+                });
+
+                if (!valid) {
+                    e.preventDefault();
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Required Fields',
+                        text: 'Please fill in all required fields.',
+                        timer: 2000,
+                        showConfirmButton: false
+                    });
+                }
+            });
+
+            // Remove error class on input
+            $('#contact-form input, #contact-form textarea').on('input', function() {
+                if ($(this).val().trim() !== '') {
+                    $(this).removeClass('is-invalid');
+                }
+            });
+        });
+    </script>
 
 </body>
 

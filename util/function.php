@@ -25,30 +25,50 @@ function fetch_about()
 {
     global $conn;
 
-    // Fetch all about sections ordered by section_order
-    $sql = "SELECT * FROM `about_sections` ORDER BY `section_order` ASC";
+    // Fetch the about us data (assuming single record as it's usually one "About Us" page)
+    $sql = "SELECT * FROM `about_us` LIMIT 1";
     $sql_query = $conn->query($sql);
 
     if ($sql_query && $sql_query->num_rows > 0) {
-        $sections = [];
-        while ($row = $sql_query->fetch_assoc()) {
-            $sections[] = [
-                'title' => $row['title'] ?? '',
-                'content' => $row['content'] ?? '',
-                'image' => $row['image_url'] ?? '',
-                'order' => $row['section_order'] ?? 0
-            ];
+        $row = $sql_query->fetch_assoc();
+        
+        // Process stats data if it's JSON
+        $stats_data = [];
+        if (!empty($row['stats_data'])) {
+            $stats_data = json_decode($row['stats_data'], true);
         }
-        return $sections;
-    } else {
-        // Return a default section if no records found
+        
         return [
-            [
-                'title' => 'About Us',
-                'content' => 'No about us sections found. Please add some content in the admin panel.',
-                'image' => '',
-                'order' => 1
-            ]
+            'id' => $row['id'] ?? 0,
+            'image_url' => $row['image_url'] ?? '',
+            'title' => $row['title'] ?? 'About Us',
+            'content' => $row['content'] ?? '',
+            'updated_at' => $row['updated_at'] ?? '',
+            'meta_title' => $row['meta_title'] ?? '',
+            'meta_description' => $row['meta_description'] ?? '',
+            'meta_keywords' => $row['meta_keywords'] ?? '',
+            'cta_button_text' => $row['cta_button_text'] ?? 'Learn More',
+            'cta_button_link' => $row['cta_button_link'] ?? '#',
+            'video_url' => $row['video_url'] ?? '',
+            'show_stats' => isset($row['show_stats']) ? (bool)$row['show_stats'] : false,
+            'stats_data' => $stats_data
+        ];
+    } else {
+        // Return default structure if no records found
+        return [
+            'id' => 0,
+            'image_url' => '',
+            'title' => 'About Us',
+            'content' => 'No about us content found. Please add content in the admin panel.',
+            'updated_at' => date('Y-m-d H:i:s'),
+            'meta_title' => 'About Us - Our Story',
+            'meta_description' => 'Learn more about our company and values.',
+            'meta_keywords' => 'about us, company, values, mission',
+            'cta_button_text' => 'Learn More',
+            'cta_button_link' => '#',
+            'video_url' => '',
+            'show_stats' => false,
+            'stats_data' => []
         ];
     }
 }
@@ -160,6 +180,94 @@ function contact_us()
     return null; // Or return [] if you prefer
 }
 
+function handleContactForm($conn) {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['submit_contact'])) {
+        return false;
+    }
+
+    // Clear previous session messages
+    unset($_SESSION['errors'], $_SESSION['form_data'], $_SESSION['error_msg']);
+
+    // Store form data for repopulation
+    $_SESSION['form_data'] = [
+        'name' => $_POST['name'] ?? '',
+        'email' => $_POST['email'] ?? '',
+        'phone' => $_POST['phone'] ?? '',
+        'subject' => $_POST['subject'] ?? '',
+        'message' => $_POST['message'] ?? ''
+    ];
+
+    // Sanitize inputs
+    $name = trim(htmlspecialchars($_POST['name'] ?? '', ENT_QUOTES, 'UTF-8'));
+    $email = trim(filter_var($_POST['email'] ?? '', FILTER_SANITIZE_EMAIL));
+    $phone = trim(htmlspecialchars($_POST['phone'] ?? '', ENT_QUOTES, 'UTF-8'));
+    $subject = trim(htmlspecialchars($_POST['subject'] ?? '', ENT_QUOTES, 'UTF-8'));
+    $message = trim(htmlspecialchars($_POST['message'] ?? '', ENT_QUOTES, 'UTF-8'));
+    
+    $errors = [];
+
+    // Validation
+    if (empty($name) || strlen($name) < 2 || strlen($name) > 100) {
+        $errors['name'] = 'Name must be between 2 and 100 characters';
+    }
+
+    if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $errors['email'] = 'Please enter a valid email address';
+    }
+
+    if (!empty($phone) && !preg_match('/^[\d\s\-\+\(\)]{10,20}$/', $phone)) {
+        $errors['phone'] = 'Please enter a valid phone number (10-20 digits)';
+    }
+
+    if (empty($subject) || strlen($subject) < 3 || strlen($subject) > 255) {
+        $errors['subject'] = 'Subject is required and must be between 3-255 characters';
+    }
+
+    if (empty($message) || strlen($message) < 10 || strlen($message) > 2000) {
+        $errors['message'] = 'Message must be between 10 and 2000 characters';
+    }
+
+    // If there are errors, store them in session and return false
+    if (!empty($errors)) {
+        $_SESSION['errors'] = $errors;
+        $_SESSION['error_msg'] = 'Please correct the errors below';
+        return false;
+    }
+
+    try {
+        // Prepare SQL statement with prepared statement
+        $sql = "INSERT INTO inquiries (name, email, phone, subject, message, status, created_at) 
+                VALUES (?, ?, ?, ?, ?, 'pending', NOW())";
+        
+        $stmt = $conn->prepare($sql);
+        
+        if (!$stmt) {
+            throw new Exception('Database prepare statement failed: ' . $conn->error);
+        }
+
+        // Bind parameters
+        $stmt->bind_param("sssss", $name, $email, $phone, $subject, $message);
+        
+        // Execute the statement
+        if ($stmt->execute()) {
+            // Clear form data from session
+            unset($_SESSION['form_data']);
+            
+            // Optional: Send email notification
+            // sendInquiryNotification($name, $email, $subject, $message);
+            
+            $stmt->close();
+            return true;
+        } else {
+            throw new Exception('Failed to insert inquiry: ' . $stmt->error);
+        }
+        
+    } catch (Exception $e) {
+        error_log('Inquiry submission error: ' . $e->getMessage());
+        $_SESSION['error_msg'] = 'Sorry, there was an error submitting your inquiry. Please try again.';
+        return false;
+    }
+}
 
 // get gallery images 
 function get_gallery()

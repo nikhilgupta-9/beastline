@@ -237,6 +237,173 @@ $colorMap = [
     <script src="<?= $site ?>assets/js/vendor/modernizr-3.7.1.min.js"></script>
 
 </head>
+<style>
+    /* Myntra Style Carousel */
+    .myntra-style-main-image {
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .main-image-container {
+        position: relative;
+        background: white;
+        border: 1px solid #eaeaea;
+    }
+
+    .carousel-nav-btn {
+        opacity: 0;
+        transition: all 0.3s ease;
+        transform: translateY(-50%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+
+    .carousel-nav-btn i {
+        font-size: 16px;
+        color: #333;
+    }
+
+    .main-image-container:hover .carousel-nav-btn {
+        opacity: 1;
+    }
+
+    .carousel-nav-btn:hover {
+        background: white !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+        transform: translateY(-50%) scale(1.1);
+    }
+
+    .main-image-wrapper {
+        padding: 20px;
+    }
+
+    .main-product-img {
+        transition: opacity 0.3s ease;
+    }
+
+    /* Thumbnail Styles */
+    .myntra-thumbnail-carousel {
+        padding: 0 30px;
+    }
+
+    .thumbnail-container {
+        overflow: hidden;
+    }
+
+    .product-thumbnails {
+        padding: 5px 0;
+    }
+
+    .thumbnail-link {
+        transition: all 0.3s ease;
+        border: 2px solid transparent !important;
+    }
+
+    .thumbnail-link.active {
+        border-color: #ff3f6c !important;
+        transform: scale(1.05);
+        box-shadow: 0 4px 8px rgba(255, 63, 108, 0.2);
+    }
+
+    .thumbnail-link:hover:not(.active) {
+        border-color: #ddd !important;
+    }
+
+    .thumb-nav-btn {
+        opacity: 0.8;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .thumb-nav-btn:hover {
+        opacity: 1;
+        transform: translateY(-50%) scale(1.1);
+        background: white !important;
+    }
+
+    .thumb-nav-btn i {
+        color: #555;
+    }
+
+    .image-counter {
+        font-family: Arial, sans-serif;
+        font-weight: 500;
+    }
+
+    .zoom-indicator {
+        animation: fadeIn 0.5s ease;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    /* Image transition effect */
+    .main-product-img.fade-effect {
+        animation: fadeInOut 0.4s ease;
+    }
+
+    @keyframes fadeInOut {
+        0% {
+            opacity: 0.7;
+        }
+
+        50% {
+            opacity: 0.3;
+        }
+
+        100% {
+            opacity: 1;
+        }
+    }
+
+    /* Responsive Styles */
+    @media (max-width: 768px) {
+        .main-image-container {
+            min-height: 400px !important;
+        }
+
+        .myntra-thumbnail-carousel {
+            padding: 0 20px;
+        }
+
+        .thumbnail-link {
+            width: 60px !important;
+            height: 60px !important;
+        }
+
+        .carousel-nav-btn {
+            opacity: 1;
+            width: 36px !important;
+            height: 36px !important;
+        }
+
+        .zoom-indicator {
+            display: none;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .main-image-container {
+            min-height: 350px !important;
+        }
+
+        .thumbnail-link {
+            width: 50px !important;
+            height: 50px !important;
+        }
+    }
+</style>
 
 <body>
 
@@ -389,50 +556,100 @@ $colorMap = [
         <div class="container">
             <div class="row">
                 <div class="col-lg-5 col-md-5">
-                    <div class="product-details-tab position-relative overflow-hidden" style="max-width:100%; width:100%;">
+                    <div class="product-details-tab position-relative overflow-hidden">
 
+                        <!-- Main Image Container -->
+                        <div class="myntra-style-main-image mb-3">
+                            <?php if ($main_image): ?>
+                                <div class="main-image-container position-relative overflow-hidden rounded"
+                                    style="background-color: #f8f9fa; min-height: 500px;">
 
-                        <?php if ($main_image): ?>
-                            <div id="img-1" class="zoomWrapper single-zoom d-flex justify-content-center overflow-hidden position-relative"
-                                style="max-width:100%; width:100%; overflow:hidden;">
+                                    <!-- Navigation Arrows -->
+                                    <?php if (count($product_images) > 1): ?>
+                                        <button class="carousel-nav-btn prev-btn position-absolute top-50 start-0 translate-middle-y"
+                                            style="left: 15px; z-index: 10; background: white; border-radius: 50%; width: 40px; height: 40px; border: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                                            <i class="fa fa-chevron-left"></i>
+                                        </button>
 
-                                <a href="#" class="d-block text-center" style="max-width:100%;">
-                                    <img id="zoom1"
-                                        src="<?= $site ?>admin/assets/img/uploads/<?= $main_image['image_url'] ?>"
-                                        data-zoom-image="<?= $site ?>admin/assets/img/uploads/<?= $main_image['image_url'] ?>"
-                                        alt="<?= htmlspecialchars($product['pro_name']) ?>"
-                                        class="img-fluid"
-                                        style="max-width:100%; height:auto; object-fit:contain; position: absolute; right: 1px;">
-                                </a>
-                            </div>
-                        <?php endif; ?>
+                                        <button class="carousel-nav-btn next-btn position-absolute top-50 end-0 translate-middle-y"
+                                            style="right: 15px; z-index: 10; background: white; border-radius: 50%; width: 40px; height: 40px; border: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                                            <i class="fa fa-chevron-right"></i>
+                                        </button>
+                                    <?php endif; ?>
 
+                                    <!-- Main Image -->
+                                    <div class="main-image-wrapper d-flex justify-content-center align-items-center w-100 h-100">
+                                        <a href="<?= $site ?>admin/assets/img/uploads/<?= $main_image['image_url'] ?>"
+                                            class="magnific-popup-image d-block w-100 h-100 text-center">
+                                            <img id="main-product-image"
+                                                src="<?= $site ?>admin/assets/img/uploads/<?= $main_image['image_url'] ?>"
+                                                alt="<?= htmlspecialchars($product['pro_name']) ?>"
+                                                class="img-fluid main-product-img"
+                                                style="max-height: 100%; max-width: 100%; object-fit: contain;"
+                                                data-current-index="0">
+                                        </a>
+                                    </div>
+
+                                    <!-- Image Counter (e.g., 1/5) -->
+                                    <?php if (count($product_images) > 1): ?>
+                                        <div class="image-counter position-absolute bottom-0 end-0 bg-dark bg-opacity-75 text-white px-3 py-1 rounded-start"
+                                            style="font-size: 14px;">
+                                            <span class="current-index">1</span>/<span class="total-images"><?= count($product_images) ?></span>
+                                        </div>
+                                    <?php endif; ?>
+
+                                    <!-- Zoom/Loupe Icon (like Myntra) -->
+                                    <div class="zoom-indicator position-absolute" style="bottom: 15px; left: 15px; z-index: 5;">
+                                        <span class="badge bg-light text-dark px-3 py-2" style="font-size: 12px; font-weight: normal;">
+                                            <i class="fa fa-search me-1"></i> Mouse over image to zoom
+                                        </span>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+
+                        <!-- Thumbnail Carousel -->
                         <?php if (count($product_images) > 1): ?>
-                            <div class="single-zoom-thumb mt-3 overflow-hidden">
-                                <ul class="s-tab-zoom owl-carousel single-product-active d-flex align-items-center" id="gallery_01">
+                            <div class="myntra-thumbnail-carousel mt-3">
+                                <div class="thumbnail-container position-relative">
+                                    <!-- Thumbnail Navigation Arrows -->
+                                    <button class="thumb-nav-btn thumb-prev-btn position-absolute start-0 top-50 translate-middle-y bg-white border-0 rounded-circle shadow-sm"
+                                        style="width: 30px; height: 30px; z-index: 5; left: -15px;">
+                                        <i class="fa fa-chevron-left fs-6"></i>
+                                    </button>
 
-                                    <?php foreach ($product_images as $index => $image): ?>
-                                        <li class="me-2">
-                                            <a href="#"
-                                                class="elevatezoom-gallery <?= $index == 0 ? 'active' : '' ?>"
-                                                data-update=""
-                                                data-image="<?= $site ?>admin/assets/img/uploads/<?= $image['image_url'] ?>"
-                                                data-zoom-image="<?= $site ?>admin/assets/img/uploads/<?= $image['image_url'] ?>">
+                                    <button class="thumb-nav-btn thumb-next-btn position-absolute end-0 top-50 translate-middle-y bg-white border-0 rounded-circle shadow-sm"
+                                        style="width: 30px; height: 30px; z-index: 5; right: -15px;">
+                                        <i class="fa fa-chevron-right fs-6"></i>
+                                    </button>
 
-                                                <img src="<?= $site ?>admin/assets/img/uploads/<?= $image['image_url'] ?>"
-                                                    alt="<?= htmlspecialchars($product['pro_name']) ?>"
-                                                    class="img-fluid"
-                                                    style="max-width:70px; height:auto; object-fit:contain;">
-                                            </a>
-                                        </li>
-                                    <?php endforeach; ?>
+                                    <!-- Thumbnail Images -->
+                                    <div class="thumbnails-wrapper overflow-hidden">
+                                        <ul class="product-thumbnails d-flex justify-content-start list-unstyled mb-0 ps-0"
+                                            style="transition: transform 0.3s ease; gap: 10px;">
 
-                                </ul>
+                                            <?php foreach ($product_images as $index => $image): ?>
+                                                <li class="thumbnail-item flex-shrink-0">
+                                                    <a href="javascript:void(0);"
+                                                        class="thumbnail-link d-block border rounded overflow-hidden <?= $index == 0 ? 'active' : '' ?>"
+                                                        data-image="<?= $site ?>admin/assets/img/uploads/<?= $image['image_url'] ?>"
+                                                        data-index="<?= $index ?>"
+                                                        style="width: 80px; height: 80px;">
+                                                        <img src="<?= $site ?>admin/assets/img/uploads/<?= $image['image_url'] ?>"
+                                                            alt="<?= htmlspecialchars($product['pro_name']) ?> - Thumbnail <?= $index + 1 ?>"
+                                                            class="img-fluid w-100 h-100"
+                                                            style="object-fit: cover; cursor: pointer;">
+                                                    </a>
+                                                </li>
+                                            <?php endforeach; ?>
+
+                                        </ul>
+                                    </div>
+                                </div>
                             </div>
                         <?php endif; ?>
 
                     </div>
-
                 </div>
                 <div class="col-lg-7 col-md-7">
                     <div class="product_d_right">
@@ -980,7 +1197,204 @@ $colorMap = [
         </div>
     </div>
     <!-- modal area end-->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const mainImage = document.getElementById('main-product-image');
+            const thumbnailLinks = document.querySelectorAll('.thumbnail-link');
+            const currentIndexSpan = document.querySelector('.current-index');
+            const totalImagesSpan = document.querySelector('.total-images');
+            const mainPrevBtn = document.querySelector('.prev-btn');
+            const mainNextBtn = document.querySelector('.next-btn');
+            const thumbPrevBtn = document.querySelector('.thumb-prev-btn');
+            const thumbNextBtn = document.querySelector('.thumb-next-btn');
+            const thumbnailsWrapper = document.querySelector('.thumbnails-wrapper');
+            const thumbnailsList = document.querySelector('.product-thumbnails');
+            const popupLink = document.querySelector('.magnific-popup-image');
 
+            let currentIndex = 0;
+            const totalImages = thumbnailLinks.length;
+
+            // Initialize
+            if (totalImagesSpan) totalImagesSpan.textContent = totalImages;
+
+            // Function to update main image
+            function updateMainImage(index) {
+                if (index < 0) index = totalImages - 1;
+                if (index >= totalImages) index = 0;
+
+                currentIndex = index;
+                const activeThumb = thumbnailLinks[index];
+
+                // Update main image
+                const newImageUrl = activeThumb.getAttribute('data-image');
+                mainImage.src = newImageUrl;
+                mainImage.setAttribute('data-current-index', index);
+
+                // Update popup link
+                if (popupLink) {
+                    popupLink.href = newImageUrl;
+                }
+
+                // Update active thumbnail
+                thumbnailLinks.forEach(link => link.classList.remove('active'));
+                activeThumb.classList.add('active');
+
+                // Update counter
+                if (currentIndexSpan) {
+                    currentIndexSpan.textContent = index + 1;
+                }
+
+                // Center active thumbnail in view
+                centerActiveThumbnail();
+
+                // Reinitialize zoom if needed
+                reinitializeZoom();
+            }
+
+            // Function to center active thumbnail
+            function centerActiveThumbnail() {
+                if (!thumbnailsWrapper || !thumbnailsList) return;
+
+                const activeThumb = document.querySelector('.thumbnail-link.active');
+                if (!activeThumb) return;
+
+                const containerWidth = thumbnailsWrapper.offsetWidth;
+                const thumbWidth = activeThumb.offsetWidth + 10; // 10px for gap
+                const thumbOffset = activeThumb.offsetLeft;
+
+                // Calculate scroll position
+                const scrollPosition = thumbOffset - (containerWidth / 2) + (thumbWidth / 2);
+
+                thumbnailsList.style.transform = `translateX(-${scrollPosition}px)`;
+            }
+
+            // Function to reinitialize zoom
+            function reinitializeZoom() {
+                // If using elevateZoom plugin
+                if (typeof $.fn.elevateZoom !== 'undefined') {
+                    $('.main-image-container').removeData('elevateZoom');
+                    $('#main-product-image').removeData('elevateZoom');
+
+                    // Reinitialize with Myntra-like settings
+                    $('#main-product-image').elevateZoom({
+                        zoomType: "inner",
+                        cursor: "crosshair",
+                        zoomWindowFadeIn: 300,
+                        zoomWindowFadeOut: 300,
+                        scrollZoom: true,
+                        zoomWindowWidth: 400,
+                        zoomWindowHeight: 400,
+                        borderSize: 1,
+                        lensSize: 200
+                    });
+                }
+            }
+
+            // Thumbnail click event
+            thumbnailLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const index = parseInt(this.getAttribute('data-index'));
+                    updateMainImage(index);
+                });
+            });
+
+            // Main navigation buttons
+            if (mainPrevBtn) {
+                mainPrevBtn.addEventListener('click', function() {
+                    updateMainImage(currentIndex - 1);
+                });
+            }
+
+            if (mainNextBtn) {
+                mainNextBtn.addEventListener('click', function() {
+                    updateMainImage(currentIndex + 1);
+                });
+            }
+
+            // Thumbnail carousel navigation
+            let thumbScrollPosition = 0;
+            const thumbScrollStep = 100;
+
+            if (thumbPrevBtn) {
+                thumbPrevBtn.addEventListener('click', function() {
+                    thumbScrollPosition = Math.max(0, thumbScrollPosition - thumbScrollStep);
+                    thumbnailsList.style.transform = `translateX(-${thumbScrollPosition}px)`;
+                });
+            }
+
+            if (thumbNextBtn) {
+                thumbNextBtn.addEventListener('click', function() {
+                    const maxScroll = thumbnailsList.scrollWidth - thumbnailsWrapper.offsetWidth;
+                    thumbScrollPosition = Math.min(maxScroll, thumbScrollPosition + thumbScrollStep);
+                    thumbnailsList.style.transform = `translateX(-${thumbScrollPosition}px)`;
+                });
+            }
+
+            // Keyboard navigation
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'ArrowLeft') {
+                    updateMainImage(currentIndex - 1);
+                } else if (e.key === 'ArrowRight') {
+                    updateMainImage(currentIndex + 1);
+                }
+            });
+
+            // Swipe functionality for touch devices
+            let touchStartX = 0;
+            let touchEndX = 0;
+
+            const mainContainer = document.querySelector('.main-image-container');
+            if (mainContainer) {
+                mainContainer.addEventListener('touchstart', function(e) {
+                    touchStartX = e.changedTouches[0].screenX;
+                });
+
+                mainContainer.addEventListener('touchend', function(e) {
+                    touchEndX = e.changedTouches[0].screenX;
+                    handleSwipe();
+                });
+            }
+
+            function handleSwipe() {
+                const swipeThreshold = 50;
+                const diff = touchStartX - touchEndX;
+
+                if (Math.abs(diff) > swipeThreshold) {
+                    if (diff > 0) {
+                        // Swipe left - next image
+                        updateMainImage(currentIndex + 1);
+                    } else {
+                        // Swipe right - previous image
+                        updateMainImage(currentIndex - 1);
+                    }
+                }
+            }
+
+            // Initialize zoom on first load
+            setTimeout(() => {
+                reinitializeZoom();
+                centerActiveThumbnail();
+            }, 500);
+
+            // Hover effect for thumbnails
+            thumbnailLinks.forEach(link => {
+                const img = link.querySelector('img');
+
+                link.addEventListener('mouseenter', function() {
+                    this.style.transform = 'scale(1.05)';
+                    this.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+                });
+
+                link.addEventListener('mouseleave', function() {
+                    if (!this.classList.contains('active')) {
+                        this.style.transform = 'scale(1)';
+                        this.style.boxShadow = 'none';
+                    }
+                });
+            });
+        });
+    </script>
     <?php include_once "includes/footer-link.php"; ?>
 
     <!-- Product Details Specific JavaScript -->

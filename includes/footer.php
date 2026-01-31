@@ -130,7 +130,6 @@ $setting = new Setting($conn);
                         <h3 class="footer_title mb-4" style="color: #ffffff; font-size: 16px; font-weight: 600; text-transform: uppercase;">ABOUT BEASTLINE</h3>
                         <ul class="footer_links list-unstyled">
                             <li class="mb-2"><a href="<?= $site ?>about/" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">About Us</a></li>
-                            <li class="mb-2"><a href="<?= $site ?>blogs/" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Blogs</a></li>
                             <li class="mb-2"><a href="<?= $site ?>user-login/" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Login</a></li>
                             <li class="mb-2"><a href="<?= $site ?>register/" style="color: #cccccc; text-decoration: none; transition: color 0.3s;">Register</a></li>
 

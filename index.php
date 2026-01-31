@@ -16,6 +16,8 @@ $banners = get_banner();
 	<title>Home | Beastline</title>
 	<meta name="description" content="">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
 	<!-- Favicon -->
 	<link rel="shortcut icon" type="image/x-icon" href="admin/<?php echo htmlspecialchars($setting->get('favicon')); ?>">
 
@@ -56,22 +58,6 @@ $banners = get_banner();
 		/* border-radius: 12px; */
 	}
 
-	.banner_thumb video {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-	}
-
-	/* Text Overlay */
-	/* .banner_text1 {
-		position: absolute;
-		inset: 0;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		background: rgba(0, 0, 0, 0.35);
-	} */
-
 	.banner_text1_inner {
 		text-align: center;
 		color: #fff;
@@ -104,14 +90,6 @@ $banners = get_banner();
 
 		.single_banner {
 			height: 360px;
-		}
-
-		.banner_thumb {
-			height: 100%;
-		}
-
-		.banner_thumb video {
-			height: 100%;
 		}
 
 		.banner_text1_inner h3 {
@@ -157,8 +135,8 @@ $banners = get_banner();
 								<div class="col-12">
 									<div class="slider_content">
 										<h2>Get 30% Off &amp; Free Shipping</h2>
-										<h1><?= $b['title'] ?></h1>
-										<p><?= $b['description'] ?></p>
+										<h1 class="text-light"><?= $b['title'] ?></h1>
+										<p class="text-light"><?= $b['description'] ?></p>
 										<a href="<?= $b['link_url'] ?>">Shop Now +</a>
 									</div>
 								</div>
@@ -320,7 +298,7 @@ $banners = get_banner();
 						$current_price = isset($f_p['selling_price']) ? '$' . number_format($f_p['selling_price'], 2) : '$0.00';
 
 						// Product link
-						$product_link = isset($f_p['pro_id']) ? "product-details.php?id={$f_p['pro_id']}" : "product-details.html";
+						$product_link = isset($f_p['slug_url']) ? "{$site}product-details/{$f_p['slug_url']}" : "product-details.html";
 
 						// Primary image path
 						if (isset($f_p['pro_img']) && strpos($f_p['pro_img'], 'assets/') === false) {
@@ -336,10 +314,7 @@ $banners = get_banner();
 								<div class="product_thumb">
 									<a class="primary_img" href="<?= $product_link ?>">
 										<img src="<?= $primary_img ?>" alt="<?= htmlspecialchars($f_p['pro_name']) ?>">
-									</a>
-									<a class="secondary_img" href="<?= $product_link ?>">
-										<img src="assets/img/product/product<?= $secondary_img_num ?>.jpg" alt="<?= htmlspecialchars($f_p['pro_name']) ?>">
-									</a>
+									</a>								
 
 									<?php if ($show_sale): ?>
 										<div class="label_product">
@@ -351,7 +326,6 @@ $banners = get_banner();
 											<?php endif; ?>
 										</div>
 									<?php endif; ?>
-
 
 								</div>
 								<figcaption class="product_content">
@@ -368,10 +342,10 @@ $banners = get_banner();
 											<span class="current_price"><?= $current_price ?></span>
 										</div>
 									</div>
-									<div class="add_to_cart">
+									<!-- <div class="add_to_cart">
 										<a class="add-to-cart" href="<?= $site ?>product-details/<?= $f_p['slug_url'] ?>">View Product</a>
-										<!-- <a href="cart.php?add_to_cart=<?= $f_p['pro_id'] ?? $index ?>">Add to cart</a> -->
-									</div>
+										
+									</div> -->
 								</figcaption>
 							</figure>
 						</article>
@@ -383,36 +357,6 @@ $banners = get_banner();
 	</div>
 	<!--product area end-->
 
-	<!--banner area start-->
-	<!-- <div class="banner_area">
-		<div class="container-fluid p-0">
-			<div class="row no-gutters">
-				<div class="col-lg-6 col-md-6">
-					<div class="single_banner">
-						<div class="banner_thumb">
-							<a href="shop.html"><img src="assets/img/bg/banner3.jpg" alt=""></a>
-							<div class="banner_text2">
-								<h3>S/S-20 <br> Collections</h3>
-								<a href="shop.html">shop now</a>
-							</div>
-						</div>
-					</div>
-				</div>
-				<div class="col-lg-6 col-md-6">
-					<div class="single_banner">
-						<div class="banner_thumb">
-							<a href="shop.html"><img src="assets/img/bg/banner4.jpg" alt=""></a>
-							<div class="banner_text2">
-								<h3>A/W-20 <br> Collections</h3>
-								<a href="shop.html">shop now</a>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-	</div> -->
-	<!--banner area end-->
 
 	<!--discount banner area start-->
 	<?php
@@ -538,7 +482,7 @@ $banners = get_banner();
 	<!--testimonial area end-->
 
 	<!--shipping area start-->
-	<div class="shipping_area">
+	<div class="shipping_area mb-4">
 		<div class="container">
 			<div class="shipping_container">
 				<div class="row">
@@ -570,8 +514,8 @@ $banners = get_banner();
 								<img src="assets/img/about/shipping3.png" alt="">
 							</div>
 							<div class="shipping_content">
-								<h3>Money Return</h3>
-								<p>Back guarantee under 7 days</p>
+								<h3>Quality Assured</h3>
+								<p>Premium quality guaranteed</p>
 							</div>
 						</div>
 					</div>
@@ -581,8 +525,8 @@ $banners = get_banner();
 								<img src="assets/img/about/shipping4.png" alt="">
 							</div>
 							<div class="shipping_content">
-								<h3>Member Discount</h3>
-								<p>Onevery order over $120.00</p>
+								<h3>Secure Payment</h3>
+								<p>100% safe and encrypted transactions</p>
 							</div>
 						</div>
 					</div>
