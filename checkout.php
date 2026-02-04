@@ -7,31 +7,38 @@ require_once __DIR__ . '/admin/models/PaymentSmtpSetting.php';
 $payment_setting = new PaymentSmtpSetting($conn);
 $razorpay_key_id = $payment_setting->getSetting('razorpay', 'api_key');
 
-if (!isset($_SESSION['user_id'])) {
-    $_SESSION['checkout_redirect'] = true;
-    header("Location: " . $site . "user-login");
-    exit();
-}
-// Redirect if cart is empty
-if (!isset($_SESSION['cart']) || empty($_SESSION['cart'])) {
+// Check if user is logged in
+// if (!isset($_SESSION['user_id'])) {
+//     $_SESSION['checkout_redirect'] = true;
+//     $_SESSION['redirect_source'] = isset($_SESSION['buy_now']) ? 'buy_now' : 'cart';
+//     header("Location: " . $site . "user-login");
+//     exit();
+// }
+
+// Initialize variables
+$subtotal = 0;
+$total_quantity = 0;
+$cart_items = [];
+$isBuyNow = isset($_SESSION['buy_now']);
+
+// Check if we have items (either cart or buy now)
+if (!$isBuyNow && (!isset($_SESSION['cart']) || empty($_SESSION['cart']))) {
     header("Location: " . $site . "cart");
     exit();
 }
 
-// Calculate cart totals
-$subtotal = 0;
-$total_quantity = 0;
-$cart_items = [];
+if ($isBuyNow) {
+    // PROCESS BUY NOW SESSION
+    $buyNowItem = $_SESSION['buy_now'];
 
-foreach ($_SESSION['cart'] as $cart_item_id => $item) {
-    // Get product details
+    // Get product details for buy now item
     $sql = "SELECT p.*, c.categories, b.brand_name 
             FROM products p 
             LEFT JOIN categories c ON p.pro_sub_cate = c.id
             LEFT JOIN brands b ON p.brand_name = b.id
             WHERE p.pro_id = ? AND p.status = 1";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("i", $item['product_id']);
+    $stmt->bind_param("i", $buyNowItem['product_id']);
     $stmt->execute();
     $result = $stmt->get_result();
 
@@ -40,29 +47,80 @@ foreach ($_SESSION['cart'] as $cart_item_id => $item) {
 
         // Get variant details if exists
         $variant_details = [];
-        if ($item['variant_id']) {
+        if ($buyNowItem['variant_id'] > 0) {
             $variant_sql = "SELECT * FROM product_variants WHERE id = ?";
             $variant_stmt = $conn->prepare($variant_sql);
-            $variant_stmt->bind_param("i", $item['variant_id']);
+            $variant_stmt->bind_param("i", $buyNowItem['variant_id']);
             $variant_stmt->execute();
             $variant_result = $variant_stmt->get_result();
             $variant_details = $variant_result->fetch_assoc();
         }
 
         // Calculate item total
-        $item_total = $item['price'] * $item['quantity'];
-        $subtotal += $item_total;
-        $total_quantity += $item['quantity'];
+        $item_total = $buyNowItem['price'] * $buyNowItem['quantity'];
+        $subtotal = $item_total;
+        $total_quantity = $buyNowItem['quantity'];
 
-        $cart_items[$cart_item_id] = [
-            'product' => $product,
-            'variant' => $variant_details,
-            'cart_item' => $item,
-            'item_total' => $item_total
+        $cart_items = [
+            'buy_now_1' => [
+                'product' => $product,
+                'variant' => $variant_details,
+                'cart_item' => [
+                    'product_id' => $buyNowItem['product_id'],
+                    'variant_id' => $buyNowItem['variant_id'],
+                    'size' => $buyNowItem['size'],
+                    'color' => $buyNowItem['color'],
+                    'quantity' => $buyNowItem['quantity'],
+                    'price' => $buyNowItem['price']
+                ],
+                'item_total' => $item_total
+            ]
         ];
+    }
+} else {
+    // PROCESS REGULAR CART SESSION
+    foreach ($_SESSION['cart'] as $cart_item_id => $item) {
+        // Get product details
+        $sql = "SELECT p.*, c.categories, b.brand_name 
+                FROM products p 
+                LEFT JOIN categories c ON p.pro_sub_cate = c.id
+                LEFT JOIN brands b ON p.brand_name = b.id
+                WHERE p.pro_id = ? AND p.status = 1";
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param("i", $item['product_id']);
+        $stmt->execute();
+        $result = $stmt->get_result();
+
+        if ($result->num_rows > 0) {
+            $product = $result->fetch_assoc();
+
+            // Get variant details if exists
+            $variant_details = [];
+            if ($item['variant_id']) {
+                $variant_sql = "SELECT * FROM product_variants WHERE id = ?";
+                $variant_stmt = $conn->prepare($variant_sql);
+                $variant_stmt->bind_param("i", $item['variant_id']);
+                $variant_stmt->execute();
+                $variant_result = $variant_stmt->get_result();
+                $variant_details = $variant_result->fetch_assoc();
+            }
+
+            // Calculate item total
+            $item_total = $item['price'] * $item['quantity'];
+            $subtotal += $item_total;
+            $total_quantity += $item['quantity'];
+
+            $cart_items[$cart_item_id] = [
+                'product' => $product,
+                'variant' => $variant_details,
+                'cart_item' => $item,
+                'item_total' => $item_total
+            ];
+        }
     }
 }
 
+// Rest of your checkout calculations remain the same...
 // Shipping calculation
 $shipping_fee = ($subtotal >= 1000) ? 0 : 1.00;
 
@@ -95,8 +153,8 @@ if (isset($_SESSION['user_id'])) {
 }
 
 $contact = contact_us();
-
 ?>
+
 <!doctype html>
 <html class="no-js" lang="en">
 
@@ -327,6 +385,16 @@ $contact = contact_us();
             <i class="fa fa-spinner fa-spin"></i> Processing...
         </div>
     </div>
+    <?php if ($isBuyNow): ?>
+        <div class="container mt-3">
+            <div class="alert alert-info alert-dismissible fade show" role="alert">
+                <i class="fa fa-bolt me-2"></i>
+                <strong>Express Checkout:</strong> You are checking out a single item via Buy Now.
+                <a href="<?= $site ?>cart" class="alert-link">Go to full cart</a>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        </div>
+    <?php endif; ?>
 
     <!--Checkout page section-->
     <div class="Checkout_section" id="accordion">
@@ -680,100 +748,244 @@ $contact = contact_us();
     <!--footer area start-->
     <?php include_once "includes/footer.php"; ?>
 
-    <!-- Checkout JavaScript -->
     <script>
-        // Add this at the beginning of your <script> section
         $(document).ready(function() {
-            // Payment method selection
-            $('.payment-method-option').click(function() {
-                $('.payment-method-option').removeClass('selected');
-                $(this).addClass('selected');
-                $(this).find('input[type="radio"]').prop('checked', true);
-            });
+            // Initialize
+            initCheckout();
 
-            // Login form submission
-            $('#loginForm').submit(function(e) {
-                e.preventDefault();
-                var formData = $(this).serialize();
-
-                $.ajax({
-                    url: $(this).attr('action'),
-                    method: 'POST',
-                    data: formData,
-                    success: function(response) {
-                        if (response.success) {
-                            location.reload();
-                        } else {
-                            alert(response.message || 'Login failed');
-                        }
-                    }
+            function initCheckout() {
+                // Payment method selection
+                $('.payment-method-option').click(function() {
+                    $('.payment-method-option').removeClass('selected');
+                    $(this).addClass('selected');
+                    $(this).find('input[type="radio"]').prop('checked', true);
                 });
-            });
 
-            // Checkout form submission
-            $('#checkoutForm').submit(function(e) {
-                e.preventDefault(); // This is VERY important
+                // Form submission
+                $('#checkoutForm').submit(handleCheckoutSubmit);
 
-                // Validate form
+                // Login form
+                $('#loginForm').submit(handleLoginSubmit);
+            }
+
+            async function handleCheckoutSubmit(e) {
+                e.preventDefault();
+
                 if (!validateForm()) {
                     return false;
                 }
 
-                var paymentMethod = $('input[name="payment_method"]:checked').val();
+                const paymentMethod = $('input[name="payment_method"]:checked').val();
 
                 if (paymentMethod === 'razorpay') {
-                    processRazorpayPayment();
+                    await processRazorpayPayment();
                 } else if (paymentMethod === 'cod') {
-                    processCODOrder();
+                    await processCODOrder();
                 } else {
                     showError('payment_method_error', 'Please select a payment method');
-                    return false;
                 }
-            });
+            }
 
-            // Form validation
+            async function processRazorpayPayment() {
+    showLoading();
+
+    try {
+        const response = await $.ajax({
+            url: '<?= $site ?>ajax/create-order.php',
+            method: 'POST',
+            dataType: 'json',
+            data: {
+                action: 'create_order',
+                form_data: $('#checkoutForm').serialize()
+            }
+        });
+
+        if (response.success) {
+            const options = {
+                key: response.key_id,
+                amount: response.final_amount * 100,
+                currency: 'INR',
+                name: 'Beastline',
+                description: 'Order Payment',
+                order_id: response.razorpay_order_id,
+                handler: async function(razorpayResponse) {
+                    await verifyPayment(razorpayResponse, false);
+                },
+                prefill: {
+                    name: $('[name="billing_first_name"]').val() + ' ' + $('[name="billing_last_name"]').val(),
+                    email: $('[name="billing_email"]').val(),
+                    contact: $('[name="billing_phone"]').val()
+                },
+                theme: {
+                    color: '#0f0f0f'
+                },
+                modal: {
+                    ondismiss: function() {
+                        hideLoading();
+                        // Clear pending order if user dismisses modal
+                        $.ajax({
+                            url: '<?= $site ?>ajax/clear-pending-order.php',
+                            method: 'POST'
+                        });
+                    }
+                }
+            };
+
+            const rzp = new Razorpay(options);
+            rzp.open();
+        } else {
+            throw new Error(response.message || 'Error creating order');
+        }
+    } catch (error) {
+        hideLoading();
+        console.error('Payment error:', error);
+        alert('Error: ' + (error.message || 'Please try again'));
+    }
+}
+
+async function processCODOrder() {
+    showLoading();
+
+    try {
+        const response = await $.ajax({
+            url: '<?= $site ?>ajax/create-order.php',
+            method: 'POST',
+            dataType: 'json',
+            data: {
+                action: 'create_cod_order',
+                form_data: $('#checkoutForm').serialize()
+            }
+        });
+
+        if (response.success) {
+            const options = {
+                key: response.key_id,
+                amount: response.cod_advance * 100,
+                currency: 'INR',
+                name: 'Beastline - COD Advance',
+                description: 'COD Advance Payment',
+                order_id: response.razorpay_order_id,
+                handler: async function(razorpayResponse) {
+                    await verifyPayment(razorpayResponse, true);
+                },
+                prefill: {
+                    name: $('[name="billing_first_name"]').val() + ' ' + $('[name="billing_last_name"]').val(),
+                    email: $('[name="billing_email"]').val(),
+                    contact: $('[name="billing_phone"]').val()
+                },
+                theme: {
+                    color: '#e50010'
+                },
+                modal: {
+                    ondismiss: function() {
+                        hideLoading();
+                        // Clear pending order if user dismisses modal
+                        $.ajax({
+                            url: '<?= $site ?>ajax/clear-pending-order.php',
+                            method: 'POST'
+                        });
+                    }
+                }
+            };
+
+            const rzp = new Razorpay(options);
+            rzp.open();
+        } else {
+            throw new Error(response.message || 'Error creating COD order');
+        }
+    } catch (error) {
+        hideLoading();
+        console.error('COD error:', error);
+        alert('Error: ' + (error.message || 'Please try again'));
+    }
+}
+
+async function verifyPayment(razorpayResponse, isCOD) {
+    showLoading();
+
+    try {
+        const response = await $.ajax({
+            url: '<?= $site ?>ajax/verify-payment.php',
+            method: 'POST',
+            dataType: 'json',
+            data: {
+                razorpay_payment_id: razorpayResponse.razorpay_payment_id,
+                razorpay_order_id: razorpayResponse.razorpay_order_id,
+                razorpay_signature: razorpayResponse.razorpay_signature,
+                is_cod: isCOD
+            }
+        });
+
+        if (response.success) {
+            // Success! Order created in database
+            window.location.href = '<?= $site ?>order-confirmation/' + response.order_id;
+        } else {
+            throw new Error(response.message || 'Payment verification failed');
+        }
+    } catch (error) {
+        hideLoading();
+        console.error('Verification error:', error);
+        alert('Error: ' + (error.message || 'Please contact support'));
+    }
+}
+            async function updateCODStatus(orderId) {
+                try {
+                    const response = await $.ajax({
+                        url: '<?= $site ?>ajax/update-cod-status.php',
+                        method: 'POST',
+                        dataType: 'json',
+                        data: {
+                            order_id: orderId
+                        }
+                    });
+
+                    if (response.success) {
+                        window.location.href = '<?= $site ?>order-confirmation/' + orderId;
+                    } else {
+                        throw new Error(response.message || 'Failed to update COD status');
+                    }
+                } catch (error) {
+                    hideLoading();
+                    console.error('COD status error:', error);
+                    alert('Error: ' + (error.message || 'Please contact support'));
+                }
+            }
+
+            // Helper functions
             function validateForm() {
-                var isValid = true;
+                let isValid = true;
 
-                // Clear previous errors
-                $('.error-message').hide();
+                // Clear errors
+                $('.error-message').hide().text('');
                 $('.form-control').removeClass('error');
 
                 // Validate required fields
-                var requiredFields = [
-                    'billing_first_name',
-                    'billing_last_name',
-                    'billing_email',
-                    'billing_phone',
-                    'billing_country',
-                    'billing_address_1',
-                    'billing_city',
-                    'billing_state',
-                    'billing_postcode'
+                const requiredFields = [
+                    'billing_first_name', 'billing_last_name', 'billing_email',
+                    'billing_phone', 'billing_address_1', 'billing_city',
+                    'billing_state', 'billing_postcode', 'billing_country'
                 ];
 
-                requiredFields.forEach(function(field) {
-                    var value = $('[name="' + field + '"]').val().trim();
+                requiredFields.forEach(field => {
+                    const value = $(`[name="${field}"]`).val().trim();
                     if (!value) {
-                        showError(field + '_error', 'This field is required');
-                        $('[name="' + field + '"]').addClass('error');
+                        showError(`${field}_error`, 'This field is required');
+                        $(`[name="${field}"]`).addClass('error');
                         isValid = false;
                     }
                 });
 
                 // Validate email
-                var email = $('[name="billing_email"]').val();
-                if (email && !validateEmail(email)) {
+                const email = $('[name="billing_email"]').val();
+                if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
                     showError('billing_email_error', 'Please enter a valid email address');
-                    $('[name="billing_email"]').addClass('error');
                     isValid = false;
                 }
 
                 // Validate phone
-                var phone = $('[name="billing_phone"]').val();
-                if (phone && !validatePhone(phone)) {
+                const phone = $('[name="billing_phone"]').val();
+                if (phone && !/^\d{10}$/.test(phone)) {
                     showError('billing_phone_error', 'Please enter a valid 10-digit phone number');
-                    $('[name="billing_phone"]').addClass('error');
                     isValid = false;
                 }
 
@@ -792,18 +1004,8 @@ $contact = contact_us();
                 return isValid;
             }
 
-            function validateEmail(email) {
-                var re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                return re.test(email);
-            }
-
-            function validatePhone(phone) {
-                var re = /^\d{10}$/;
-                return re.test(phone);
-            }
-
             function showError(elementId, message) {
-                $('#' + elementId).text(message).show();
+                $(`#${elementId}`).text(message).show();
             }
 
             function showLoading() {
@@ -814,274 +1016,18 @@ $contact = contact_us();
                 $('#loadingOverlay').hide();
             }
 
-            function processRazorpayPayment() {
-                showLoading();
-
-                console.log('Starting Razorpay payment process...');
-
-                // Create order using AJAX
+            function handleLoginSubmit(e) {
+                e.preventDefault();
                 $.ajax({
-                    url: '<?= $site ?>ajax/create-order.php',
+                    url: $(this).attr('action'),
                     method: 'POST',
-                    dataType: 'json',
-                    data: {
-                        action: 'create_order',
-                        payment_method: 'razorpay',
-                        form_data: $('#checkoutForm').serialize()
-                    },
-                    success: function(data) {
-                        console.log('Order creation response:', data);
-
-                        if (data.success && data.razorpay_order_id) {
-                            // Initialize Razorpay for FULL payment
-                            var options = {
-                                "key": "<?= $razorpay_key_id ?>",
-                                "amount": data.final_amount * 100, // Full amount in paise
-                                "currency": "INR",
-                                "name": "Beastline",
-                                "description": "Order Payment",
-                                "order_id": data.razorpay_order_id,
-                                "handler": function(razorpayResponse) {
-                                    console.log('Razorpay payment successful!', razorpayResponse);
-                                    // Verify payment
-                                    verifyRazorpayPayment(razorpayResponse);
-                                },
-                                "prefill": {
-                                    "name": $('[name="billing_first_name"]').val() + ' ' + $('[name="billing_last_name"]').val(),
-                                    "email": $('[name="billing_email"]').val(),
-                                    "contact": $('[name="billing_phone"]').val()
-                                },
-                                "theme": {
-                                    "color": "#e50010"
-                                },
-                                "modal": {
-                                    "ondismiss": function() {
-                                        hideLoading();
-                                        console.log('Payment modal dismissed');
-                                    }
-                                }
-                            };
-
-                            console.log('Opening Razorpay checkout...');
-                            var rzp = new Razorpay(options);
-                            rzp.open();
-                        } else {
-                            hideLoading();
-                            alert(data.message || 'Error creating order');
-                        }
-                    },
-                    error: function(xhr, status, error) {
-                        hideLoading();
-                        console.error('AJAX error creating order:');
-                        console.error('Status:', status);
-                        console.error('Error:', error);
-                        console.error('Response:', xhr.responseText);
-
-                        // Show the actual response in alert for debugging
-                        alert('Error creating order. Server response: ' + xhr.responseText.substring(0, 100));
-                    }
-                });
-            }
-            // Verify Razorpay payment - UPDATED
-            function verifyRazorpayPayment(razorpayResponse) {
-                showLoading();
-                console.log('Verifying Razorpay payment...', razorpayResponse);
-
-                $.ajax({
-                    url: '<?= $site ?>ajax/verify-payment.php',
-                    method: 'POST',
-                    dataType: 'json',
-                    data: {
-                        razorpay_payment_id: razorpayResponse.razorpay_payment_id,
-                        razorpay_order_id: razorpayResponse.razorpay_order_id,
-                        razorpay_signature: razorpayResponse.razorpay_signature,
-                        is_cod: false
-                    },
-                    success: function(data) {
-                        console.log('Payment verification response:', data);
-
-                        if (data.success) {
-                            console.log('Payment verified successfully!');
-                            // Redirect to confirmation page
-                            window.location.href = '<?= $site ?>order-confirmation.php?id=' + data.order_id;
-                        } else {
-                            hideLoading();
-                            alert('Payment verification failed: ' + (data.message || 'Unknown error'));
-                        }
-                    },
-                    error: function(xhr, status, error) {
-                        hideLoading();
-                        console.error('Payment verification AJAX error:');
-                        console.error('Status:', status);
-                        console.error('Error:', error);
-                        console.error('Response:', xhr.responseText);
-
-                        // Show the actual response in alert for debugging
-                        alert('Payment verification failed. Server response: ' + xhr.responseText.substring(0, 100));
-                    }
-                });
-            }
-            // Process COD Order
-            function processCODOrder() {
-                showLoading();
-
-                // Create COD order
-                $.ajax({
-                    url: '<?= $site ?>ajax/create-order.php',
-                    method: 'POST',
-                    data: {
-                        action: 'create_cod_order',
-                        form_data: $('#checkoutForm').serialize(),
-                        cod_advance: <?= $cod_advance ?>,
-                        cod_remaining: <?= $cod_remaining ?>
-                    },
-                    success: function(data) {
-                        console.log('Create COD order response:', data);
-
-                        // No need to parse - jQuery already did it
-                        if (data.success) {
-                            // Process the ₹200 advance payment via Razorpay
-                            processCODAdvancePayment(data);
-                        } else {
-                            hideLoading();
-                            alert(data.message || 'Error creating COD order');
-                        }
-                    },
-                    error: function(xhr, status, error) {
-                        hideLoading();
-                        console.error('COD order creation AJAX error:', error);
-                        console.error('Response:', xhr.responseText);
-                        alert('Error creating COD order. Please try again.');
-                    }
-                });
-            }
-
-            // Process COD Advance Payment
-            function processCODAdvancePayment(orderData) {
-                // Process the ₹200 advance payment via Razorpay
-                var options = {
-                    "key": "<?= $razorpay_key_id ?>",
-                    "amount": 200 * 100, // ₹200 advance in paise
-                    "currency": "INR",
-                    "name": "Beastline - COD Advance",
-                    "description": "COD Advance Payment for Order #" + orderData.order_number,
-                    "order_id": orderData.razorpay_order_id,
-                    "handler": function(razorpayResponse) {
-                        console.log('COD Advance response:', razorpayResponse);
-                        // Advance payment successful
-                        verifyCODPayment(razorpayResponse, orderData.order_id);
-                    },
-                    "prefill": {
-                        "name": $('[name="billing_first_name"]').val() + ' ' + $('[name="billing_last_name"]').val(),
-                        "email": $('[name="billing_email"]').val(),
-                        "contact": $('[name="billing_phone"]').val()
-                    },
-                    "theme": {
-                        "color": "#e50010"
-                    },
-                    "modal": {
-                        "ondismiss": function() {
-                            hideLoading();
-                            console.log('COD Advance modal dismissed');
-                        }
-                    }
-                };
-
-                var rzp = new Razorpay(options);
-                rzp.open();
-            }
-
-            // Verify COD advance payment - NEW FUNCTION
-            function verifyCODPayment(razorpayResponse, orderId) {
-                showLoading();
-                console.log('Verifying COD advance payment...', razorpayResponse);
-
-                $.ajax({
-                    url: '<?= $site ?>ajax/verify-payment.php',
-                    method: 'POST',
-                    data: {
-                        razorpay_payment_id: razorpayResponse.razorpay_payment_id,
-                        razorpay_order_id: razorpayResponse.razorpay_order_id,
-                        razorpay_signature: razorpayResponse.razorpay_signature,
-                        order_id: orderId,
-                        is_cod: true
-                    },
+                    data: $(this).serialize(),
                     success: function(response) {
-                        console.log('COD payment verification response:', response);
-
-                        var data;
-                        try {
-                            if (typeof response === 'string') {
-                                data = JSON.parse(response);
-                            } else {
-                                data = response;
-                            }
-                        } catch (e) {
-                            hideLoading();
-                            console.error('JSON parse error:', e);
-                            alert('COD payment verification failed. Please contact support.');
-                            return;
-                        }
-
-                        if (data.success) {
-                            console.log('COD advance payment verified successfully!');
-                            // Update COD order status
-                            updateCODOrderStatus(orderId);
+                        if (response.success) {
+                            location.reload();
                         } else {
-                            hideLoading();
-                            alert('COD payment verification failed: ' + (data.message || 'Unknown error'));
+                            alert(response.message || 'Login failed');
                         }
-                    },
-                    error: function(xhr, status, error) {
-                        hideLoading();
-                        console.error('COD payment verification error:', error);
-                        alert('COD payment verification failed. Please contact support.');
-                    }
-                });
-            }
-
-            // Update COD order status after advance payment
-            function updateCODOrderStatus(orderId) {
-                $.ajax({
-                    url: '<?= $site ?>ajax/update-cod-status.php',
-                    method: 'POST',
-                    data: {
-                        order_id: orderId
-                    },
-                    success: function(response) {
-                        hideLoading();
-                        console.log('COD status update response:', response);
-
-                        var data;
-                        try {
-                            if (typeof response === 'string') {
-                                data = JSON.parse(response);
-                            } else {
-                                data = response;
-                            }
-                        } catch (e) {
-                            console.error('JSON parse error:', e);
-                            alert('Error updating COD status. Please contact support.');
-                            return;
-                        }
-
-                        if (data.success) {
-                            // Clear cart and redirect
-                            $.ajax({
-                                url: '<?= $site ?>ajax/clear-cart.php',
-                                method: 'POST',
-                                success: function() {
-                                    window.location.href = '<?= $site ?>order-confirmation/' + orderId;
-                                }
-                            });
-                        } else {
-                            alert('Error updating COD status: ' + (data.message || 'Unknown error'));
-                        }
-                    },
-                    error: function(xhr, status, error) {
-                        hideLoading();
-                        console.error('COD status update error:', error);
-                        alert('Error updating COD status. Please contact support.');
                     }
                 });
             }

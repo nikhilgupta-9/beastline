@@ -12,6 +12,33 @@ if (!isset($_GET['edit_product_details'])) {
 
 $product_id = intval($_GET['edit_product_details']);
 
+// Handle additional image deletion
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['delete_image_id'])) {
+    $image_id = intval($_POST['delete_image_id']);
+
+    // Fetch image details
+    $image_query = "SELECT * FROM product_images WHERE id = $image_id AND product_id = $product_id AND is_main = 0";
+    $image_result = mysqli_query($conn, $image_query);
+
+    if ($image_result && mysqli_num_rows($image_result) > 0) {
+        $image_data = mysqli_fetch_assoc($image_result);
+        $image_path = 'assets/img/uploads/' . $image_data['image_url'];
+
+        // Delete from database
+        $delete_sql = "DELETE FROM product_images WHERE id = $image_id";
+        if (mysqli_query($conn, $delete_sql)) {
+            // Delete physical file
+            if (file_exists($image_path)) {
+                unlink($image_path);
+            }
+            echo "<script>alert('Image deleted successfully!'); window.location.href='edit-product.php?edit_product_details=" . $product_id . "';</script>";
+        } else {
+            echo "<script>alert('Error deleting image: " . mysqli_error($conn) . "');</script>";
+        }
+    }
+    exit;
+}
+
 // Handle form submission
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update-product'])) {
     $pro_id = intval($_POST['pro_id']);
@@ -114,7 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update-product'])) {
         $attributes = json_decode($_POST['attributes_json'] ?? '[]', true);
 
         // Delete existing attributes
-        // mysqli_query($conn, "DELETE FROM product_attributes WHERE product_id = $pro_id");
+        mysqli_query($conn, "DELETE FROM product_attributes WHERE product_id = $pro_id");
 
         // Insert new attributes
         if (!empty($attributes)) {
@@ -147,8 +174,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update-product'])) {
                 $image_name = $variant['existing_image'] ?? '';
 
                 // new image upload?
-                if (isset($_FILES['variant_images']['name'][$index]) 
-                    && $_FILES['variant_images']['error'][$index] === 0) {
+                if (
+                    isset($_FILES['variant_images']['name'][$index])
+                    && $_FILES['variant_images']['error'][$index] === 0
+                ) {
 
                     $upload_dir = 'assets/img/uploads/variants/';
                     if (!is_dir($upload_dir)) mkdir($upload_dir, 0755, true);
@@ -208,19 +237,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update-product'])) {
         }
 
 
-        // Handle additional images
-        $additional_images = [];
+        // Handle additional images - get current max display order
+        $order_query = "SELECT MAX(display_order) as max_order FROM product_images WHERE product_id = $pro_id";
+        $order_result = mysqli_query($conn, $order_query);
+        $order_row = mysqli_fetch_assoc($order_result);
+        $display_order = $order_row['max_order'] ? $order_row['max_order'] + 1 : 1;
+
         if (isset($_FILES['additional_images']) && count($_FILES['additional_images']['name']) > 0) {
-            $display_order = 1;
             foreach ($_FILES['additional_images']['name'] as $key => $name) {
                 if ($_FILES['additional_images']['error'][$key] === 0) {
                     $file_name = 'product-' . time() . '-' . $key . '-' . $name;
                     $target_path = $upload_dir . $file_name;
 
                     if (move_uploaded_file($_FILES['additional_images']['tmp_name'][$key], $target_path)) {
-                        $additional_images[] = $file_name;
-                        $img_sql = "INSERT INTO product_images (product_id, image_url, is_main, display_order) 
-                                   VALUES ($pro_id, '$file_name', 0, $display_order)";
+                        $img_sql = "INSERT INTO product_images (product_id, image_url, is_main, display_order, created_at) 
+                                   VALUES ($pro_id, '$file_name', 0, $display_order, NOW())";
                         mysqli_query($conn, $img_sql);
                         $display_order++;
                     }
@@ -268,20 +299,24 @@ while ($attr = mysqli_fetch_assoc($attributes_result)) {
     ];
 }
 
-
-
-// Fetch product images
+// Fetch product images with full data (for delete functionality)
 $images_sql = "SELECT * FROM product_images WHERE product_id = $product_id ORDER BY display_order";
 $images_result = mysqli_query($conn, $images_sql);
-$main_image = null;
-$additional_images = [];
+$main_image_data = null;
+$additional_images_data = []; // Changed variable name to avoid conflict
 while ($img = mysqli_fetch_assoc($images_result)) {
     if ($img['is_main'] == 1) {
-        $main_image = $img['image_url'];
+        $main_image_data = $img; // Contains full image data with id
     } else {
-        $additional_images[] = $img['image_url'];
+        $additional_images_data[] = $img; // Contains full image data with id
     }
 }
+
+// For backward compatibility, keep the original variables
+$main_image = $main_image_data ? $main_image_data['image_url'] : '';
+$additional_images = array_map(function ($img) {
+    return $img['image_url'];
+}, $additional_images_data);
 
 // If main image not in product_images table, use pro_img from products table
 if (empty($main_image) && !empty($product['pro_img'])) {
@@ -696,23 +731,54 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
                                                         <div class="mb-2">
                                                             <img src="assets/img/uploads/<?= htmlspecialchars($main_image) ?>"
                                                                 alt="Current Image" style="max-width: 200px;" class="img-thumbnail">
+                                                            <div class="mt-2">
+                                                                <span class="badge bg-primary">Main Image</span>
+                                                            </div>
                                                         </div>
                                                     <?php endif; ?>
                                                     <input type="file" class="form-control" name="main_image" accept="image/*">
+                                                    <small class="text-muted">Upload new image to replace current main image</small>
                                                 </div>
 
                                                 <div class="col-md-12 mb-3">
                                                     <label class="form-label">Additional Images</label><br>
                                                     <small>Image size 600 X 698px</small>
-                                                    <?php if (!empty($additional_images)): ?>
-                                                        <div class="mb-2">
-                                                            <?php foreach ($additional_images as $img): ?>
-                                                                <img src="assets/img/uploads/<?= htmlspecialchars($img) ?>"
-                                                                    alt="Additional Image" style="width: 100px; height: 100px; object-fit: cover;" class="img-thumbnail me-2 mb-2">
-                                                            <?php endforeach; ?>
+
+                                                    <!-- Current Additional Images -->
+                                                    <?php if (!empty($additional_images_data)): ?>
+                                                        <div class="mb-3">
+                                                            <h6 class="mb-2">Current Additional Images:</h6>
+                                                            <div class="row">
+                                                                <?php foreach ($additional_images_data as $img): ?>
+                                                                    <div class="col-md-2 col-sm-3 col-4 mb-3 position-relative" id="image-<?= $img['id'] ?>">
+                                                                        <div class="card">
+                                                                            <img src="assets/img/uploads/<?= htmlspecialchars($img['image_url']) ?>"
+                                                                                alt="Additional Image"
+                                                                                style="width: 100%; height: 120px; object-fit: cover;"
+                                                                                class="card-img-top">
+                                                                            <div class="card-body p-2">
+                                                                                <small class="d-block text-muted">Order: <?= $img['display_order'] ?></small>
+                                                                                <button type="button"
+                                                                                    class="btn btn-sm btn-danger w-100 mt-1"
+                                                                                    onclick="removeAdditionalImage(<?= $img['id'] ?>)">
+                                                                                    <i class="fas fa-trash"></i> Remove
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                <?php endforeach; ?>
+                                                            </div>
                                                         </div>
                                                     <?php endif; ?>
-                                                    <input type="file" class="form-control" name="additional_images[]" accept="image/*" multiple>
+
+                                                    <!-- New Images Upload -->
+                                                    <div class="mb-3">
+                                                        <h6 class="mb-2">Add New Images:</h6>
+                                                        <div id="newImagesContainer"></div>
+                                                        <button type="button" class="btn btn-sm btn-outline-primary mb-2" onclick="addImageInput()">
+                                                            <i class="fas fa-plus"></i> Add Another Image
+                                                        </button>
+                                                    </div>
                                                 </div>
 
                                                 <div class="col-md-12 mb-3">
@@ -869,6 +935,79 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
         document.getElementById('productType').addEventListener('change', function() {
             loadSizeOptions(this.value);
         });
+
+        // Track new image inputs
+let imageInputCount = 0;
+
+// Function to add new image input field
+function addImageInput() {
+    const container = document.getElementById('newImagesContainer');
+    const div = document.createElement('div');
+    div.className = 'input-group mb-2';
+    div.innerHTML = `
+        <input type="file" 
+               class="form-control" 
+               name="additional_images[]" 
+               accept="image/*">
+        <button type="button" 
+                class="btn btn-outline-danger" 
+                onclick="removeImageInput(this)">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    container.appendChild(div);
+    imageInputCount++;
+}
+
+// Function to remove image input field
+function removeImageInput(button) {
+    button.closest('.input-group').remove();
+}
+
+// Function to remove existing additional image via AJAX
+function removeAdditionalImage(imageId) {
+    if (!confirm('Are you sure you want to remove this image?')) {
+        return;
+    }
+    
+    // Show loading
+    const imageElement = document.getElementById('image-' + imageId);
+    imageElement.innerHTML = '<div class="text-center p-3"><div class="spinner-border spinner-border-sm"></div> Removing...</div>';
+    
+    // AJAX request to delete image
+    const formData = new FormData();
+    formData.append('delete_image_id', imageId);
+    
+    fetch(window.location.href, {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.text())
+    .then(data => {
+        // Reload page to reflect changes
+        window.location.reload();
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error removing image. Please try again.');
+        window.location.reload();
+    });
+}
+
+// Initialize with one image input
+document.addEventListener('DOMContentLoaded', function() {
+    addImageInput(); // Add initial image input
+    
+    // Initialize CKEditor (keep existing)
+    CKEDITOR.replace('short_desc');
+    CKEDITOR.replace('pro_desc');
+    
+    // Load size options based on current product type
+    const productType = document.getElementById('productType').value;
+    if (productType) {
+        loadSizeOptions(productType);
+    }
+});
 
         // Attributes management
         let attributes = <?= json_encode($attributes) ?>;

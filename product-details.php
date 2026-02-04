@@ -238,170 +238,156 @@ $colorMap = [
 
 </head>
 <style>
-    /* Myntra Style Carousel */
-    .myntra-style-main-image {
-        border-radius: 8px;
-        overflow: hidden;
-    }
-
-    .main-image-container {
+    /* Active/Selected color */
+    .color-option.selected {
         position: relative;
-        background: white;
-        border: 1px solid #eaeaea;
     }
 
-    .carousel-nav-btn {
-        opacity: 0;
-        transition: all 0.3s ease;
-        transform: translateY(-50%);
-        display: flex;
-        align-items: center;
-        justify-content: center;
+    .color-option.selected .color-swatch {
+        border: 2px solid #000 !important;
+        transform: scale(1.1);
+        box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .color-option.selected .color-swatch::after {
+        content: '✓';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 12px;
+        font-weight: bold;
+    }
+
+    /* Active/Selected size */
+    .size-option-btn {
+        min-width: 40px;
+        height: 40px;
+        border: 1px solid #ddd;
+        background: #fff;
+        margin-right: 8px;
+        margin-bottom: 8px;
+        padding: 8px 12px;
+        border-radius: 4px;
         cursor: pointer;
+        transition: all 0.3s ease;
     }
 
-    .carousel-nav-btn i {
+    .size-option-btn:hover {
+        border-color: #666;
+    }
+
+    .size-option-btn.selected {
+        background: #000;
+        color: #fff;
+        border-color: #000;
+        font-weight: 600;
+    }
+
+    .size-option-btn.out-of-stock {
+        opacity: 0.5;
+        cursor: not-allowed;
+        position: relative;
+    }
+
+    .size-option-btn.out-of-stock::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.5);
+    }
+
+    /* Quantity selector */
+
+
+    .quantity-input {
+        width: 60px;
+        height: 40px;
+        border: 1px solid #ddd;
+        border-left: none;
+        border-right: none;
+        text-align: center;
         font-size: 16px;
-        color: #333;
+        padding: 0 10px;
     }
 
-    .main-image-container:hover .carousel-nav-btn {
-        opacity: 1;
+    /* Variant notification */
+    #variantNotification {
+        padding: 12px 15px;
+        background: #fff3cd;
+        border: 1px solid #ffeaa7;
+        border-radius: 4px;
+        margin: 15px 0;
+        color: #856404;
+        font-size: 14px;
     }
 
-    .carousel-nav-btn:hover {
-        background: white !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
-        transform: translateY(-50%) scale(1.1);
+    /* Selected variant details */
+    #selectedVariantDetails {
+        padding: 15px;
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 4px;
+        margin: 15px 0;
     }
 
-    .main-image-wrapper {
-        padding: 20px;
+    #variantPrice {
+        font-size: 16px;
+        margin-bottom: 5px;
     }
 
-    .main-product-img {
-        transition: opacity 0.3s ease;
+    #variantStock {
+        font-size: 14px;
     }
 
-    /* Thumbnail Styles */
-    .myntra-thumbnail-carousel {
-        padding: 0 30px;
+    /* Add to cart button */
+
+
+    .add-to-cart-btn:hover:not(:disabled) {
+        background: #333;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
 
-    .thumbnail-container {
-        overflow: hidden;
+    .add-to-cart-btn:disabled {
+        background: #ccc;
+        cursor: not-allowed;
     }
 
-    .product-thumbnails {
-        padding: 5px 0;
+    .carousel-inner {
+        position: relative;
+        bottom: 30px;
     }
 
-    .thumbnail-link {
-        transition: all 0.3s ease;
-        border: 2px solid transparent !important;
+    .img-thumbnail {
+        max-width: 10%;
+        height: auto;
     }
 
-    .thumbnail-link.active {
-        border-color: #ff3f6c !important;
-        transform: scale(1.05);
-        box-shadow: 0 4px 8px rgba(255, 63, 108, 0.2);
-    }
-
-    .thumbnail-link:hover:not(.active) {
-        border-color: #ddd !important;
-    }
-
-    .thumb-nav-btn {
-        opacity: 0.8;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .thumb-nav-btn:hover {
-        opacity: 1;
-        transform: translateY(-50%) scale(1.1);
-        background: white !important;
-    }
-
-    .thumb-nav-btn i {
-        color: #555;
-    }
-
-    .image-counter {
-        font-family: Arial, sans-serif;
-        font-weight: 500;
-    }
-
-    .zoom-indicator {
-        animation: fadeIn 0.5s ease;
-    }
-
-    @keyframes fadeIn {
-        from {
-            opacity: 0;
-        }
-
-        to {
-            opacity: 1;
+    @media (max-width: 756px ) {
+        .img-thumbnail {
+            width: 40%;
+            height: auto;
         }
     }
 
-    /* Image transition effect */
-    .main-product-img.fade-effect {
-        animation: fadeInOut 0.4s ease;
+    .carousel-control-next-icon {
+        background-color: #5e5d5dff;
+        border-radius: 50%;
+        padding: 10px;
+        position: relative;
+        bottom: 50px;
     }
 
-    @keyframes fadeInOut {
-        0% {
-            opacity: 0.7;
-        }
-
-        50% {
-            opacity: 0.3;
-        }
-
-        100% {
-            opacity: 1;
-        }
-    }
-
-    /* Responsive Styles */
-    @media (max-width: 768px) {
-        .main-image-container {
-            min-height: 400px !important;
-        }
-
-        .myntra-thumbnail-carousel {
-            padding: 0 20px;
-        }
-
-        .thumbnail-link {
-            width: 60px !important;
-            height: 60px !important;
-        }
-
-        .carousel-nav-btn {
-            opacity: 1;
-            width: 36px !important;
-            height: 36px !important;
-        }
-
-        .zoom-indicator {
-            display: none;
-        }
-    }
-
-    @media (max-width: 576px) {
-        .main-image-container {
-            min-height: 350px !important;
-        }
-
-        .thumbnail-link {
-            width: 50px !important;
-            height: 50px !important;
-        }
+    .carousel-control-prev-icon {
+        background-color: #727272ff;
+        border-radius: 50%;
+        padding: 10px;
+        position: relative;
+        bottom: 50px;
     }
 </style>
 
@@ -431,224 +417,84 @@ $colorMap = [
         </div>
     </div>
     <!--breadcrumbs area end-->
-    <style>
-        /* Active/Selected color */
-        .color-option.selected {
-            position: relative;
-        }
 
-        .color-option.selected .color-swatch {
-            border: 2px solid #000 !important;
-            transform: scale(1.1);
-            box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
-        }
-
-        .color-option.selected .color-swatch::after {
-            content: '✓';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 12px;
-            font-weight: bold;
-        }
-
-        /* Active/Selected size */
-        .size-option-btn {
-            min-width: 40px;
-            height: 40px;
-            border: 1px solid #ddd;
-            background: #fff;
-            margin-right: 8px;
-            margin-bottom: 8px;
-            padding: 8px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .size-option-btn:hover {
-            border-color: #666;
-        }
-
-        .size-option-btn.selected {
-            background: #000;
-            color: #fff;
-            border-color: #000;
-            font-weight: 600;
-        }
-
-        .size-option-btn.out-of-stock {
-            opacity: 0.5;
-            cursor: not-allowed;
-            position: relative;
-        }
-
-        .size-option-btn.out-of-stock::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(255, 255, 255, 0.5);
-        }
-
-        /* Quantity selector */
-
-
-        .quantity-input {
-            width: 60px;
-            height: 40px;
-            border: 1px solid #ddd;
-            border-left: none;
-            border-right: none;
-            text-align: center;
-            font-size: 16px;
-            padding: 0 10px;
-        }
-
-        /* Variant notification */
-        #variantNotification {
-            padding: 12px 15px;
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 4px;
-            margin: 15px 0;
-            color: #856404;
-            font-size: 14px;
-        }
-
-        /* Selected variant details */
-        #selectedVariantDetails {
-            padding: 15px;
-            background: #f8f9fa;
-            border: 1px solid #e9ecef;
-            border-radius: 4px;
-            margin: 15px 0;
-        }
-
-        #variantPrice {
-            font-size: 16px;
-            margin-bottom: 5px;
-        }
-
-        #variantStock {
-            font-size: 14px;
-        }
-
-        /* Add to cart button */
-
-
-        .add-to-cart-btn:hover:not(:disabled) {
-            background: #333;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-
-        .add-to-cart-btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-        }
-    </style>
     <!--product details start-->
     <div class="product_details mb-80">
         <div class="container">
             <div class="row">
                 <div class="col-lg-5 col-md-5">
                     <div class="product-details-tab position-relative overflow-hidden">
+                        <?php if ($main_image): ?>
+                            <!-- Main Carousel -->
+                            <div id="productCarousel" class="carousel slide" data-bs-ride="carousel">
+                                <!-- Carousel Images -->
+                                <div class="carousel-inner">
+                                    <?php foreach ($product_images as $index => $image): ?>
+                                        <div class="carousel-item <?= $index === 0 ? 'active' : '' ?>">
+                                            <div class="myntra-style-main-image">
+                                                <div class="main-image-container position-relative overflow-hidden rounded"
+                                                    style="background-color: #f8f9fa; min-height: 500px;">
 
-                        <!-- Main Image Container -->
-                        <div class="myntra-style-main-image mb-3">
-                            <?php if ($main_image): ?>
-                                <div class="main-image-container position-relative overflow-hidden rounded"
-                                    style="background-color: #f8f9fa; min-height: 500px;">
+                                                    <!-- Main Image -->
+                                                    <div class="main-image-wrapper d-flex justify-content-center align-items-center w-100 h-100">
+                                                        <a href="<?= $site ?>admin/assets/img/uploads/<?= $image['image_url'] ?>"
+                                                            class="magnific-popup-image d-block w-100 h-100 text-center">
+                                                            <img src="<?= $site ?>admin/assets/img/uploads/<?= $image['image_url'] ?>"
+                                                                alt="<?= htmlspecialchars($product['pro_name']) ?>"
+                                                                class="img-fluid main-product-img"
+                                                                style="max-height: 100%; max-width: 100%; object-fit: contain;">
+                                                        </a>
+                                                    </div>
 
-                                    <!-- Navigation Arrows -->
-                                    <?php if (count($product_images) > 1): ?>
-                                        <button class="carousel-nav-btn prev-btn position-absolute top-50 start-0 translate-middle-y"
-                                            style="left: 15px; z-index: 10; background: white; border-radius: 50%; width: 40px; height: 40px; border: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-                                            <i class="fa fa-chevron-left"></i>
-                                        </button>
-
-                                        <button class="carousel-nav-btn next-btn position-absolute top-50 end-0 translate-middle-y"
-                                            style="right: 15px; z-index: 10; background: white; border-radius: 50%; width: 40px; height: 40px; border: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-                                            <i class="fa fa-chevron-right"></i>
-                                        </button>
-                                    <?php endif; ?>
-
-                                    <!-- Main Image -->
-                                    <div class="main-image-wrapper d-flex justify-content-center align-items-center w-100 h-100">
-                                        <a href="<?= $site ?>admin/assets/img/uploads/<?= $main_image['image_url'] ?>"
-                                            class="magnific-popup-image d-block w-100 h-100 text-center">
-                                            <img id="main-product-image"
-                                                src="<?= $site ?>admin/assets/img/uploads/<?= $main_image['image_url'] ?>"
-                                                alt="<?= htmlspecialchars($product['pro_name']) ?>"
-                                                class="img-fluid main-product-img"
-                                                style="max-height: 100%; max-width: 100%; object-fit: contain;"
-                                                data-current-index="0">
-                                        </a>
-                                    </div>
-
-                                    <!-- Image Counter (e.g., 1/5) -->
-                                    <?php if (count($product_images) > 1): ?>
-                                        <div class="image-counter position-absolute bottom-0 end-0 bg-dark bg-opacity-75 text-white px-3 py-1 rounded-start"
-                                            style="font-size: 14px;">
-                                            <span class="current-index">1</span>/<span class="total-images"><?= count($product_images) ?></span>
+                                                    <!-- Zoom/Loupe Icon -->
+                                                    <div class="zoom-indicator position-absolute" style="bottom: 15px; left: 15px; z-index: 5;">
+                                                        <span class="badge bg-light text-dark px-3 py-2" style="font-size: 12px; font-weight: normal;">
+                                                            <i class="fa fa-search me-1"></i> Mouse over image to zoom
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
-                                    <?php endif; ?>
+                                    <?php endforeach; ?>
+                                </div>
 
-                                    <!-- Zoom/Loupe Icon (like Myntra) -->
-                                    <div class="zoom-indicator position-absolute" style="bottom: 15px; left: 15px; z-index: 5;">
-                                        <span class="badge bg-light text-dark px-3 py-2" style="font-size: 12px; font-weight: normal;">
-                                            <i class="fa fa-search me-1"></i> Mouse over image to zoom
-                                        </span>
+                                <!-- Carousel Controls (Bootstrap Style) -->
+                                <?php if (count($product_images) > 1): ?>
+                                    <button class="carousel-control-prev" type="button" data-bs-target="#productCarousel" data-bs-slide="prev">
+                                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                                        <span class="visually-hidden">Previous</span>
+                                    </button>
+                                    <button class="carousel-control-next" type="button" data-bs-target="#productCarousel" data-bs-slide="next">
+                                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                                        <span class="visually-hidden">Next</span>
+                                    </button>
+                                <?php endif; ?>
+                            </div>
+
+                            <!-- Thumbnail Indicators -->
+                            <?php if (count($product_images) > 1): ?>
+                                <div class="myntra-thumbnail-carousel mt-3">
+                                    <div class="thumbnail-container position-relative">
+                                        <!-- Thumbnail Navigation (Optional - can use Bootstrap carousel for thumbnails too) -->
+                                        <div class="d-flex justify-content-center gap-2">
+                                            <?php foreach ($product_images as $index => $image): ?>
+                                                <button type="button"
+                                                    data-bs-target="#productCarousel"
+                                                    data-bs-slide-to="<?= $index ?>"
+                                                    aria-label="Slide <?= $index + 1 ?>"
+                                                    class="thumbnail-link border rounded overflow-hidden p-0 <?= $index === 0 ? 'active border-primary' : '' ?>"
+                                                    style="width: 80px; height: 80px; border-width: 2px !important;">
+                                                    <img src="<?= $site ?>admin/assets/img/uploads/<?= $image['image_url'] ?>"
+                                                        alt="<?= htmlspecialchars($product['pro_name']) ?> - Thumbnail <?= $index + 1 ?>"
+                                                        class="img-fluid w-100 h-100"
+                                                        style="object-fit: cover;">
+                                                </button>
+                                            <?php endforeach; ?>
+                                        </div>
                                     </div>
                                 </div>
                             <?php endif; ?>
-                        </div>
-
-                        <!-- Thumbnail Carousel -->
-                        <?php if (count($product_images) > 1): ?>
-                            <div class="myntra-thumbnail-carousel mt-3">
-                                <div class="thumbnail-container position-relative">
-                                    <!-- Thumbnail Navigation Arrows -->
-                                    <button class="thumb-nav-btn thumb-prev-btn position-absolute start-0 top-50 translate-middle-y bg-white border-0 rounded-circle shadow-sm"
-                                        style="width: 30px; height: 30px; z-index: 5; left: -15px;">
-                                        <i class="fa fa-chevron-left fs-6"></i>
-                                    </button>
-
-                                    <button class="thumb-nav-btn thumb-next-btn position-absolute end-0 top-50 translate-middle-y bg-white border-0 rounded-circle shadow-sm"
-                                        style="width: 30px; height: 30px; z-index: 5; right: -15px;">
-                                        <i class="fa fa-chevron-right fs-6"></i>
-                                    </button>
-
-                                    <!-- Thumbnail Images -->
-                                    <div class="thumbnails-wrapper overflow-hidden">
-                                        <ul class="product-thumbnails d-flex justify-content-start list-unstyled mb-0 ps-0"
-                                            style="transition: transform 0.3s ease; gap: 10px;">
-
-                                            <?php foreach ($product_images as $index => $image): ?>
-                                                <li class="thumbnail-item flex-shrink-0">
-                                                    <a href="javascript:void(0);"
-                                                        class="thumbnail-link d-block border rounded overflow-hidden <?= $index == 0 ? 'active' : '' ?>"
-                                                        data-image="<?= $site ?>admin/assets/img/uploads/<?= $image['image_url'] ?>"
-                                                        data-index="<?= $index ?>"
-                                                        style="width: 80px; height: 80px;">
-                                                        <img src="<?= $site ?>admin/assets/img/uploads/<?= $image['image_url'] ?>"
-                                                            alt="<?= htmlspecialchars($product['pro_name']) ?> - Thumbnail <?= $index + 1 ?>"
-                                                            class="img-fluid w-100 h-100"
-                                                            style="object-fit: cover; cursor: pointer;">
-                                                    </a>
-                                                </li>
-                                            <?php endforeach; ?>
-
-                                        </ul>
-                                    </div>
-                                </div>
-                            </div>
                         <?php endif; ?>
-
                     </div>
                 </div>
                 <div class="col-lg-7 col-md-7">
@@ -669,6 +515,9 @@ $colorMap = [
                             <div class="productd_title_nav">
                                 <h1><a href="#"><?= htmlspecialchars($product['pro_name']) ?></a></h1>
 
+
+                            </div>
+                            <div class="productd_title_nav mb-3">
                                 <!-- Product SKU -->
                                 <?php if ($product['sku']): ?>
                                     <div class="product_sku" style="margin-top: 10px;">
@@ -741,7 +590,7 @@ $colorMap = [
 
                             <!-- Color Variants -->
                             <?php if (!empty($available_colors)): ?>
-                                <div class="product_variant color">
+                                <div class="product_variant color d-none">
                                     <label>Select Color:</label>
                                     <ul>
                                         <?php foreach ($available_colors as $color):
@@ -798,7 +647,7 @@ $colorMap = [
 
                             <!-- Variant Notification -->
                             <div id="variantNotification" style="display: none; padding: 10px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; margin: 15px 0;">
-                                Please select both color and size before adding to cart.
+                                Please select size before adding to cart.
                             </div>
 
                             <!-- Selected Variant Details -->
@@ -808,12 +657,12 @@ $colorMap = [
                             </div>
 
                             <!-- Quantity -->
-                            <div class="product_variant quantity ">
+                            <div class="product_variant quantity mb-3">
                                 <label>Quantity</label>
                                 <div class="quantity-selector">
-                                    <button type="button" class="quantity-btn minus">-</button>
+                                    <button type="button" class="quantity-btn minus text-light" style="width: 40px;">-</button>
                                     <input type="number" name="quantity" id="quantity" value="1" min="1" max="<?= $total_stock ?>" class="quantity-input">
-                                    <button type="button" class="quantity-btn plus">+</button>
+                                    <button type="button" class="quantity-btn plus text-light" style="width: 40px;">+</button>
                                 </div>
 
                                 <!-- Add to Cart Button -->
@@ -824,19 +673,22 @@ $colorMap = [
                                 </button>
                             </div>
 
-                            <!-- Product Actions -->
-                            <div class="product_d_action">
-                                <ul>
-                                    <li>
-                                        <a href="#" class="add-to-wishlist"
-                                            data-product-id="<?= $product_id ?>"
-                                            title="Add to Wishlist">
-                                            + Add to Wishlist
-                                        </a>
-                                    </li>
-
-                                </ul>
+                            <!-- Replace your existing buy now button section with this: -->
+                            <div class="product_variant1 mb-3">
+                                <div class="d-flex buy-now-wrapper">
+                                    <button type="button"
+                                        id="buyNowBtn"
+                                        class="buy-now-button"
+                                        <?= $total_stock == 0 ? 'disabled' : '' ?>
+                                        data-product-id="<?= $product_id ?>"
+                                        data-price="<?= $product['selling_price'] ?>">
+                                        BUY NOW
+                                    </button>
+                                </div>
                             </div>
+
+
+
 
                             <!-- Product Meta -->
                             <div class="product_meta">
@@ -845,7 +697,7 @@ $colorMap = [
                                 <?php endif; ?>
 
                                 <?php if ($product['brand_name']): ?>
-                                    <br><span>Brand: <a href="<?= $site ?>brand/<?= strtolower(str_replace(' ', '-', $product['brand_name'])) ?>/"><?= htmlspecialchars($product['brand_name']) ?></a></span>
+                                    <br><span>Brand: <a href="<?= $site ?>">Beastline</a></span>
                                 <?php endif; ?>
 
                                 <?php if ($product['product_type']): ?>
@@ -859,7 +711,7 @@ $colorMap = [
                         </form>
 
                         <!-- Social Share -->
-                        <div class="priduct_social">
+                        <!-- <div class="priduct_social">
                             <ul>
                                 <li><a class="facebook" href="#" title="facebook"><i class="fa fa-facebook"></i> Like</a></li>
                                 <li><a class="twitter" href="#" title="twitter"><i class="fa fa-twitter"></i> tweet</a></li>
@@ -867,7 +719,7 @@ $colorMap = [
                                 <li><a class="google-plus" href="#" title="google +"><i class="fa fa-google-plus"></i> share</a></li>
                                 <li><a class="linkedin" href="#" title="linkedin"><i class="fa fa-linkedin"></i> linked</a></li>
                             </ul>
-                        </div>
+                        </div> -->
 
                     </div>
                 </div>
@@ -1165,38 +1017,6 @@ $colorMap = [
     <?php include_once "includes/footer.php"; ?>
     <!--footer area end-->
 
-    <!-- modal area start-->
-    <div class="modal fade" id="modal_box" tabindex="-1" role="dialog" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" role="document">
-            <div class="modal-content">
-                <button type="button" class="close" data-bs-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true"><i class="ion-android-close"></i></span>
-                </button>
-                <div class="modal_body">
-                    <div class="container">
-                        <div class="row">
-                            <div class="col-lg-5 col-md-5 col-sm-12">
-                                <div class="modal_tab">
-                                    <div class="tab-content product-details-large">
-                                        <!-- Quick view content will be loaded here via AJAX -->
-                                    </div>
-                                    <div class="modal_tab_button">
-                                        <!-- Thumbnails will be loaded here via AJAX -->
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-lg-7 col-md-7 col-sm-12">
-                                <div class="modal_right">
-                                    <!-- Quick view details will be loaded here via AJAX -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <!-- modal area end-->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const mainImage = document.getElementById('main-product-image');
@@ -1211,188 +1031,103 @@ $colorMap = [
             const thumbnailsList = document.querySelector('.product-thumbnails');
             const popupLink = document.querySelector('.magnific-popup-image');
 
+            const buyNowBtn = document.getElementById('buyNowBtn');
+
             let currentIndex = 0;
             const totalImages = thumbnailLinks.length;
 
-            // Initialize
-            if (totalImagesSpan) totalImagesSpan.textContent = totalImages;
+            document.getElementById('productCarousel').addEventListener('slide.bs.carousel', function(event) {
+                const currentIndex = event.to;
+                const totalImages = <?= count($product_images) ?>;
 
-            // Function to update main image
-            function updateMainImage(index) {
-                if (index < 0) index = totalImages - 1;
-                if (index >= totalImages) index = 0;
-
-                currentIndex = index;
-                const activeThumb = thumbnailLinks[index];
-
-                // Update main image
-                const newImageUrl = activeThumb.getAttribute('data-image');
-                mainImage.src = newImageUrl;
-                mainImage.setAttribute('data-current-index', index);
-
-                // Update popup link
-                if (popupLink) {
-                    popupLink.href = newImageUrl;
-                }
+                // Update counter in each carousel item
+                document.querySelectorAll('.carousel-item .current-index').forEach(span => {
+                    span.textContent = currentIndex + 1;
+                });
 
                 // Update active thumbnail
-                thumbnailLinks.forEach(link => link.classList.remove('active'));
-                activeThumb.classList.add('active');
-
-                // Update counter
-                if (currentIndexSpan) {
-                    currentIndexSpan.textContent = index + 1;
-                }
-
-                // Center active thumbnail in view
-                centerActiveThumbnail();
-
-                // Reinitialize zoom if needed
-                reinitializeZoom();
-            }
-
-            // Function to center active thumbnail
-            function centerActiveThumbnail() {
-                if (!thumbnailsWrapper || !thumbnailsList) return;
-
-                const activeThumb = document.querySelector('.thumbnail-link.active');
-                if (!activeThumb) return;
-
-                const containerWidth = thumbnailsWrapper.offsetWidth;
-                const thumbWidth = activeThumb.offsetWidth + 10; // 10px for gap
-                const thumbOffset = activeThumb.offsetLeft;
-
-                // Calculate scroll position
-                const scrollPosition = thumbOffset - (containerWidth / 2) + (thumbWidth / 2);
-
-                thumbnailsList.style.transform = `translateX(-${scrollPosition}px)`;
-            }
-
-            // Function to reinitialize zoom
-            function reinitializeZoom() {
-                // If using elevateZoom plugin
-                if (typeof $.fn.elevateZoom !== 'undefined') {
-                    $('.main-image-container').removeData('elevateZoom');
-                    $('#main-product-image').removeData('elevateZoom');
-
-                    // Reinitialize with Myntra-like settings
-                    $('#main-product-image').elevateZoom({
-                        zoomType: "inner",
-                        cursor: "crosshair",
-                        zoomWindowFadeIn: 300,
-                        zoomWindowFadeOut: 300,
-                        scrollZoom: true,
-                        zoomWindowWidth: 400,
-                        zoomWindowHeight: 400,
-                        borderSize: 1,
-                        lensSize: 200
-                    });
-                }
-            }
-
-            // Thumbnail click event
-            thumbnailLinks.forEach(link => {
-                link.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    const index = parseInt(this.getAttribute('data-index'));
-                    updateMainImage(index);
-                });
-            });
-
-            // Main navigation buttons
-            if (mainPrevBtn) {
-                mainPrevBtn.addEventListener('click', function() {
-                    updateMainImage(currentIndex - 1);
-                });
-            }
-
-            if (mainNextBtn) {
-                mainNextBtn.addEventListener('click', function() {
-                    updateMainImage(currentIndex + 1);
-                });
-            }
-
-            // Thumbnail carousel navigation
-            let thumbScrollPosition = 0;
-            const thumbScrollStep = 100;
-
-            if (thumbPrevBtn) {
-                thumbPrevBtn.addEventListener('click', function() {
-                    thumbScrollPosition = Math.max(0, thumbScrollPosition - thumbScrollStep);
-                    thumbnailsList.style.transform = `translateX(-${thumbScrollPosition}px)`;
-                });
-            }
-
-            if (thumbNextBtn) {
-                thumbNextBtn.addEventListener('click', function() {
-                    const maxScroll = thumbnailsList.scrollWidth - thumbnailsWrapper.offsetWidth;
-                    thumbScrollPosition = Math.min(maxScroll, thumbScrollPosition + thumbScrollStep);
-                    thumbnailsList.style.transform = `translateX(-${thumbScrollPosition}px)`;
-                });
-            }
-
-            // Keyboard navigation
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'ArrowLeft') {
-                    updateMainImage(currentIndex - 1);
-                } else if (e.key === 'ArrowRight') {
-                    updateMainImage(currentIndex + 1);
-                }
-            });
-
-            // Swipe functionality for touch devices
-            let touchStartX = 0;
-            let touchEndX = 0;
-
-            const mainContainer = document.querySelector('.main-image-container');
-            if (mainContainer) {
-                mainContainer.addEventListener('touchstart', function(e) {
-                    touchStartX = e.changedTouches[0].screenX;
-                });
-
-                mainContainer.addEventListener('touchend', function(e) {
-                    touchEndX = e.changedTouches[0].screenX;
-                    handleSwipe();
-                });
-            }
-
-            function handleSwipe() {
-                const swipeThreshold = 50;
-                const diff = touchStartX - touchEndX;
-
-                if (Math.abs(diff) > swipeThreshold) {
-                    if (diff > 0) {
-                        // Swipe left - next image
-                        updateMainImage(currentIndex + 1);
+                document.querySelectorAll('.thumbnail-link').forEach((btn, index) => {
+                    if (index === currentIndex) {
+                        btn.classList.add('active', 'border-primary', 'border-2');
+                        btn.classList.remove('border-1');
                     } else {
-                        // Swipe right - previous image
-                        updateMainImage(currentIndex - 1);
-                    }
-                }
-            }
-
-            // Initialize zoom on first load
-            setTimeout(() => {
-                reinitializeZoom();
-                centerActiveThumbnail();
-            }, 500);
-
-            // Hover effect for thumbnails
-            thumbnailLinks.forEach(link => {
-                const img = link.querySelector('img');
-
-                link.addEventListener('mouseenter', function() {
-                    this.style.transform = 'scale(1.05)';
-                    this.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
-                });
-
-                link.addEventListener('mouseleave', function() {
-                    if (!this.classList.contains('active')) {
-                        this.style.transform = 'scale(1)';
-                        this.style.boxShadow = 'none';
+                        btn.classList.remove('active', 'border-primary', 'border-2');
+                        btn.classList.add('border-1');
                     }
                 });
             });
+            // Image hover zoom effect
+            document.querySelectorAll('.main-product-img').forEach(img => {
+                img.addEventListener('mouseenter', function() {
+                    this.style.transform = 'scale(1.5)';
+                    this.style.transition = 'transform 0.3s ease';
+                });
+
+                img.addEventListener('mouseleave', function() {
+                    this.style.transform = 'scale(1)';
+                });
+            });
+
+
+            if (buyNowBtn) {
+                buyNowBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+
+                    // Get selected variant details
+                    const selectedSize = document.getElementById('selected_size').value;
+                    const selectedColor = document.getElementById('selected_color').value;
+                    const quantity = document.getElementById('quantity').value;
+                    const productId = this.getAttribute('data-product-id');
+                    const price = this.getAttribute('data-price');
+
+                    // Check if size is selected (if sizes exist)
+                    const sizeRequired = document.querySelector('.product_variant.size');
+                    if (sizeRequired && !selectedSize) {
+                        document.getElementById('variantNotification').style.display = 'block';
+                        setTimeout(() => {
+                            document.getElementById('variantNotification').style.display = 'none';
+                        }, 3000);
+                        return;
+                    }
+
+                    // Get variant ID if exists
+                    const variantId = document.getElementById('selected_variant_id').value || 0;
+
+                    // Prepare buy now data
+                    const buyNowData = {
+                        action: 'buy_now',
+                        product_id: productId,
+                        variant_id: variantId,
+                        size: selectedSize,
+                        color: selectedColor,
+                        quantity: quantity,
+                        price: price,
+                        product_name: document.querySelector('h1 a').textContent
+                    };
+
+                    // Send AJAX request to create buy now session
+                    fetch('<?= $site ?>ajax/buy-now.php', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded',
+                            },
+                            body: new URLSearchParams(buyNowData)
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Redirect to checkout page
+                                window.location.href = '<?= $site ?>checkout';
+                            } else {
+                                alert(data.message || 'Error processing buy now request');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error:', error);
+                            alert('Network error. Please try again.');
+                        });
+                });
+            }
         });
     </script>
     <?php include_once "includes/footer-link.php"; ?>
@@ -1461,7 +1196,8 @@ $colorMap = [
                 var color = $('#selected_color').val();
                 var size = $('#selected_size').val();
 
-                if (color && size) {
+                // if (color && size) {
+                if (size) {
                     // Hide notification
                     $('#variantNotification').hide();
 
@@ -1518,7 +1254,8 @@ $colorMap = [
 
                 var hasVariants = <?= $has_variants ? 'true' : 'false' ?>;
                 if (hasVariants) {
-                    if (!$('#selected_color').val() || !$('#selected_size').val()) {
+                    // if (!$('#selected_color').val() || !$('#selected_size').val()) {
+                    if (!$('#selected_size').val()) {
                         $('#variantNotification').show();
                         return false;
                     }

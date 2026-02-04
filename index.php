@@ -134,7 +134,7 @@ $banners = get_banner();
 							<div class="row">
 								<div class="col-12">
 									<div class="slider_content">
-										<h2>Get 30% Off &amp; Free Shipping</h2>
+										<h2 class="text-light fw-3">Get 30% Off &amp; Free Shipping</h2>
 										<h1 class="text-light"><?= $b['title'] ?></h1>
 										<p class="text-light"><?= $b['description'] ?></p>
 										<a href="<?= $b['link_url'] ?>">Shop Now +</a>
@@ -221,7 +221,7 @@ $banners = get_banner();
 			<div class="container-fluid p-0">
 				<div class="banner_thumb">
 					<a href="<?= $site ?>category/sale">
-					<img src="<?= $site ?>admin/<?= $home_banner1[0]['banner_path'] ?>" alt="<?= $home_banner1[0]['alt_text'] ?>" style="max-width:100%;">
+						<img src="<?= $site ?>admin/<?= $home_banner1[0]['banner_path'] ?>" alt="<?= $home_banner1[0]['alt_text'] ?>" style="max-width:100%;">
 					</a>
 				</div>
 			</div>
@@ -314,7 +314,7 @@ $banners = get_banner();
 								<div class="product_thumb">
 									<a class="primary_img" href="<?= $product_link ?>">
 										<img src="<?= $primary_img ?>" alt="<?= htmlspecialchars($f_p['pro_name']) ?>">
-									</a>								
+									</a>
 
 									<?php if ($show_sale): ?>
 										<div class="label_product">
@@ -368,7 +368,7 @@ $banners = get_banner();
 			<div class="container-fluid p-0">
 				<div class="banner_thumb">
 					<a href="<?= $site ?>category/sale">
-					<img src="<?= $site ?>admin/<?= $home_banner1[0]['banner_path'] ?>" alt="">
+						<img src="<?= $site ?>admin/<?= $home_banner1[0]['banner_path'] ?>" alt="">
 					</a>
 				</div>
 			</div>
@@ -377,29 +377,29 @@ $banners = get_banner();
 	<!--discount banner area end-->
 
 	<!--discount banner area start-->
-		<?php
+	<?php
 	$home_order3 = 3;
 	$home_banner3 = get_home_other_banner1($home_order3);
 	if ($home_banner3) {
 	?>
-	<div class="discount_banner_area mb-95 mt-2">
-		<div class="container-fluid p-0">
-			<div class="banner_thumb">
-				<a href="<?= $home_banner3[0]['link_url'] ?>">
-					<img src="<?= $site ?>admin/<?= $home_banner3[0]['banner_path'] ?>" alt="">
-				</a>
-				<div class="banner_text3">
-					<?= $home_banner3[0]['title'] ?>
-					<p><?= $home_banner3[0]['description'] ?></p>
-					<a href="<?= $home_banner3[0]['link_url'] ?>">shop now</a>
+		<div class="discount_banner_area mb-95 mt-2">
+			<div class="container-fluid p-0">
+				<div class="banner_thumb">
+					<a href="<?= $home_banner3[0]['link_url'] ?>">
+						<img src="<?= $site ?>admin/<?= $home_banner3[0]['banner_path'] ?>" alt="">
+					</a>
+					<div class="banner_text3">
+						<?= $home_banner3[0]['title'] ?>
+						<p><?= $home_banner3[0]['description'] ?></p>
+						<a href="<?= $home_banner3[0]['link_url'] ?>">shop now</a>
+					</div>
 				</div>
 			</div>
 		</div>
-	</div>
 	<?php } ?>
 	<!--discount banner area end-->
 
-	
+
 	<!-- Quick View Modal -->
 	<div class="modal fade" id="quickViewModal" tabindex="-1" aria-labelledby="quickViewModalLabel" aria-hidden="true">
 		<div class="modal-dialog modal-lg">

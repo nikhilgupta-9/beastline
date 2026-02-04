@@ -57,11 +57,9 @@ $is_logged_in = isset($_SESSION['user_id']);
                                 <li class="menu-item-has-children">
                                     <a href="<?= $site ?>my-account/">My Account</a>
                                     <ul class="sub-menu">
-                                        <li><a href="<?= $site ?>my-account/dashboard/">Dashboard</a></li>
-                                        <li><a href="<?= $site ?>my-account/orders/">Orders</a></li>
-                                        <li><a href="<?= $site ?>my-account/addresses/">Addresses</a></li>
-                                        <li><a href="<?= $site ?>my-account/profile/">Profile</a></li>
-                                        <li><a href="<?= $site ?>logout/">Logout</a></li>
+                                        <li><a href="<?= $site ?>my-account/">Dashboard</a></li>
+                                        <li><a href="https://beastline.ithinklogistics.co.in"><i class="fa fa-truck me-2"></i>Track Order</a></li>
+                                        <li><a href="<?= $site ?>logout/"><i class="fa fa-sign-out me-2"></i>Logout</a></li>
                                     </ul>
                                 </li>
                             <?php else: ?>
@@ -171,16 +169,14 @@ $is_logged_in = isset($_SESSION['user_id']);
                                         </span>
                                     </li>
                                     <li><a href="<?= $site ?>my-account/"><i class="fa fa-user me-2"></i>My Account</a></li>
-                                    <li><a href="<?= $site ?>my-account/orders/"><i class="fa fa-shopping-bag me-2"></i>Orders</a></li>
-                                    <li><a href="<?= $site ?>my-account/wishlist/"><i class="fa fa-heart me-2"></i>Wishlist</a></li>
-                                    <li><a href="<?= $site ?>my-account/profile/"><i class="fa fa-cog me-2"></i>Settings</a></li>
+                                    <li><a href="https://beastline.ithinklogistics.co.in"><i class="fa fa-truck me-2"></i>Track Order</a></li>
                                     <li class="dropdown-divider"></li>
                                     <li><a href="<?= $site ?>logout/"><i class="fa fa-sign-out me-2"></i>Logout</a></li>
                                 <?php else: ?>
                                     <li><a href="<?= $site ?>user-login/"><i class="fa fa-sign-in me-2"></i>Login</a></li>
                                     <li><a href="<?= $site ?>register/"><i class="fa fa-user-plus me-2"></i>Register</a></li>
                                     <li class="dropdown-divider"></li>
-                                    <li><a href="<?= $site ?>track-order/"><i class="fa fa-truck me-2"></i>Track Order</a></li>
+                                    <li><a href="https://beastline.ithinklogistics.co.in"><i class="fa fa-truck me-2"></i>Track Order</a></li>
                                     <li><a href="<?= $site ?>help/"><i class="fa fa-question-circle me-2"></i>Help</a></li>
                                 <?php endif; ?>
                             </ul>

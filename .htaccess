@@ -39,6 +39,10 @@ RewriteRule ^product-details/([^/]+)/?$ product-details.php?alias=$1 [L,QSA]
 RewriteRule ^product/([^/]+)/?$ product-details.php?slug=$1 [L,QSA]
 RewriteRule ^product/([^/]+)/([0-9]+)/?$ product-details.php?slug=$1&id=$2 [L,QSA]
 
+# order conformation page 
+RewriteRule ^order-confirmation/([0-9]+)/?$ order-confirmation.php?id=$1 [L,QSA]
+RewriteRule ^order-details/([0-9]+)/?$ order-details.php?order_id=$1 [L,QSA]
+
 # -------------------------------
 # Shop Pages (CORRECTED)
 # -------------------------------

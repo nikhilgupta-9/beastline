@@ -25,7 +25,7 @@ if (isset($_POST['product_id']) && isset($_POST['color']) && isset($_POST['size'
             'success' => true,
             'variant' => [
                 'id' => $row['id'],
-                'price' => $row['price'] ? floatval($row['price']) : 0,
+                'price' => $row['price'] ? floatval($row['price']) : 0, 
                 'stock' => intval($row['quantity']),
                 'sku' => $row['sku']
             ]
