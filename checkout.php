@@ -787,147 +787,147 @@ $contact = contact_us();
             }
 
             async function processRazorpayPayment() {
-    showLoading();
+                showLoading();
 
-    try {
-        const response = await $.ajax({
-            url: '<?= $site ?>ajax/create-order.php',
-            method: 'POST',
-            dataType: 'json',
-            data: {
-                action: 'create_order',
-                form_data: $('#checkoutForm').serialize()
-            }
-        });
+                try {
+                    const response = await $.ajax({
+                        url: '<?= $site ?>ajax/create-order.php',
+                        method: 'POST',
+                        dataType: 'json',
+                        data: {
+                            action: 'create_order',
+                            form_data: $('#checkoutForm').serialize()
+                        }
+                    });
 
-        if (response.success) {
-            const options = {
-                key: response.key_id,
-                amount: response.final_amount * 100,
-                currency: 'INR',
-                name: 'Beastline',
-                description: 'Order Payment',
-                order_id: response.razorpay_order_id,
-                handler: async function(razorpayResponse) {
-                    await verifyPayment(razorpayResponse, false);
-                },
-                prefill: {
-                    name: $('[name="billing_first_name"]').val() + ' ' + $('[name="billing_last_name"]').val(),
-                    email: $('[name="billing_email"]').val(),
-                    contact: $('[name="billing_phone"]').val()
-                },
-                theme: {
-                    color: '#0f0f0f'
-                },
-                modal: {
-                    ondismiss: function() {
-                        hideLoading();
-                        // Clear pending order if user dismisses modal
-                        $.ajax({
-                            url: '<?= $site ?>ajax/clear-pending-order.php',
-                            method: 'POST'
-                        });
+                    if (response.success) {
+                        const options = {
+                            key: response.key_id,
+                            amount: response.final_amount * 100,
+                            currency: 'INR',
+                            name: 'Beastline',
+                            description: 'Order Payment',
+                            order_id: response.razorpay_order_id,
+                            handler: async function(razorpayResponse) {
+                                await verifyPayment(razorpayResponse, false);
+                            },
+                            prefill: {
+                                name: $('[name="billing_first_name"]').val() + ' ' + $('[name="billing_last_name"]').val(),
+                                email: $('[name="billing_email"]').val(),
+                                contact: $('[name="billing_phone"]').val()
+                            },
+                            theme: {
+                                color: '#0f0f0f'
+                            },
+                            modal: {
+                                ondismiss: function() {
+                                    hideLoading();
+                                    // Clear pending order if user dismisses modal
+                                    $.ajax({
+                                        url: '<?= $site ?>ajax/clear-pending-order.php',
+                                        method: 'POST'
+                                    });
+                                }
+                            }
+                        };
+
+                        const rzp = new Razorpay(options);
+                        rzp.open();
+                    } else {
+                        throw new Error(response.message || 'Error creating order');
                     }
+                } catch (error) {
+                    hideLoading();
+                    console.error('Payment error:', error);
+                    alert('Error: ' + (error.message || 'Please try again'));
                 }
-            };
-
-            const rzp = new Razorpay(options);
-            rzp.open();
-        } else {
-            throw new Error(response.message || 'Error creating order');
-        }
-    } catch (error) {
-        hideLoading();
-        console.error('Payment error:', error);
-        alert('Error: ' + (error.message || 'Please try again'));
-    }
-}
-
-async function processCODOrder() {
-    showLoading();
-
-    try {
-        const response = await $.ajax({
-            url: '<?= $site ?>ajax/create-order.php',
-            method: 'POST',
-            dataType: 'json',
-            data: {
-                action: 'create_cod_order',
-                form_data: $('#checkoutForm').serialize()
             }
-        });
 
-        if (response.success) {
-            const options = {
-                key: response.key_id,
-                amount: response.cod_advance * 100,
-                currency: 'INR',
-                name: 'Beastline - COD Advance',
-                description: 'COD Advance Payment',
-                order_id: response.razorpay_order_id,
-                handler: async function(razorpayResponse) {
-                    await verifyPayment(razorpayResponse, true);
-                },
-                prefill: {
-                    name: $('[name="billing_first_name"]').val() + ' ' + $('[name="billing_last_name"]').val(),
-                    email: $('[name="billing_email"]').val(),
-                    contact: $('[name="billing_phone"]').val()
-                },
-                theme: {
-                    color: '#e50010'
-                },
-                modal: {
-                    ondismiss: function() {
-                        hideLoading();
-                        // Clear pending order if user dismisses modal
-                        $.ajax({
-                            url: '<?= $site ?>ajax/clear-pending-order.php',
-                            method: 'POST'
-                        });
+            async function processCODOrder() {
+                showLoading();
+
+                try {
+                    const response = await $.ajax({
+                        url: '<?= $site ?>ajax/create-order.php',
+                        method: 'POST',
+                        dataType: 'json',
+                        data: {
+                            action: 'create_cod_order',
+                            form_data: $('#checkoutForm').serialize()
+                        }
+                    });
+
+                    if (response.success) {
+                        const options = {
+                            key: response.key_id,
+                            amount: response.cod_advance * 100,
+                            currency: 'INR',
+                            name: 'Beastline - COD Advance',
+                            description: 'COD Advance Payment',
+                            order_id: response.razorpay_order_id,
+                            handler: async function(razorpayResponse) {
+                                await verifyPayment(razorpayResponse, true);
+                            },
+                            prefill: {
+                                name: $('[name="billing_first_name"]').val() + ' ' + $('[name="billing_last_name"]').val(),
+                                email: $('[name="billing_email"]').val(),
+                                contact: $('[name="billing_phone"]').val()
+                            },
+                            theme: {
+                                color: '#0f0f0f'
+                            },
+                            modal: {
+                                ondismiss: function() {
+                                    hideLoading();
+                                    // Clear pending order if user dismisses modal
+                                    $.ajax({
+                                        url: '<?= $site ?>ajax/clear-pending-order.php',
+                                        method: 'POST'
+                                    });
+                                }
+                            }
+                        };
+
+                        const rzp = new Razorpay(options);
+                        rzp.open();
+                    } else {
+                        throw new Error(response.message || 'Error creating COD order');
                     }
+                } catch (error) {
+                    hideLoading();
+                    console.error('COD error:', error);
+                    alert('Error: ' + (error.message || 'Please try again'));
                 }
-            };
-
-            const rzp = new Razorpay(options);
-            rzp.open();
-        } else {
-            throw new Error(response.message || 'Error creating COD order');
-        }
-    } catch (error) {
-        hideLoading();
-        console.error('COD error:', error);
-        alert('Error: ' + (error.message || 'Please try again'));
-    }
-}
-
-async function verifyPayment(razorpayResponse, isCOD) {
-    showLoading();
-
-    try {
-        const response = await $.ajax({
-            url: '<?= $site ?>ajax/verify-payment.php',
-            method: 'POST',
-            dataType: 'json',
-            data: {
-                razorpay_payment_id: razorpayResponse.razorpay_payment_id,
-                razorpay_order_id: razorpayResponse.razorpay_order_id,
-                razorpay_signature: razorpayResponse.razorpay_signature,
-                is_cod: isCOD
             }
-        });
 
-        if (response.success) {
-            // Success! Order created in database
-            window.location.href = '<?= $site ?>order-confirmation/' + response.order_id;
-        } else {
-            throw new Error(response.message || 'Payment verification failed');
-        }
-    } catch (error) {
-        hideLoading();
-        console.error('Verification error:', error);
-        alert('Error: ' + (error.message || 'Please contact support'));
-    }
-}
+            async function verifyPayment(razorpayResponse, isCOD) {
+                showLoading();
+
+                try {
+                    const response = await $.ajax({
+                        url: '<?= $site ?>ajax/verify-payment.php',
+                        method: 'POST',
+                        dataType: 'json',
+                        data: {
+                            razorpay_payment_id: razorpayResponse.razorpay_payment_id,
+                            razorpay_order_id: razorpayResponse.razorpay_order_id,
+                            razorpay_signature: razorpayResponse.razorpay_signature,
+                            is_cod: isCOD
+                        }
+                    });
+
+                    if (response.success) {
+                        // Success! Order created in database
+                        window.location.href = '<?= $site ?>order-confirmation/' + response.order_id;
+                    } else {
+                        throw new Error(response.message || 'Payment verification failed');
+                    }
+                } catch (error) {
+                    hideLoading();
+                    console.error('Verification error:', error);
+                    alert('Error: ' + (error.message || 'Please contact support'));
+                }
+            }
             async function updateCODStatus(orderId) {
                 try {
                     const response = await $.ajax({

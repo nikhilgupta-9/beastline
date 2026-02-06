@@ -17,35 +17,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_order_id'], $_
     $stmt->bind_param("ss", $update_status, $update_order_id);
 
     if ($stmt->execute()) {
-        $_SESSION['flash_message'] = "Order #$update_order_id status updated to " . ucfirst($update_status);
-        $_SESSION['flash_type'] = "success";
+        $_SESSION['success'] = "Order #$update_order_id status updated to " . ucfirst($update_status);
     } else {
-        $_SESSION['flash_message'] = "Failed to update order status";
-        $_SESSION['flash_type'] = "danger";
+        $_SESSION['error'] = "Failed to update order status";
     }
     header("Location: ".$_SERVER['PHP_SELF']);
     exit();
 }
 
 // Handle bulk actions
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_action'], $_POST['selected_orders'])) {
-    $selected_orders = $_POST['selected_orders'];
-    $bulk_status = mysqli_real_escape_string($conn, $_POST['bulk_status']);
-    
-    $placeholders = implode(',', array_fill(0, count($selected_orders), '?'));
-    $types = str_repeat('s', count($selected_orders));
-    
-    $bulk_sql = "UPDATE orders SET order_status = ? WHERE order_id IN ($placeholders)";
-    $stmt = $conn->prepare($bulk_sql);
-    $stmt->bind_param("s".$types, $bulk_status, ...$selected_orders);
-    
-    if ($stmt->execute()) {
-        $_SESSION['flash_message'] = "Bulk updated ".count($selected_orders)." orders to " . ucfirst($bulk_status);
-        $_SESSION['flash_type'] = "success";
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['bulk_action'])) {
+    $selected_ids = $_POST['selected_ids'] ?? [];
+
+    if (!empty($selected_ids)) {
+        $placeholders = implode(',', array_fill(0, count($selected_ids), '?'));
+
+        switch ($_POST['bulk_action']) {
+            case 'confirmed':
+                $stmt = $conn->prepare("UPDATE orders SET order_status = 'confirmed' WHERE order_id IN ($placeholders)");
+                break;
+            case 'processing':
+                $stmt = $conn->prepare("UPDATE orders SET order_status = 'processing' WHERE order_id IN ($placeholders)");
+                break;
+            case 'shipped':
+                $stmt = $conn->prepare("UPDATE orders SET order_status = 'shipped' WHERE order_id IN ($placeholders)");
+                break;
+            case 'delivered':
+                $stmt = $conn->prepare("UPDATE orders SET order_status = 'delivered' WHERE order_id IN ($placeholders)");
+                break;
+            case 'cancelled':
+                $stmt = $conn->prepare("UPDATE orders SET order_status = 'cancelled' WHERE order_id IN ($placeholders)");
+                break;
+            case 'refunded':
+                $stmt = $conn->prepare("UPDATE orders SET order_status = 'refunded' WHERE order_id IN ($placeholders)");
+                break;
+            case 'delete':
+                $stmt = $conn->prepare("DELETE FROM orders WHERE order_id IN ($placeholders)");
+                break;
+            default:
+                $stmt = null;
+        }
+
+        if ($stmt) {
+            $types = str_repeat('s', count($selected_ids));
+            $stmt->bind_param($types, ...$selected_ids);
+            if ($stmt->execute()) {
+                $_SESSION['success'] = "Bulk action completed successfully";
+            } else {
+                $_SESSION['error'] = "Error performing bulk action";
+            }
+            $stmt->close();
+        }
     } else {
-        $_SESSION['flash_message'] = "Failed to perform bulk action";
-        $_SESSION['flash_type'] = "danger";
+        $_SESSION['error'] = "No orders selected";
     }
+
     header("Location: ".$_SERVER['PHP_SELF']);
     exit();
 }
@@ -53,10 +79,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_action'], $_POST
 // Handle search and filters
 $search = isset($_GET['search']) ? mysqli_real_escape_string($conn, $_GET['search']) : '';
 $status_filter = isset($_GET['status']) ? mysqli_real_escape_string($conn, $_GET['status']) : '';
+$payment_status_filter = isset($_GET['payment_status']) ? mysqli_real_escape_string($conn, $_GET['payment_status']) : '';
 $date_from = isset($_GET['date_from']) ? $_GET['date_from'] : '';
 $date_to = isset($_GET['date_to']) ? $_GET['date_to'] : '';
 
-// Build the query with joins to get user info and order items count
+// Get order stats
+$stats_query = "SELECT 
+    COUNT(*) as total,
+    SUM(order_status = 'confirmed') as confirmed,
+    SUM(order_status = 'processing') as processing,
+    SUM(order_status = 'delivered') as delivered,
+    SUM(order_status = 'shipped') as shipped,
+    SUM(order_status = 'cancelled') as cancelled,
+    SUM(order_status = 'refunded') as refunded,
+    SUM(payment_status = 'paid' OR payment_status = 'delivered') as paid,
+    SUM(payment_status = 'pending') as pending
+    FROM orders WHERE 1=1";
+
+if (!empty($search)) {
+    $stats_query .= " AND (order_id LIKE '%$search%' OR order_number LIKE '%$search%')";
+}
+
+if (!empty($status_filter)) {
+    $stats_query .= " AND order_status = '$status_filter'";
+}
+
+if (!empty($payment_status_filter)) {
+    $stats_query .= " AND payment_status = '$payment_status_filter'";
+}
+
+if (!empty($date_from) && !empty($date_to)) {
+    $stats_query .= " AND DATE(created_at) BETWEEN '$date_from' AND '$date_to'";
+}
+
+$stats_result = mysqli_query($conn, $stats_query);
+$stats = $stats_result ? mysqli_fetch_assoc($stats_result) : [
+    'total' => 0, 'confirmed' => 0, 'processing' => 0, 'delivered' => 0, 
+    'shipped' => 0, 'cancelled' => 0, 'refunded' => 0, 'paid' => 0, 'pending' => 0
+];
+
+// Build the query with filters for pagination
 $sql = "SELECT o.*, 
         u.first_name, u.last_name, u.email, u.mobile,
         (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.order_id) as item_count,
@@ -65,153 +127,154 @@ $sql = "SELECT o.*,
         FROM `orders` o
         LEFT JOIN `users` u ON o.user_id = u.id
         WHERE 1=1";
-$params = [];
 
 if (!empty($search)) {
-    $sql .= " AND (o.order_id LIKE ? OR o.order_number LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ? OR u.mobile LIKE ? OR u.email LIKE ?)";
-    $search_term = "%$search%";
-    $params = array_merge($params, [$search_term, $search_term, $search_term, $search_term, $search_term, $search_term]);
+    $sql .= " AND (o.order_id LIKE '%$search%' OR o.order_number LIKE '%$search%' OR u.first_name LIKE '%$search%' OR u.last_name LIKE '%$search%' OR u.mobile LIKE '%$search%' OR u.email LIKE '%$search%')";
 }
 
 if (!empty($status_filter)) {
-    $sql .= " AND o.order_status = ?";
-    $params[] = $status_filter;
+    $sql .= " AND o.order_status = '$status_filter'";
+}
+
+if (!empty($payment_status_filter)) {
+    $sql .= " AND o.payment_status = '$payment_status_filter'";
 }
 
 if (!empty($date_from) && !empty($date_to)) {
-    $sql .= " AND DATE(o.created_at) BETWEEN ? AND ?";
-    $params[] = $date_from;
-    $params[] = $date_to;
+    $sql .= " AND DATE(o.created_at) BETWEEN '$date_from' AND '$date_to'";
 }
 
-$sql .= " ORDER BY o.created_at DESC LIMIT 100";
+// Get total count for pagination
+$count_query = "
+    SELECT COUNT(*) AS total
+    FROM orders o
+    JOIN users u ON o.user_id = u.id
+    WHERE 1
+";
+$count_result = mysqli_query($conn, $count_query);
+$total_rows = $count_result ? mysqli_fetch_assoc($count_result)['total'] : 0;
 
-// Prepare and execute the query
-$stmt = $conn->prepare($sql);
-if (!empty($params)) {
-    $types = str_repeat('s', count($params));
-    $stmt->bind_param($types, ...$params);
-}
-$stmt->execute();
-$result = $stmt->get_result();
+// Pagination
+$limit = 10;
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+$offset = ($page - 1) * $limit;
+$total_pages = ceil($total_rows / $limit);
+
+// Add pagination to main query
+$sql .= " ORDER BY o.created_at DESC LIMIT $limit OFFSET $offset";
+
+$result = mysqli_query($conn, $sql);
 ?>
+
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zxx">
 
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <title>Order Management | Admin Dashboard</title>
-    <link rel="icon" href="<?php echo htmlspecialchars($setting->get('favicon')); ?>" type="image/png">
+    <title>Order Management | Admin <?php echo htmlspecialchars($setting->get('site_name')); ?></title>
+    <link rel="icon" href="<?php echo htmlspecialchars($setting->get('favicon', 'assets/img/logo.png')); ?>" type="image/png">
 
     <?php include "links.php"; ?>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+
     <style>
-        :root {
-            --primary-color: #4e73df;
-            --primary-light: #5d7ce0;
-            --success-color: #1cc88a;
-            --warning-color: #f6c23e;
-            --danger-color: #e74a3b;
-            --info-color: #36b9cc;
-            --light-bg: #f8f9fc;
-            --dark-text: #5a5c69;
-            --muted-text: #858796;
+        .order-image {
+            width: 40px;
+            height: 40px;
+            object-fit: cover;
+            border-radius: 4px;
         }
 
-        body {
-            background-color: #f5f7fb;
-            color: var(--dark-text);
-            font-family: 'Nunito', sans-serif;
+        .table-actions .btn {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
         }
 
-        .order-card {
-            background: white;
-            border-radius: 0.35rem;
-            box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
-            border: none;
-            margin-bottom: 1.5rem;
+        .stats-card {
+            text-align: center;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
         }
 
-        .card-header {
-            background-color: #f8f9fc;
-            border-bottom: 1px solid #e3e6f0;
-            padding: 1rem 1.35rem;
-            border-radius: 0.35rem 0.35rem 0 0 !important;
+        .stats-card i {
+            font-size: 1.8rem;
+            margin-bottom: 8px;
         }
 
-        .card-title {
-            font-weight: 700;
-            color: var(--dark-text);
+        .stats-card h4 {
+            margin: 0;
+            font-weight: 600;
             font-size: 1.25rem;
         }
 
-        .table-responsive-container {
-            max-height: 600px;
-            overflow: auto;
+        .stats-card p {
+            margin: 0;
+            font-size: 0.875rem;
+            color: #6c757d;
         }
 
-        .table-responsive {
-            min-width: 100%;
+        .search-box {
+            max-width: 300px;
         }
 
-        .table-responsive table {
-            border-radius: 0.35rem;
-            overflow: hidden;
+        .bulk-actions {
+            background: #f8f9fa;
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
         }
 
-        .table thead {
-            background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
-            color: white;
-            position: sticky;
-            top: 0;
-            z-index: 10;
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
         }
 
-        .table th {
-            border-top: none;
-            font-weight: 600;
-            text-transform: uppercase;
-            font-size: 0.7rem;
-            letter-spacing: 0.5px;
-            padding: 1rem;
-            white-space: nowrap;
-        }
-
-        .table td {
-            vertical-align: middle;
-            padding: 0.75rem;
-            border: 1px solid rgba(137, 139, 141, 0.15);
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
         }
 
         .status-badge {
-            padding: 0.35rem 0.5rem;
-            border-radius: 0.25rem;
-            font-size: 0.65rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            white-space: nowrap;
+            cursor: pointer;
+            transition: opacity 0.3s;
         }
 
-        .badge-pending {
-            background-color: rgba(246, 194, 62, 0.2);
-            color: var(--warning-color);
+        .status-badge:hover {
+            opacity: 0.8;
+        }
+
+        .order-checkbox {
+            cursor: pointer;
+        }
+
+        #selectAll {
+            cursor: pointer;
+        }
+
+        .badge-confirmed {
+            background-color: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
         }
 
         .badge-processing {
-            background-color: rgba(54, 185, 204, 0.2);
-            color: var(--info-color);
+            background-color: rgba(23, 162, 184, 0.2);
+            color: #17a2b8;
+        }
+
+        .badge-shipped {
+            background-color: rgba(0, 123, 255, 0.2);
+            color: #007bff;
         }
 
         .badge-delivered {
-            background-color: rgba(28, 200, 138, 0.2);
-            color: var(--success-color);
+            background-color: rgba(40, 167, 69, 0.2);
+            color: #28a745;
         }
 
         .badge-cancelled {
-            background-color: rgba(231, 74, 59, 0.2);
-            color: var(--danger-color);
+            background-color: rgba(220, 53, 69, 0.2);
+            color: #dc3545;
         }
 
         .badge-refunded {
@@ -219,227 +282,39 @@ $result = $stmt->get_result();
             color: #6c757d;
         }
 
-        .badge-shipped {
-            background-color: rgba(255, 193, 7, 0.2);
-            color: #ffc107;
+        .badge-paid {
+            background-color: rgba(40, 167, 69, 0.2);
+            color: #28a745;
         }
 
-        .badge-payment-pending {
+        .badge-pending {
             background-color: rgba(220, 53, 69, 0.2);
             color: #dc3545;
         }
 
-        .badge-payment-delivered {
-            background-color: rgba(25, 135, 84, 0.2);
-            color: #198754;
-        }
-
-        .action-btn {
-            width: 30px;
-            height: 30px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            transition: all 0.3s ease;
-            color: var(--muted-text);
-            margin: 0 2px;
-        }
-
-        .action-btn:hover {
-            background-color: rgba(78, 115, 223, 0.1);
-            color: var(--primary-color);
-            transform: scale(1.1);
-        }
-
-        .amount-cell {
-            font-weight: 700;
-            color: var(--dark-text);
-            white-space: nowrap;
-        }
-
-        .customer-name {
-            font-weight: 600;
-            color: var(--dark-text);
-        }
-
-        .customer-email {
-            color: var(--primary-color);
-            font-size: 0.85rem;
-            word-break: break-all;
-        }
-
-        .date-cell {
-            white-space: nowrap;
-            font-size: 0.85rem;
-            color: var(--muted-text);
-        }
-
-        .search-box {
-            position: relative;
-            max-width: 300px;
-        }
-
-        .search-box input {
-            padding-left: 2.5rem;
-            border-radius: 0.35rem;
-            border: 1px solid #d1d3e2;
-            transition: all 0.3s ease;
-        }
-
-        .search-box input:focus {
-            border-color: var(--primary-light);
-            box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
-        }
-
-        .search-icon {
-            position: absolute;
-            left: 1rem;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--muted-text);
-        }
-
-        .pagination .page-item.active .page-link {
-            background-color: var(--primary-color);
-            border-color: var(--primary-color);
-        }
-
-        .pagination .page-link {
-            color: var(--primary-color);
-            border-radius: 0.35rem;
-            margin: 0 0.25rem;
-            border: none;
-            min-width: 2.25rem;
-            text-align: center;
-        }
-
-        .table-hover tbody tr:hover {
-            background-color: rgba(78, 115, 223, 0.05);
-        }
-
         .filter-section {
-            background: #f8f9fc;
-            padding: 1rem;
-            border-radius: 0.35rem;
-            margin-bottom: 1.5rem;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
         }
 
-        .filter-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 1rem;
-            align-items: flex-end;
-        }
-
-        .filter-group {
-            flex: 1;
-            min-width: 200px;
-        }
-
-        .filter-label {
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: var(--muted-text);
-            margin-bottom: 0.25rem;
-        }
-
-        .bulk-actions {
-            display: flex;
-            gap: 0.5rem;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-
-        .select-all-checkbox {
-            margin-right: 0.5rem;
-        }
-
-        .order-checkbox {
-            margin: 0;
+        .customer-info {
+            font-size: 0.9rem;
         }
 
         .product-summary {
-            max-width: 250px;
-            white-space: normal;
+            max-width: 200px;
             font-size: 0.85rem;
         }
 
-        .order-id-cell {
-            white-space: nowrap;
+        .amount-cell {
+            font-weight: 600;
         }
 
         .address-cell {
             max-width: 200px;
-            white-space: normal;
             font-size: 0.85rem;
-        }
-
-        .notes-cell {
-            max-width: 200px;
-            white-space: normal;
-            font-size: 0.85rem;
-            color: var(--muted-text);
-        }
-
-        @media (max-width: 992px) {
-            .filter-row {
-                flex-direction: column;
-            }
-            
-            .filter-group {
-                width: 100%;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .table thead {
-                display: none;
-            }
-
-            .table tr {
-                display: block;
-                margin-bottom: 1rem;
-                border-radius: 0.35rem;
-                box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.1);
-            }
-
-            .table td {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                border: none;
-                padding: 0.75rem;
-            }
-
-            .table td:before {
-                content: attr(data-label);
-                font-weight: 600;
-                color: var(--muted-text);
-                margin-right: 1rem;
-                flex: 1;
-            }
-
-            .table td>div {
-                flex: 2;
-                text-align: right;
-            }
-
-            .card-header {
-                flex-direction: column;
-                align-items: flex-start !important;
-            }
-
-            .search-box {
-                margin-top: 1rem;
-                max-width: 100%;
-                width: 100%;
-            }
-            
-            .bulk-actions {
-                flex-direction: column;
-                align-items: flex-start;
-            }
         }
     </style>
 </head>
@@ -447,8 +322,8 @@ $result = $stmt->get_result();
 <body class="crm_body_bg">
 
     <?php include "includes/header.php"; ?>
-    <section class="main_content dashboard_part large_header_bg">
 
+    <section class="main_content dashboard_part large_header_bg">
         <div class="container-fluid g-0">
             <div class="row">
                 <div class="col-lg-12 p-0">
@@ -458,325 +333,405 @@ $result = $stmt->get_result();
         </div>
 
         <div class="main_content_iner ">
-            <div class="container-fluid p-0">
+            <div class="container-fluid p-0 sm_padding_15px">
                 <div class="row justify-content-center">
-                    <div class="col-lg-12">
-                        <?php if (isset($_SESSION['flash_message'])): ?>
-                            <div class="alert alert-<?= $_SESSION['flash_type'] ?> alert-dismissible fade show" role="alert">
-                                <?= $_SESSION['flash_message'] ?>
-                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                            </div>
-                            <?php unset($_SESSION['flash_message']); unset($_SESSION['flash_type']); ?>
-                        <?php endif; ?>
-                        
+                    <div class="col-12">
                         <div class="white_card card_height_100 mb_30">
-                            <div class="card-header d-flex flex-wrap align-items-center justify-content-between">
-                                <h4 class="card-title mb-0">Order Management</h4>
-                                <div class="d-flex flex-wrap align-items-center gap-2">
-                                    <div class="search-box me-2">
-                                        <form method="GET" action="">
-                                            <i class="fas fa-search search-icon"></i>
-                                            <input type="text" class="form-control" name="search" placeholder="Search orders..." 
-                                                   value="<?= htmlspecialchars($search) ?>">
-                                        </form>
+                            <div class="white_card_header">
+                                <div class="box_header m-0">
+                                    <div class="main-title">
+                                        <h2 class="m-0">Order Management</h2>
                                     </div>
-                                    <!-- <button class="btn btn-primary btn-sm">
-                                        <i class="fas fa-download me-2"></i>Export
-                                    </button> -->
+                                    <div class="action-btn">
+                                        <a href="add-order.php" class="btn_1">Add New Order</a>
+                                    </div>
                                 </div>
                             </div>
-                            
-                            <!-- Filter Section -->
-                            <div class="filter-section">
-                                <form method="GET" action="">
-                                    <div class="filter-row">
-                                        <div class="filter-group">
-                                            <label class="filter-label">Order Status</label>
-                                            <select name="status" class="form-select form-select-sm">
-                                                <option value="">All Statuses</option>
-                                                <option value="pending" <?= $status_filter === 'pending' ? 'selected' : '' ?>>Pending</option>
-                                                <option value="processing" <?= $status_filter === 'processing' ? 'selected' : '' ?>>Processing</option>
-                                                <option value="delivered" <?= $status_filter === 'delivered' ? 'selected' : '' ?>>Delivered</option>
-                                                <option value="cancelled" <?= $status_filter === 'cancelled' ? 'selected' : '' ?>>Cancelled</option>
-                                                <option value="shipped" <?= $status_filter === 'shipped' ? 'selected' : '' ?>>On Shipped</option>
-                                                <option value="refunded" <?= $status_filter === 'refunded' ? 'selected' : '' ?>>Refunded</option>
-                                            </select>
-                                        </div>
-                                        
-                                        <div class="filter-group">
-                                            <label class="filter-label">Date From</label>
-                                            <input type="date" name="date_from" class="form-control form-control-sm" 
-                                                   value="<?= htmlspecialchars($date_from) ?>">
-                                        </div>
-                                        
-                                        <div class="filter-group">
-                                            <label class="filter-label">Date To</label>
-                                            <input type="date" name="date_to" class="form-control form-control-sm" 
-                                                   value="<?= htmlspecialchars($date_to) ?>">
-                                        </div>
-                                        
-                                        <div class="filter-group">
-                                            <button type="submit" class="btn btn-primary btn-sm">Apply Filters</button>
-                                            <a href="<?= $_SERVER['PHP_SELF'] ?>" class="btn btn-outline-secondary btn-sm">Reset</a>
+
+                            <div class="white_card_body">
+                                <!-- Messages -->
+                                <?php if (isset($_SESSION['success'])): ?>
+                                    <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                        <i class="fas fa-check-circle mr-2"></i> <?php echo $_SESSION['success']; ?>
+                                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                    <?php unset($_SESSION['success']); ?>
+                                <?php endif; ?>
+
+                                <?php if (isset($_SESSION['error'])): ?>
+                                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                        <i class="fas fa-exclamation-circle mr-2"></i> <?php echo $_SESSION['error']; ?>
+                                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                    <?php unset($_SESSION['error']); ?>
+                                <?php endif; ?>
+
+                                <!-- Stats Overview -->
+                                <div class="row mb-4">
+                                    <div class="col-md-3 col-sm-6">
+                                        <div class="stats-card bg-light border">
+                                            <i class="fas fa-shopping-cart text-primary"></i>
+                                            <h4><?php echo $stats['total']; ?></h4>
+                                            <p>Total Orders</p>
                                         </div>
                                     </div>
-                                </form>
-                            </div>
-                            
-                            <div class="white_card_body">
-                                <div class="QA_section">
-                                    <!-- Bulk Actions -->
-                                    <form method="POST" action="" id="bulk-action-form">
-                                        <div class="bulk-actions">
-                                            <div class="form-check select-all-checkbox">
-                                                <input class="form-check-input" type="checkbox" id="select-all">
-                                                <label class="form-check-label" for="select-all">Select All</label>
-                                            </div>
-                                            
-                                            <select name="bulk_status" class="form-select form-select-sm" style="width: 150px;">
-                                                <option value="">Bulk Actions</option>
-                                                <option value="pending">Mark as Pending</option>
-                                                <option value="processing">Mark as Processing</option>
-                                                <option value="delivered">Mark as Completed</option>
-                                                <option value="cancelled">Mark as Cancelled</option>
-                                                <option value="shipped">Mark as On Shipped</option>
-                                                <option value="refunded">Mark as Refunded</option>
-                                            </select>
-                                            
-                                            <button type="submit" name="bulk_action" value="1" class="btn btn-sm btn-outline-primary">
-                                                Apply
-                                            </button>
+                                    <div class="col-md-3 col-sm-6">
+                                        <div class="stats-card bg-light border">
+                                            <i class="fas fa-clock text-warning"></i>
+                                            <h4><?php echo $stats['confirmed']; ?></h4>
+                                            <p>Confirmed</p>
                                         </div>
-                                        
-                                        <div class="QA_table mb_30">
-                                            <div class="table-responsive-container">
-                                                <table class="table table-hover mb-0">
-                                                    <thead>
-                                                        <tr>
-                                                            <th width="40px"></th>
-                                                            <th scope="col">Action</th>
-                                                            <th scope="col">Order ID</th>
-                                                            <th scope="col">Order #</th>
-                                                            <th scope="col">Order Status</th>
-                                                            <th scope="col">Update Status</th>
-                                                            <th scope="col">Payment Status</th>
-                                                            <th scope="col">Products</th>
-                                                            <th scope="col">Customer</th>
-                                                            <th scope="col">Amounts</th>
-                                                            <!-- <th scope="col">shipped Address</th> -->
-                                                            <th scope="col">Payment Method</th>
-                                                            <!-- <th scope="col">Notes</th> -->
-                                                            <th scope="col">Date</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        <?php if (mysqli_num_rows($result) > 0): ?>
-                                                            <?php while ($row = mysqli_fetch_assoc($result)): ?>
-                                                                <?php
-                                                                // Order Status badge class
-                                                                $orderStatusClass = 'badge-pending';
-                                                                switch (strtolower($row['order_status'])) {
-                                                                    case 'pending':
-                                                                        $orderStatusClass = 'badge-pending';
-                                                                    case 'processing':
-                                                                        $orderStatusClass = 'badge-processing';
-                                                                        break;
-                                                                     case 'shipped':
-                                                                        $orderStatusClass = 'badge-shipped';
-                                                                    case 'delivered':
-                                                                        $orderStatusClass = 'badge-delivered';
-                                                                        break;
-                                                                    case 'cancelled':
-                                                                        $orderStatusClass = 'badge-cancelled';
-                                                                        break;
-                                                                    case 'refunded':
-                                                                        $orderStatusClass = 'badge-refunded';
-                                                                        break;
-                                                                   
-                                                                        break;
-                                                                }
-                                                                
-                                                                // Payment Status badge class
-                                                                $paymentStatusClass = 'badge-payment-pending';
-                                                                if (strtolower($row['payment_status']) === 'delivered' || 
-                                                                    strtolower($row['payment_status']) === 'paid') {
-                                                                    $paymentStatusClass = 'badge-payment-completed';
-                                                                }
-                                                                
-                                                                $orderDate = date("M d, Y h:i A", strtotime($row['created_at']));
-                                                                
-                                                                // Parse shipped address (assuming it's JSON)
-                                                                $shippingAddress = json_decode($row['shipping_address'], true);
-                                                                $shippingText = '';
-                                                                if (is_array($shippingAddress)) {
-                                                                    $shippingText = implode(', ', array_filter([
-                                                                        $shippingAddress['address'] ?? '',
-                                                                        $shippingAddress['city'] ?? '',
-                                                                        $shippingAddress['state'] ?? '',
-                                                                        $shippingAddress['postal_code'] ?? '',
-                                                                        $shippingAddress['country'] ?? ''
-                                                                    ]));
-                                                                } else {
-                                                                    $shippingText = $row['shipping_address'];
-                                                                }
-                                                                ?>
-                                                                <tr>
-                                                                    <td>
-                                                                        <input type="checkbox" name="selected_orders[]" 
-                                                                               value="<?= htmlspecialchars($row['order_id']) ?>" 
-                                                                               class="form-check-input order-checkbox">
-                                                                    </td>
-                                                                    <td data-label="Action">
-                                                                        <div class="d-flex">
-                                                                            <!-- View Details -->
-                                                                            <a href="order_details.php?id=<?= htmlspecialchars($row['order_id']) ?>" 
-                                                                               class="action-btn" data-bs-toggle="tooltip" 
-                                                                               title="View Details">
-                                                                                <i class="fas fa-eye text-primary fs-5"></i>
-                                                                            </a>
-                                                                            
-                                                                            <!-- Generate Invoice -->
-                                                                            <!-- <a href="generate_invoice.php?order_id=<?= htmlspecialchars($row['order_id']) ?>" 
-                                                                               class="action-btn" data-bs-toggle="tooltip" 
-                                                                               title="Generate Invoice">
-                                                                                <i class="fas fa-file-invoice-dollar text-success fs-3"></i>
-                                                                            </a> -->
-                                                                            
-                                                                            <!-- Edit Icon -->
-                                                                            <!-- <a href="edit_order.php?id=<?= htmlspecialchars($row['order_id']) ?>" 
-                                                                               class="action-btn" 
-                                                                               title="Edit Order">
-                                                                                <i class="fas fa-edit text-warning fs-5"></i>
-                                                                            </a> -->
-                                                                            
-                                                                            <!-- Delete Icon -->
-                                                                            <a href="delete_order.php?id=<?= htmlspecialchars($row['order_id']) ?>" 
-                                                                               class="action-btn" 
-                                                                               title="Delete Order"
-                                                                               onclick="return confirm('Are you sure you want to delete this order?');">
-                                                                                <i class="fas fa-trash-alt text-danger fs-5"></i>
-                                                                            </a>
-                                                                        </div>
-                                                                    </td>
-                                                                    <td data-label="Order ID" class="order-id-cell">
-                                                                        <a href="order_details.php?id=<?= htmlspecialchars($row['order_id']) ?>" 
-                                                                           class="text-primary fw-bold">
-                                                                            #<?= htmlspecialchars($row['order_id']) ?>
-                                                                        </a>
-                                                                    </td>
-                                                                    <td data-label="Order #">
-                                                                        <?= htmlspecialchars($row['order_number']) ?>
-                                                                    </td>
-                                                                    <td data-label="Order Status">
-                                                                        <span class="status-badge <?= $orderStatusClass ?>">
-                                                                            <?= ucfirst($row['order_status']) ?>
-                                                                        </span>
-                                                                    </td>
-                                                                    <td data-label="Update Status">
-                                                                        <form method="post" action="" class="mb-0">
-                                                                            <input type="hidden" name="update_order_id" 
-                                                                                   value="<?= htmlspecialchars($row['order_id']) ?>">
-                                                                            <select name="update_status" 
-                                                                                    class="form-select form-select-sm border-0 shadow-sm" 
-                                                                                    onchange="this.form.submit()">
-                                                                                <?php
-                                                                                $statuses = ['pending', 'processing', 'delivered', 'cancelled', 'shipped', 'refunded'];
-                                                                                foreach ($statuses as $status) {
-                                                                                    $selected = (strtolower($row['order_status']) === $status) ? 'selected' : '';
-                                                                                    echo "<option value='$status' $selected>" . ucfirst($status) . "</option>";
-                                                                                }
-                                                                                ?>
-                                                                            </select>
-                                                                        </form>
-                                                                    </td>
-                                                                    <td data-label="Payment Status">
-                                                                        <span class="status-badge <?= $paymentStatusClass ?>">
-                                                                            <?= ucfirst($row['payment_status']) ?>
-                                                                        </span>
-                                                                    </td>
-                                                                    <td data-label="Products" class="product-summary">
-                                                                        <div class="mb-1">
-                                                                            <span class="badge bg-secondary"><?= $row['item_count'] ?> items</span>
-                                                                        </div>
-                                                                        <?php 
-                                                                        if (!empty($row['products_summary'])) {
-                                                                            $products = explode(', ', $row['products_summary']);
-                                                                            foreach ($products as $product) {
-                                                                                echo '<div class="text-muted small">' . htmlspecialchars($product) . '</div>';
-                                                                            }
-                                                                            if ($row['item_count'] > 3) {
-                                                                                echo '<div class="text-muted small">+ ' . ($row['item_count'] - 3) . ' more</div>';
-                                                                            }
-                                                                        }
-                                                                        ?>
-                                                                    </td>
-                                                                    <td data-label="Customer">
-                                                                        <div class="customer-name">
-                                                                            <?= htmlspecialchars($row['first_name'] . ' ' . $row['last_name']) ?>
-                                                                        </div>
-                                                                        <?php if (!empty($row['email'])): ?>
-                                                                            <a href="mailto:<?= htmlspecialchars($row['email']) ?>" 
-                                                                               class="customer-email d-block">
-                                                                                <?= htmlspecialchars($row['email']) ?>
-                                                                            </a>
-                                                                        <?php endif; ?>
-                                                                        <?php if (!empty($row['phone'])): ?>
-                                                                            <a href="tel:<?= htmlspecialchars($row['phone']) ?>" 
-                                                                               class="customer-email d-block">
-                                                                                <?= htmlspecialchars($row['phone']) ?>
-                                                                            </a>
-                                                                        <?php endif; ?>
-                                                                    </td>
-                                                                    <td data-label="Amounts" class="amount-cell">
-                                                                        <div class="small">
-                                                                            <div>Total: <strong>Rs. <?= number_format($row['total_amount'], 2) ?></strong></div>
-                                                                            <?php if ($row['discount_amount'] > 0): ?>
-                                                                                <div class="text-success">Discount: -Rs. <?= number_format($row['discount_amount'], 2) ?></div>
-                                                                            <?php endif; ?>
-                                                                            <?php if ($row['shipping_amount'] > 0): ?>
-                                                                                <div class="text-info">Shipping: +Rs. <?= number_format($row['shipping_amount'], 2) ?></div>
-                                                                            <?php endif; ?>
-                                                                            <?php if ($row['tax_amount'] > 0): ?>
-                                                                                <div class="text-warning">Tax: +Rs. <?= number_format($row['tax_amount'], 2) ?></div>
-                                                                            <?php endif; ?>
-                                                                            <div class="border-top mt-1 pt-1">
-                                                                                <strong>Final: Rs. <?= number_format($row['final_amount'], 2) ?></strong>
-                                                                            </div>
-                                                                        </div>
-                                                                    </td>
-                                                                    <!-- <td data-label="Shipping Address" class="address-cell">
-                                                                        <?= htmlspecialchars($shippingText) ?>
-                                                                    </td> -->
-                                                                    <td data-label="Payment Method">
-                                                                        <?= ucfirst(htmlspecialchars($row['payment_method'])) ?>
-                                                                    </td>
-                                                                    <!-- <td data-label="Notes" class="notes-cell">
-                                                                        <?= !empty($row['notes']) ? htmlspecialchars(substr($row['notes'], 0, 50)) . (strlen($row['notes']) > 50 ? '...' : '') : 'No notes' ?>
-                                                                    </td> -->
-                                                                    <td data-label="Date" class="date-cell">
-                                                                        <?= $orderDate ?>
-                                                                    </td>
-                                                                </tr>
-                                                            <?php endwhile; ?>
-                                                        <?php else: ?>
-                                                            <tr>
-                                                                <td colspan="14" class="text-center py-5">
-                                                                    <div class="d-flex flex-column align-items-center">
-                                                                        <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
-                                                                        <h5 class="text-muted">No Orders Found</h5>
-                                                                        <p class="text-muted">Try adjusting your search or filters</p>
-                                                                        <a href="<?= $_SERVER['PHP_SELF'] ?>" class="btn btn-sm btn-primary mt-2">
-                                                                            Reset Filters
-                                                                        </a>
-                                                                    </div>
-                                                                </td>
-                                                            </tr>
-                                                        <?php endif; ?>
-                                                    </tbody>
-                                                </table>
+                                    </div>
+                                    <div class="col-md-3 col-sm-6">
+                                        <div class="stats-card bg-light border">
+                                            <i class="fas fa-cogs text-info"></i>
+                                            <h4><?php echo $stats['processing']; ?></h4>
+                                            <p>Processing</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 col-sm-6">
+                                        <div class="stats-card bg-light border">
+                                            <i class="fas fa-check-circle text-success"></i>
+                                            <h4><?php echo $stats['delivered']; ?></h4>
+                                            <p>Delivered</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 col-sm-6">
+                                        <div class="stats-card bg-light border">
+                                            <i class="fas fa-truck text-primary"></i>
+                                            <h4><?php echo $stats['shipped']; ?></h4>
+                                            <p>Shipped</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 col-sm-6">
+                                        <div class="stats-card bg-light border">
+                                            <i class="fas fa-times-circle text-danger"></i>
+                                            <h4><?php echo $stats['cancelled']; ?></h4>
+                                            <p>Cancelled</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 col-sm-6">
+                                        <div class="stats-card bg-light border">
+                                            <i class="fas fa-exchange-alt text-secondary"></i>
+                                            <h4><?php echo $stats['refunded']; ?></h4>
+                                            <p>Refunded</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 col-sm-6">
+                                        <div class="stats-card bg-light border">
+                                            <i class="fas fa-credit-card text-success"></i>
+                                            <h4><?php echo $stats['paid']; ?></h4>
+                                            <p>Paid</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Filter Section -->
+                                <div class="filter-section">
+                                    <form method="GET" action="">
+                                        <div class="row">
+                                            <div class="col-md-3 mb-2">
+                                                <input type="text" class="form-control" name="search" 
+                                                       placeholder="Search orders..." value="<?php echo htmlspecialchars($search); ?>">
+                                            </div>
+                                            <div class="col-md-2 mb-2">
+                                                <select class="form-control" name="status">
+                                                    <option value="">All Statuses</option>
+                                                    <option value="confirmed" <?php echo $status_filter == 'confirmed' ? 'selected' : ''; ?>>Confirmed</option>
+                                                    <option value="processing" <?php echo $status_filter == 'processing' ? 'selected' : ''; ?>>Processing</option>
+                                                    <option value="shipped" <?php echo $status_filter == 'shipped' ? 'selected' : ''; ?>>Shipped</option>
+                                                    <option value="delivered" <?php echo $status_filter == 'delivered' ? 'selected' : ''; ?>>Delivered</option>
+                                                    <option value="cancelled" <?php echo $status_filter == 'cancelled' ? 'selected' : ''; ?>>Cancelled</option>
+                                                    <option value="refunded" <?php echo $status_filter == 'refunded' ? 'selected' : ''; ?>>Refunded</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-2 mb-2">
+                                                <select class="form-control" name="payment_status">
+                                                    <option value="">Payment Status</option>
+                                                    <option value="paid" <?php echo $payment_status_filter == 'paid' ? 'selected' : ''; ?>>Paid</option>
+                                                    <option value="pending" <?php echo $payment_status_filter == 'pending' ? 'selected' : ''; ?>>Pending</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-2 mb-2">
+                                                <input type="date" class="form-control" name="date_from" 
+                                                       value="<?php echo htmlspecialchars($date_from); ?>" placeholder="From Date">
+                                            </div>
+                                            <div class="col-md-2 mb-2">
+                                                <input type="date" class="form-control" name="date_to" 
+                                                       value="<?php echo htmlspecialchars($date_to); ?>" placeholder="To Date">
+                                            </div>
+                                            <div class="col-md-1 mb-2">
+                                                <button type="submit" class="btn btn-primary w-100">Filter</button>
                                             </div>
                                         </div>
                                     </form>
+                                </div>
+
+                                <!-- Bulk Actions -->
+                                <form method="POST" id="bulkForm" class="bulk-actions">
+                                    <div class="d-flex align-items-center">
+                                        <div class="mr-3">
+                                            <select class="form-control form-control-sm" name="bulk_action" style="min-width: 150px;">
+                                                <option value="">Bulk Actions</option>
+                                                <option value="confirmed">Mark as Confirmed</option>
+                                                <option value="processing">Mark as Processing</option>
+                                                <option value="shipped">Mark as Shipped</option>
+                                                <option value="delivered">Mark as Delivered</option>
+                                                <option value="cancelled">Mark as Cancelled</option>
+                                                <option value="refunded">Mark as Refunded</option>
+                                                <option value="delete" class="text-danger">Delete Selected</option>
+                                            </select>
+                                        </div>
+                                        <div class="mr-3">
+                                            <button type="submit" class="btn btn-sm btn-primary" onclick="return confirmBulkAction()">
+                                                <i class="fas fa-play mr-1"></i> Apply
+                                            </button>
+                                        </div>
+                                        <div class="ml-auto">
+                                            <div class="input-group input-group-sm search-box">
+                                                <input type="text" class="form-control" placeholder="Quick search..." id="searchInput">
+                                                <div class="input-group-append">
+                                                    <button class="btn btn-outline-secondary" type="button">
+                                                        <i class="fas fa-search"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
+
+                                <!-- Orders Table -->
+                                <div class="QA_section">
+                                    <div class="QA_table mb_30">
+                                        <table class="table lms_table_active">
+                                            <thead>
+                                                <tr>
+                                                    <th scope="col" width="3%">
+                                                        <input type="checkbox" id="selectAll">
+                                                    </th>
+                                                    <th scope="col">#</th>
+                                                    <th scope="col">Order ID</th>
+                                                    <th scope="col">Order #</th>
+                                                    <th scope="col">Customer</th>
+                                                    <th scope="col">Products</th>
+                                                    <th scope="col">Amount</th>
+                                                    <th scope="col">Order Status</th>
+                                                    <th scope="col">Payment Status</th>
+                                                    <th scope="col">Payment Method</th>
+                                                    <th scope="col">Date</th>
+                                                    <th scope="col">Action</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php
+                                                $sno = $offset + 1;
+
+                                                if (mysqli_num_rows($result) > 0) {
+                                                    while ($row = mysqli_fetch_assoc($result)) {
+                                                        // Order Status badge
+                                                        $orderStatusClass = 'badge-confirmed';
+                                                        $orderStatusText = ucfirst($row['order_status']);
+                                                        switch (strtolower($row['order_status'])) {
+                                                            case 'confirmed':
+                                                                $orderStatusClass = 'badge-confirmed';
+                                                                break;
+                                                            case 'processing':
+                                                                $orderStatusClass = 'badge-processing';
+                                                                break;
+                                                            case 'shipped':
+                                                                $orderStatusClass = 'badge-shipped';
+                                                                break;
+                                                            case 'delivered':
+                                                                $orderStatusClass = 'badge-delivered';
+                                                                break;
+                                                            case 'cancelled':
+                                                                $orderStatusClass = 'badge-cancelled';
+                                                                break;
+                                                            case 'refunded':
+                                                                $orderStatusClass = 'badge-refunded';
+                                                                break;
+                                                        }
+
+                                                        // Payment Status badge
+                                                        $paymentStatusClass = 'badge-pending';
+                                                        if (strtolower($row['payment_status']) === 'paid' || strtolower($row['payment_status']) === 'delivered') {
+                                                            $paymentStatusClass = 'badge-paid';
+                                                            $paymentStatusText = 'Paid';
+                                                        } else {
+                                                            $paymentStatusText = 'Pending';
+                                                        }
+
+                                                        // Format date
+                                                        $orderDate = date('d M Y h:i A', strtotime($row['created_at']));
+
+                                                        // Customer name
+                                                        $customerName = !empty($row['first_name']) ? 
+                                                            htmlspecialchars($row['first_name'] . ' ' . $row['last_name']) : 
+                                                            'Guest Customer';
+                                                ?>
+                                                        <tr>
+                                                            <td class="text-center">
+                                                                <input type="checkbox" name="selected_ids[]" value="<?php echo $row['order_id']; ?>" class="order-checkbox">
+                                                            </td>
+                                                            <td class="text-center"><?php echo $sno++; ?></td>
+                                                            <td class="fw-semibold">
+                                                                <a href="order_details.php?id=<?php echo $row['order_id']; ?>" class="text-primary">
+                                                                    #<?php echo $row['order_id']; ?>
+                                                                </a>
+                                                            </td>
+                                                            <td><?php echo htmlspecialchars($row['order_number']); ?></td>
+                                                            <td class="customer-info">
+                                                                <div><strong><?php echo $customerName; ?></strong></div>
+                                                                <?php if (!empty($row['email'])): ?>
+                                                                    <div class="text-muted small"><?php echo htmlspecialchars($row['email']); ?></div>
+                                                                <?php endif; ?>
+                                                                <?php if (!empty($row['mobile'])): ?>
+                                                                    <div class="text-muted small"><?php echo htmlspecialchars($row['mobile']); ?></div>
+                                                                <?php endif; ?>
+                                                            </td>
+                                                            <td class="product-summary">
+                                                                <span class="badge bg-secondary"><?php echo $row['item_count']; ?> items</span>
+                                                                <?php if (!empty($row['products_summary'])): ?>
+                                                                    <div class="mt-1 small text-muted">
+                                                                        <?php 
+                                                                        $products = explode(', ', $row['products_summary']);
+                                                                        foreach (array_slice($products, 0, 2) as $product) {
+                                                                            echo htmlspecialchars($product) . '<br>';
+                                                                        }
+                                                                        if ($row['item_count'] > 2) {
+                                                                            echo '... +' . ($row['item_count'] - 2) . ' more';
+                                                                        }
+                                                                        ?>
+                                                                    </div>
+                                                                <?php endif; ?>
+                                                            </td>
+                                                            <td class="amount-cell">
+                                                                <strong>Rs. <?php echo number_format($row['final_amount'], 2); ?></strong>
+                                                                <?php if ($row['discount_amount'] > 0): ?>
+                                                                    <div class="text-success small">-Rs. <?php echo number_format($row['discount_amount'], 2); ?></div>
+                                                                <?php endif; ?>
+                                                            </td>
+                                                            <td>
+                                                                <span class="badge <?php echo $orderStatusClass; ?> status-badge">
+                                                                    <?php echo $orderStatusText; ?>
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                <span class="badge <?php echo $paymentStatusClass; ?>">
+                                                                    <?php echo $paymentStatusText; ?>
+                                                                </span>
+                                                            </td>
+                                                            <td><?php echo ucfirst(htmlspecialchars($row['payment_method'])); ?></td>
+                                                            <td class="text-center"><?php echo $orderDate; ?></td>
+                                                            <td class="text-center">
+                                                                <div class="d-flex justify-content-center gap-2">
+                                                                    <a href="order_details.php?id=<?php echo $row['order_id']; ?>"
+                                                                        class="btn btn-sm btn-outline-primary rounded-circle p-2"
+                                                                        data-bs-toggle="tooltip" title="View Details">
+                                                                        <i class="fas fa-eye fs-6"></i>
+                                                                    </a>
+                                                                    <form method="POST" action="" class="d-inline">
+                                                                        <input type="hidden" name="update_order_id" value="<?php echo $row['order_id']; ?>">
+                                                                        <select name="update_status" 
+                                                                                class="form-select form-select-sm" 
+                                                                                onchange="this.form.submit()"
+                                                                                data-bs-toggle="tooltip" title="Change Status">
+                                                                            <option value="confirmed" <?php echo $row['order_status'] == 'confirmed' ? 'selected' : ''; ?>>Confirmed</option>
+                                                                            <option value="processing" <?php echo $row['order_status'] == 'processing' ? 'selected' : ''; ?>>Processing</option>
+                                                                            <option value="shipped" <?php echo $row['order_status'] == 'shipped' ? 'selected' : ''; ?>>Shipped</option>
+                                                                            <option value="delivered" <?php echo $row['order_status'] == 'delivered' ? 'selected' : ''; ?>>Delivered</option>
+                                                                            <option value="cancelled" <?php echo $row['order_status'] == 'cancelled' ? 'selected' : ''; ?>>Cancelled</option>
+                                                                            <option value="refunded" <?php echo $row['order_status'] == 'refunded' ? 'selected' : ''; ?>>Refunded</option>
+                                                                        </select>
+                                                                    </form>
+                                                                    <a href="delete_order.php?id=<?php echo $row['order_id']; ?>"
+                                                                        onclick='return confirm("Are you sure you want to delete this order?")'
+                                                                        class="btn btn-sm btn-outline-danger rounded-circle p-2"
+                                                                        data-bs-toggle="tooltip" title="Delete">
+                                                                        <i class="fas fa-trash fs-6"></i>
+                                                                    </a>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    <?php
+                                                    }
+                                                } else {
+                                                    ?>
+                                                    <tr>
+                                                        <td colspan="12" class="text-center py-4">
+                                                            <div class="empty-state">
+                                                                <i class="fas fa-shopping-cart text-muted"></i>
+                                                                <h4 class="mt-3">No Orders Found</h4>
+                                                                <p class="text-muted mb-4">No orders match your search criteria.</p>
+                                                                <a href="?status=" class="btn btn-primary">
+                                                                    <i class="fas fa-redo mr-1"></i> Reset Filters
+                                                                </a>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                <?php } ?>
+                                            </tbody>
+                                        </table>
+
+                                        <!-- Pagination -->
+                                        <?php if ($total_pages > 1): ?>
+                                            <div class="row mt-4">
+                                                <div class="col-md-6">
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="mr-3">
+                                                            <select class="form-control form-control-sm" style="width: 80px;" onchange="window.location.href='?limit='+this.value">
+                                                                <option value="10" <?php echo $limit == 10 ? 'selected' : ''; ?>>10</option>
+                                                                <option value="25" <?php echo $limit == 25 ? 'selected' : ''; ?>>25</option>
+                                                                <option value="50" <?php echo $limit == 50 ? 'selected' : ''; ?>>50</option>
+                                                                <option value="100" <?php echo $limit == 100 ? 'selected' : ''; ?>>100</option>
+                                                            </select>
+                                                        </div>
+                                                        <div>
+                                                            <small class="text-muted">
+                                                                Showing <?php echo min($limit, $total_rows - $offset); ?> of <?php echo $total_rows; ?> orders
+                                                            </small>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <nav aria-label="Page navigation" class="float-right">
+                                                        <ul class="pagination pagination-sm mb-0">
+                                                            <?php if ($page > 1): ?>
+                                                                <li class="page-item">
+                                                                    <a class="page-link" href="?page=<?php echo $page - 1; ?>" aria-label="Previous">
+                                                                        <span aria-hidden="true">&laquo;</span>
+                                                                    </a>
+                                                                </li>
+                                                            <?php endif; ?>
+
+                                                            <?php
+                                                            $start = max(1, $page - 2);
+                                                            $end = min($total_pages, $page + 2);
+
+                                                            for ($i = $start; $i <= $end; $i++):
+                                                            ?>
+                                                                <li class="page-item <?php echo $i == $page ? 'active' : ''; ?>">
+                                                                    <a class="page-link" href="?page=<?php echo $i; ?>"><?php echo $i; ?></a>
+                                                                </li>
+                                                            <?php endfor; ?>
+
+                                                            <?php if ($page < $total_pages): ?>
+                                                                <li class="page-item">
+                                                                    <a class="page-link" href="?page=<?php echo $page + 1; ?>" aria-label="Next">
+                                                                        <span aria-hidden="true">&raquo;</span>
+                                                                    </a>
+                                                                </li>
+                                                            <?php endif; ?>
+                                                        </ul>
+                                                    </nav>
+                                                </div>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -787,53 +742,104 @@ $result = $stmt->get_result();
 
         <?php include "includes/footer.php"; ?>
     </section>
-    
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
     <script>
         // Initialize tooltips
-        $(document).ready(function () {
+        $(function() {
             $('[data-bs-toggle="tooltip"]').tooltip();
-            
-            // Date picker
-            flatpickr("input[type=date]", {
-                dateFormat: "Y-m-d",
-                allowInput: true
-            });
-            
-            // Select all checkbox
-            $('#select-all').change(function() {
-                $('.order-checkbox').prop('checked', $(this).prop('checked'));
-            });
-            
-            // Bulk action form validation
-            $('#bulk-action-form').submit(function(e) {
-                const selectedCount = $('.order-checkbox:checked').length;
-                const action = $('select[name="bulk_status"]').val();
-                
-                if (selectedCount === 0) {
-                    alert('Please select at least one order to perform bulk action.');
-                    e.preventDefault();
-                    return false;
-                }
-                
-                if (!action) {
-                    alert('Please select a bulk action to perform.');
-                    e.preventDefault();
-                    return false;
-                }
-                
-                return true;
-            });
-            
-            // Real-time search (optional)
-            $('.search-box input').on('keyup', function() {
-                const searchTerm = $(this).val().toLowerCase();
-                $('tbody tr').each(function() {
-                    const rowText = $(this).text().toLowerCase();
-                    $(this).toggle(rowText.indexOf(searchTerm) > -1);
-                });
+        });
+
+        // Select All checkboxes
+        document.getElementById('selectAll').addEventListener('change', function() {
+            const checkboxes = document.querySelectorAll('.order-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
             });
         });
+
+        // Search functionality
+        document.getElementById('searchInput').addEventListener('keyup', function() {
+            const searchTerm = this.value.toLowerCase();
+            const rows = document.querySelectorAll('tbody tr');
+
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchTerm) ? '' : 'none';
+            });
+        });
+
+        // Confirm bulk action
+        function confirmBulkAction() {
+            const selected = document.querySelectorAll('.order-checkbox:checked');
+            const action = document.querySelector('select[name="bulk_action"]').value;
+
+            if (selected.length === 0) {
+                alert('Please select at least one order.');
+                return false;
+            }
+
+            if (!action) {
+                alert('Please select a bulk action.');
+                return false;
+            }
+
+            let message = '';
+            switch (action) {
+                case 'confirmed':
+                    message = 'Mark ' + selected.length + ' selected orders as confirmed?';
+                    break;
+                case 'processing':
+                    message = 'Mark ' + selected.length + ' selected orders as processing?';
+                    break;
+                case 'shipped':
+                    message = 'Mark ' + selected.length + ' selected orders as shipped?';
+                    break;
+                case 'delivered':
+                    message = 'Mark ' + selected.length + ' selected orders as delivered?';
+                    break;
+                case 'cancelled':
+                    message = 'Mark ' + selected.length + ' selected orders as cancelled?';
+                    break;
+                case 'refunded':
+                    message = 'Mark ' + selected.length + ' selected orders as refunded?';
+                    break;
+                case 'delete':
+                    message = 'Delete ' + selected.length + ' selected orders? This action cannot be undone.';
+                    break;
+            }
+
+            return confirm(message);
+        }
+
+        // Update checkboxes when any checkbox changes
+        document.addEventListener('change', function(e) {
+            if (e.target.classList.contains('order-checkbox')) {
+                const allChecked = Array.from(document.querySelectorAll('.order-checkbox')).every(cb => cb.checked);
+                const someChecked = Array.from(document.querySelectorAll('.order-checkbox')).some(cb => cb.checked);
+
+                const selectAll = document.getElementById('selectAll');
+                if (allChecked) {
+                    selectAll.checked = true;
+                    selectAll.indeterminate = false;
+                } else if (someChecked) {
+                    selectAll.checked = false;
+                    selectAll.indeterminate = true;
+                } else {
+                    selectAll.checked = false;
+                    selectAll.indeterminate = false;
+                }
+            }
+        });
+
+        // Auto-hide alerts after 5 seconds
+        setTimeout(() => {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                const bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            });
+        }, 5000);
     </script>
 </body>
+
 </html>

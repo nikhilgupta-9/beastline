@@ -14,7 +14,7 @@ class OrderService {
      * Generate unique order number
      */
     public function generateOrderNumber() {
-        return 'ORD' . date('Ymd') . strtoupper(uniqid());
+        return 'ORD' . strtoupper(uniqid());
     }
     
     /**
@@ -236,7 +236,7 @@ class OrderService {
      * Create iThink Logistics shipment
      */
     public function createShipment($orderId) {
-        require_once __DIR__ . '/../config/ithink-api.php';
+        include_once __DIR__ . '/../config/ithink-api.php';
         
         // Get order details
         $sql = "SELECT o.*, u.mobile, u.email, u.first_name, u.last_name 
@@ -255,9 +255,9 @@ class OrderService {
         $address = json_decode($order['shipping_address'], true);
         
         $shipmentData = [
-            'access_token' => ACCESS_TOKEN,
-            'secret_key' => SECRET_KEY,
-            'pickup_address_id' => PICKUP_ADDRESS_ID,
+            'access_token' => iThinkConfig::ACCESS_TOKEN,
+            'secret_key' => iThinkConfig::SECRET_KEY,
+            'pickup_address_id' => iThinkConfig::PICKUP_ADDRESS_ID,
             'consignee_name' => $address['name'],
             'consignee_address' => $address['address'] . ' ' . $address['address2'],
             'consignee_city' => $address['city'],
@@ -279,7 +279,7 @@ class OrderService {
         ];
         
         // Call iThink API
-        $ch = curl_init(API_URL . 'order/create.json');
+        $ch = curl_init(iThinkConfig::API_URL . 'order/create.json');
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($shipmentData));
@@ -331,89 +331,7 @@ class OrderService {
         return $stmt->get_result()->fetch_assoc();
     }
     
-    public function getOrderProgress($orderId) {
-        $order = $this->getOrderById($orderId);
-        if (!$order) return null;
-        
-        // Define all possible statuses in order
-        $allStatuses = [
-            'ordered' => ['title' => 'Ordered', 'icon' => 'fa-shopping-cart'],
-            'confirmed' => ['title' => 'Confirmed', 'icon' => 'fa-check-circle'],
-            'processing' => ['title' => 'Processing', 'icon' => 'fa-cogs'],
-            'shipped' => ['title' => 'Shipped', 'icon' => 'fa-shipping-fast'],
-            'out_for_delivery' => ['title' => 'Out for Delivery', 'icon' => 'fa-truck'],
-            'delivered' => ['title' => 'Delivered', 'icon' => 'fa-home'],
-            'cancelled' => ['title' => 'Cancelled', 'icon' => 'fa-times-circle']
-        ];
-        
-        // Get current order status
-        $currentStatus = $order['order_status'];
-        
-        // Get shipment tracking data if exists
-        $shipmentStatus = null;
-        $trackingData = $this->getLatestTrackingData($orderId);
-        
-        if ($trackingData && isset($trackingData['status'])) {
-            $shipmentStatus = strtolower($trackingData['status']);
-        }
-        
-        // Determine progress statuses based on order and shipment
-        $progress = [];
-        $currentStep = 0;
-        $stepCount = 0;
-        
-        foreach ($allStatuses as $status => $details) {
-            $stepCount++;
-            
-            $isActive = false;
-            $isCompleted = false;
-            
-            // Check if this step is completed or active
-            if ($status == $currentStatus) {
-                $isActive = true;
-                $currentStep = $stepCount;
-            } elseif ($this->isStatusCompleted($status, $currentStatus)) {
-                $isCompleted = true;
-                $currentStep = $stepCount + 1;
-            }
-            
-            // Special handling for shipment statuses
-            if ($status == 'shipped' && $shipmentStatus && $shipmentStatus == 'out_for_delivery') {
-                $isCompleted = true;
-            }
-            if ($status == 'out_for_delivery' && $shipmentStatus && $shipmentStatus == 'delivered') {
-                $isCompleted = true;
-            }
-            
-            // Get status date/time
-            $statusDate = $this->getStatusDate($orderId, $status);
-            
-            $progress[] = [
-                'status' => $status,
-                'title' => $details['title'],
-                'icon' => $details['icon'],
-                'is_active' => $isActive,
-                'is_completed' => $isCompleted,
-                'date' => $statusDate,
-                'description' => $this->getStatusDescription($status, $order)
-            ];
-            
-            // If current status is cancelled, break
-            if ($status == 'cancelled' && $currentStatus == 'cancelled') {
-                break;
-            }
-        }
-        
-        return [
-            'progress' => $progress,
-            'current_step' => $currentStep,
-            'total_steps' => count($progress),
-            'percentage' => $this->calculateProgressPercentage($currentStep, count($progress)),
-            'current_status' => $currentStatus,
-            'shipment_status' => $shipmentStatus,
-            'tracking_info' => $trackingData
-        ];
-    }
+   
     
     /**
      * Get latest tracking data from iThink or database
@@ -458,12 +376,12 @@ class OrderService {
         
         // Call iThink API
         $data = [
-            'access_token' => ITHINK_ACCESS_TOKEN,
-            'secret_key' => ITHINK_SECRET_KEY,
+            'access_token' => iThinkConfig::ACCESS_TOKEN,
+            'secret_key' => iThinkConfig::SECRET_KEY,
             'tracking_id' => $order['tracking_number']
         ];
         
-        $ch = curl_init(ITHINK_API_URL . 'order/track.json');
+        $ch = curl_init(iThinkConfig::API_URL . 'order/track.json');
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
@@ -555,92 +473,8 @@ class OrderService {
         $stmt->execute();
     }
     
-    /**
-     * Check if status is completed
-     */
-    private function isStatusCompleted($status, $currentStatus) {
-        $statusOrder = [
-            'ordered' => 1,
-            'confirmed' => 2,
-            'processing' => 3,
-            'shipped' => 4,
-            'out_for_delivery' => 5,
-            'delivered' => 6,
-            'cancelled' => 7
-        ];
-        
-        $currentOrder = $statusOrder[$currentStatus] ?? 0;
-        $checkOrder = $statusOrder[$status] ?? 0;
-        
-        return $checkOrder < $currentOrder;
-    }
-    
-    /**
-     * Get date for specific status
-     */
-    private function getStatusDate($orderId, $status) {
-        // Check shipment_history first
-        if (in_array($status, ['shipped', 'out_for_delivery', 'delivered'])) {
-            $sql = "SELECT MIN(date_time) as date FROM shipment_history 
-                    WHERE order_id = ? AND status = ?";
-            $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("is", $orderId, $status);
-            $stmt->execute();
-            $result = $stmt->get_result()->fetch_assoc();
-            
-            if ($result && $result['date']) {
-                return $result['date'];
-            }
-        }
-        
-        // Check order updated_at for other statuses
-        $sql = "SELECT updated_at FROM orders 
-                WHERE order_id = ? AND order_status = ?";
-        $stmt = $this->conn->prepare($sql);
-        $stmt->bind_param("is", $orderId, $status);
-        $stmt->execute();
-        $result = $stmt->get_result()->fetch_assoc();
-        
-        return $result['updated_at'] ?? null;
-    }
-    
-    /**
-     * Get status description
-     */
-    private function getStatusDescription($status, $order) {
-        $descriptions = [
-            'ordered' => 'Your order has been placed successfully.',
-            'confirmed' => 'We have received your order.',
-            'processing' => 'Your order is being processed.',
-            'shipped' => 'Your order has been shipped.',
-            'out_for_delivery' => 'Your order is out for delivery.',
-            'delivered' => 'Your order has been delivered.',
-            'cancelled' => 'Your order has been cancelled.'
-        ];
-        
-        $description = $descriptions[$status] ?? '';
-        
-        // Add tracking info for shipped status
-        if ($status == 'shipped' && !empty($order['tracking_number'])) {
-            $description .= " Tracking #: " . $order['tracking_number'];
-        }
-        
-        // Add courier info
-        if ($status == 'shipped' && !empty($order['courier_name'])) {
-            $description .= " via " . $order['courier_name'];
-        }
-        
-        return $description;
-    }
-    
-    /**
-     * Calculate progress percentage
-     */
-    private function calculateProgressPercentage($currentStep, $totalSteps) {
-        if ($totalSteps == 0) return 0;
-        return min(100, round(($currentStep / $totalSteps) * 100));
-    }
-    
+   
+
     /**
      * Get shipment history timeline
      */
@@ -663,5 +497,8 @@ class OrderService {
         if (isset($_SESSION['promotion_code'])) unset($_SESSION['promotion_code']);
         if (isset($_SESSION['buy_now'])) unset($_SESSION['buy_now']);
     }
+
+
+
 }
 ?>

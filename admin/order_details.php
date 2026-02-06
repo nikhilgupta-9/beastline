@@ -157,9 +157,9 @@ if ($order_id === null) {
             letter-spacing: 0.5px;
         }
 
-        .badge-pending {
+        .badge-confirmed {
             background-color: rgba(246, 194, 62, 0.2);
-            color: var(--warning-color);
+            color: #fdb600;
         }
 
         .badge-processing {
@@ -187,7 +187,7 @@ if ($order_id === null) {
             color: #ffc107;
         }
 
-        .badge-payment-pending {
+        .badge-payment-confirmed {
             background-color: rgba(220, 53, 69, 0.2);
             color: #dc3545;
         }
@@ -537,7 +537,7 @@ if ($order_id === null) {
                             <div class="white_card_body">
                                 <!-- Order Status Alert -->
                                 <?php
-                                $orderStatusClass = 'badge-pending';
+                                $orderStatusClass = 'badge-confirmed';
                                 switch (strtolower($order['order_status'])) {
                                     case 'processing':
                                         $orderStatusClass = 'badge-processing';
@@ -556,7 +556,7 @@ if ($order_id === null) {
                                         break;
                                 }
 
-                                $paymentStatusClass = 'badge-payment-pending';
+                                $paymentStatusClass = 'badge-payment-confirmed';
                                 if (
                                     strtolower($order['payment_status']) === 'completed' ||
                                     strtolower($order['payment_status']) === 'paid'
