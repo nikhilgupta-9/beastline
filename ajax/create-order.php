@@ -86,7 +86,7 @@ try {
     }
     
     // Calculate totals
-    $shipping_fee = ($subtotal >= 1000) ? 0 : 0.00;
+    $shipping_fee = ($subtotal >= 1000) ? 0 : 1.00;
     $discount = 0;
     
     if (isset($_SESSION['promotion_code'])) {

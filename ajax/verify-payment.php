@@ -1,10 +1,10 @@
 <?php
-// verify-payment.php - UPDATED VERSION WITH ITHINK LOGISTICS
+// verify-payment.php - UPDATED WITH PROPER ITHINK SYNC API
 session_start();
 require_once __DIR__ . '/../config/connect.php';
 require_once __DIR__ . '/../models/OrderService.php';
 require_once __DIR__ . '/../admin/models/PaymentSmtpSetting.php';
-require_once __DIR__ . '/../api/LogisticsApi.php'; // ADD THIS
+require_once __DIR__ . '/../api/LogisticsApi.php'; // Updated API class
 
 header('Content-Type: application/json');
 
@@ -20,18 +20,20 @@ try {
     $razorpay_signature = $_POST['razorpay_signature'] ?? '';
     $is_cod = isset($_POST['is_cod']) && $_POST['is_cod'] == 'true' ? true : false;
 
-    // Verify payment signature
-    $paymentSetting = new PaymentSmtpSetting($conn);
-    $razorpay_secret = $paymentSetting->getSetting('razorpay', 'api_secret');
+    // Verify payment signature (only for non-COD)
+    if (!$is_cod) {
+        $paymentSetting = new PaymentSmtpSetting($conn);
+        $razorpay_secret = $paymentSetting->getSetting('razorpay', 'api_secret');
 
-    if (empty($razorpay_secret)) {
-        throw new Exception('Razorpay secret key not configured');
-    }
+        if (empty($razorpay_secret)) {
+            throw new Exception('Razorpay secret key not configured');
+        }
 
-    $generated_signature = hash_hmac('sha256', $razorpay_order_id . '|' . $razorpay_payment_id, $razorpay_secret);
+        $generated_signature = hash_hmac('sha256', $razorpay_order_id . '|' . $razorpay_payment_id, $razorpay_secret);
 
-    if ($generated_signature !== $razorpay_signature) {
-        throw new Exception('Payment verification failed - Invalid signature');
+        if ($generated_signature !== $razorpay_signature) {
+            throw new Exception('Payment verification failed - Invalid signature');
+        }
     }
 
     // Check if pending order exists in session
@@ -51,7 +53,7 @@ try {
         $subtotal += $item['total_price'];
     }
 
-    $shipping_fee = ($subtotal >= 1000) ? 0 : 0.00;
+    $shipping_fee = ($subtotal >= 1000) ? 0 : 1.00;
     $discount = $orderData['discount'] ?? 0;
     $total = $subtotal - $discount + $shipping_fee;
 
@@ -60,16 +62,17 @@ try {
         throw new Exception('Order total mismatch. Please try again.');
     }
 
-    // Create order in database (ONLY AFTER SUCCESSFUL PAYMENT)
+    // Create order in database
     $orderService = new OrderService($conn, $site);
 
     $paymentMethod = $is_cod ? 'cod' : 'razorpay';
+    $razorpayOrderId = !$is_cod ? $razorpay_order_id : null;
 
     $orderResult = $orderService->createOrder(
         $orderData,
         $userId,
         $paymentMethod,
-        $razorpay_order_id
+        $razorpayOrderId
     );
 
     if (!$orderResult) {
@@ -85,105 +88,178 @@ try {
     }
 
     // Update payment status
-    $paymentStatus = '';
     if ($is_cod) {
         $orderService->processCODAdvance($orderId);
+        $conn->query("UPDATE orders SET order_status = 'confirmed' WHERE order_id = {$orderId}");
         $paymentStatus = 'cod_advance_paid';
     } else {
         $orderService->completePayment($orderId, $razorpay_payment_id, $razorpay_signature);
+        $conn->query("UPDATE orders SET order_status = 'confirmed' WHERE order_id = {$orderId}");
         $paymentStatus = 'paid';
     }
 
-    if ($is_cod) {
-        $orderService->processCODAdvance($orderId);
-        $conn->query("UPDATE orders SET order_status = 'confirmed' WHERE order_id = {$orderId}");
-    } else {
-        $orderService->completePayment($orderId, $razorpay_payment_id, $razorpay_signature);
-        $conn->query("UPDATE orders SET order_status = 'confirmed' WHERE order_id = {$orderId}");
+    $normalizedItems = [];
+
+    foreach ($cartItems as $item) {
+        $normalizedItems[] = [
+            'product_name' => $item['product_name'] ?? 'Product',
+            'sku' => $item['sku'] ?? 'SKU-' . ($item['product_id'] ?? rand(100, 999)),
+            'quantity' => (string)$item['quantity'],
+            'price' => (string)$item['unit_price'],
+            'tax_rate' => $item['tax_rate'] ?? '0',
+            'hsn_code' => $item['hsn_code'] ?? '',
+            'discount' => '0'
+        ];
     }
 
-    // --- CRITICAL: SYNC TO ITHINK LOGISTICS ---
+    // --- SYNC TO ITHINK LOGISTICS USING SYNC API ---
     $shouldSyncToLogistics = true;
 
     // Conditions when NOT to sync:
-    // 1. Order total is 0 (free orders)
-    // 2. Test/demo orders
     if ($total <= 0) {
         $shouldSyncToLogistics = false;
         error_log("Order #{$orderNumber}: Skipping logistics sync - order total is 0");
     }
 
     if ($shouldSyncToLogistics) {
-
         try {
-            require_once __DIR__ . '/../api/LogisticsApi.php';
             $logisticsApi = new LogisticsApi();
 
-            // Prepare order data
-            $orderData = [
-                'order_number' => $orderResult['order_number'],
+            // Get shipping address (use shipping if available, otherwise billing)
+            $shippingAddress = isset($orderData['shipping_address_1']) && !empty($orderData['shipping_address_1'])
+                ? $orderData['shipping_address_1']
+                : $orderData['billing_address_1'];
+
+            $shippingCity = isset($orderData['shipping_city']) && !empty($orderData['shipping_city'])
+                ? $orderData['shipping_city']
+                : $orderData['billing_city'];
+
+            $shippingState = isset($orderData['shipping_state']) && !empty($orderData['shipping_state'])
+                ? $orderData['shipping_state']
+                : $orderData['billing_state'];
+
+            $shippingPostcode = isset($orderData['shipping_postcode']) && !empty($orderData['shipping_postcode'])
+                ? $orderData['shipping_postcode']
+                : $orderData['billing_postcode'];
+
+            // Calculate order weight based on cart items
+            $orderWeight = calculateOrderWeight($cartItems);
+
+            // Prepare order data for iThink
+            $logisticsData = [
+                'order_number' => $orderNumber,
                 'total_amount' => number_format($total, 2, '.', ''),
-                'consignee_name' => $pendingOrder['user_data']['first_name'] . ' ' . $pendingOrder['user_data']['last_name'],
-                'consignee_address' => $pendingOrder['order_data']['billing_address_1'],
-                'consignee_city' => $pendingOrder['order_data']['billing_city'],
-                'consignee_state' => $pendingOrder['order_data']['billing_state'],
-                'consignee_pincode' => $pendingOrder['order_data']['billing_postcode'],
-                'consignee_country' => $pendingOrder['order_data']['billing_country'] ?? 'India',
-                'consignee_phone' => $pendingOrder['user_data']['phone'],
-                'consignee_email' => $pendingOrder['user_data']['email'],
+                'consignee_name' => trim($userData['first_name'] . ' ' . $userData['last_name']),
+                'consignee_address' => $shippingAddress,
+                'consignee_city' => $shippingCity,
+                'consignee_state' => $shippingState,
+                'consignee_pincode' => $shippingPostcode,
+                'consignee_country' => $orderData['billing_country'] ?? 'India',
+                'consignee_phone' => $userData['phone'] ?? '',
+                'consignee_email' => $userData['email'] ?? '',
                 'payment_type' => $is_cod ? 'cod' : 'prepaid',
-                'cod_amount' => $is_cod ? $total : 0,
-                'product_name' => 'Order #' . $orderResult['order_number'],
-                'quantity' => count($pendingOrder['cart_items']),
-                'weight' => max(0.5, count($pendingOrder['cart_items']) * 0.3),
-                'logistics' => 'delhivery'
+                'cod_amount' => $is_cod ? number_format($total, 2, '.', '') : '0',
+                'pickup_location' => 'Beastline Delhi',
+                'cart_items' => $normalizedItems, // Pass cart items for product details
+                'weight' => $orderWeight,
+                'length' => 15,
+                'width' => 10,
+                'height' => 5
             ];
 
-            // Sync to iThink
-            $logisticsResult = $logisticsApi->createShipment($orderData);
+            // Sync to iThink using sync API
+            $logisticsResult = $logisticsApi->createShipment($logisticsData);
 
-            if (isset($logisticsResult['status']) && $logisticsResult['status'] == 'success') {
-                // Update order with tracking info
-                $trackingData = null;
-                if (isset($logisticsResult['data']) && is_array($logisticsResult['data'])) {
-                    $firstKey = array_key_first($logisticsResult['data']);
-                    $trackingData = $logisticsResult['data'][$firstKey] ?? null;
+            // Check if sync was successful
+            if (
+                isset($logisticsResult['data']) &&
+                is_array($logisticsResult['data'])
+            ) {
+                $firstKey = array_key_first($logisticsResult['data']);
+                $shipmentResult = $logisticsResult['data'][$firstKey];
+
+                if (
+                    isset($shipmentResult['status']) &&
+                    $shipmentResult['status'] === 'success'
+                ) {
+
+                    // Get tracking data from response
+                    $trackingData = null;
+                    $awbNumber = '';
+                    $courierName = 'Delhivery';
+
+                    if (isset($logisticsResult['data']) && is_array($logisticsResult['data'])) {
+
+                        $firstKey = array_key_first($logisticsResult['data']);
+                        $shipmentData = $logisticsResult['data'][$firstKey];
+
+                        // STEP 1 — GET REFNUM
+                        $refnum = $shipmentResult['refnum'] ?? '';
+
+                        if (empty($refnum)) {
+                            throw new Exception('iThink refnum missing');
+                        }
+
+                        if (!empty($refnum)) {
+
+                            // STEP 2 — CALL AWB API
+                            $awbResponse = $logisticsApi->assignAwb($refnum);
+
+                            if (
+                                isset($awbResponse['status']) &&
+                                $awbResponse['status'] === 'success'
+                            ) {
+                                $awbKey = array_key_first($awbResponse['data']);
+                                $awbData = $awbResponse['data'][$awbKey];
+
+                                $awbNumber = $awbData['awb_number'] ?? '';
+                                $courierName = $awbData['logistic_name'] ?? 'iThink';
+
+                                if (!empty($awbNumber)) {
+                                    $conn->query("
+                                        UPDATE orders SET
+                                        order_status = 'processing',
+                                        logistics_sync_status = 'synced',
+                                        logistics_refnum = '" . mysqli_real_escape_string($conn, $refnum) . "',
+                                        awb_number = '" . mysqli_real_escape_string($conn, $awbNumber) . "',
+                                        tracking_number = '" . mysqli_real_escape_string($conn, $awbNumber) . "',
+                                        courier_name = '" . mysqli_real_escape_string($conn, $courierName) . "'
+                                        WHERE order_id = $orderId
+                                    ");
+                                }
+                            }
+                        }
+                    }
                 }
-
-                $updateSql = "UPDATE orders SET 
-                     tracking_number = ?,
-                     awb_number = ?,
-                     courier_name = ?,
-                     shipment_data = ?,
-                     order_status = 'ready_to_dispatch'
-                     WHERE order_id = ?";
-
-                $stmt = $conn->prepare($updateSql);
-                $trackingNumber = $trackingData['waybill'] ?? '';
-                $awbNumber = $trackingData['waybill'] ?? '';
-                $courierName = $trackingData['logistic_name'] ?? 'Delhivery';
-                $shipmentJson = json_encode($logisticsResult);
-
-                $stmt->bind_param(
-                    "ssssi",
-                    $trackingNumber,
-                    $awbNumber,
-                    $courierName,
-                    $shipmentJson,
-                    $orderId
-                );
-                $stmt->execute();
-
-                $debug_log[] = "✅ Order synced to iThink. Tracking: $trackingNumber";
             } else {
-                $debug_log[] = "⚠️ iThink sync failed: " . ($logisticsResult['message'] ?? 'Unknown error');
+
+                $errorMsg = $logisticsResult['html_message']
+                    ?? ($logisticsResult['message'] ?? 'iThink sync failed');
+
+                error_log("⚠️ iThink sync failed for order #{$orderNumber}: " . $errorMsg);
+
+                            $conn->query("
+                    UPDATE orders SET
+                    order_status = 'confirmed',
+                    logistics_sync_status = 'failed',
+                    logistics_sync_error = '" . mysqli_real_escape_string($conn, $errorMsg) . "'
+                    WHERE order_id = $orderId
+                ");
             }
         } catch (Exception $e) {
-            $debug_log[] = "⚠️ Logistics exception: " . $e->getMessage();
+            // Log exception but don't stop order processing
+            error_log("⚠️ Logistics exception for order #{$orderNumber}: " . $e->getMessage());
+
+            // Update order with exception info
+            $conn->query("UPDATE orders SET 
+            order_status = 'confirmed',
+            logistics_sync_status = 'error',
+            logistics_sync_error = '" . mysqli_real_escape_string($conn, $e->getMessage()) . "'
+            WHERE order_id = $orderId");
         }
     } else {
-        // For non-synced orders, set appropriate status
-        $orderStatus = $total <= 0 ? 'completed' : 'confirmed';
+        // For non-synced orders (free orders)
+        $orderStatus = 'confirmed';
         $conn->query("UPDATE orders SET order_status = '{$orderStatus}' WHERE order_id = {$orderId}");
     }
 
@@ -201,7 +277,7 @@ try {
         'order_id' => $orderId,
         'order_number' => $orderNumber,
         'confirmation_url' => $confirmationUrl,
-        'message' => 'Payment successful! Your order has been placed.'
+        'message' => 'Order placed successfully!'
     ];
 } catch (Exception $e) {
     // Clear sessions on error
@@ -214,65 +290,19 @@ try {
         'success' => false,
         'message' => $e->getMessage()
     ];
-    error_log("Payment Verification Error: " . $e->getMessage() . " - Trace: " . $e->getTraceAsString());
+    error_log("Payment Verification Error: " . $e->getMessage());
 }
 
 echo json_encode($response);
 
 // Helper functions
-function getProductNames($cartItems)
-{
-    $names = [];
-    foreach ($cartItems as $item) {
-        $names[] = $item['product_name'];
-    }
-    return implode(', ', array_slice($names, 0, 3)) . (count($names) > 3 ? ' and more...' : '');
-}
-
 function calculateOrderWeight($cartItems)
 {
-    // Default weight calculation
-    // You should adjust this based on your products
     $totalWeight = 0;
     foreach ($cartItems as $item) {
-        $totalWeight += ($item['quantity'] * 0.5); // Assuming 0.5kg per item
+        // Get weight from product if available, otherwise use default
+        $itemWeight = isset($item['weight']) ? $item['weight'] : 0.3;
+        $totalWeight += ($item['quantity'] * $itemWeight);
     }
     return max(0.5, $totalWeight); // Minimum 0.5kg
-}
-
-function storeShipmentTracking($conn, $orderId, $trackingData)
-{
-    $sql = "INSERT INTO shipment_tracking 
-            (order_id, awb_number, courier_name, tracking_data, status, created_at)
-            VALUES (?, ?, ?, ?, ?, NOW())
-            ON DUPLICATE KEY UPDATE 
-            tracking_data = VALUES(tracking_data),
-            status = VALUES(status),
-            updated_at = NOW()";
-
-    $stmt = $conn->prepare($sql);
-
-    $awbNumber = $trackingData['awb_number'] ?? '';
-    $courierName = $trackingData['courier_name'] ?? '';
-    $status = $trackingData['status'] ?? 'created';
-    $trackingJson = json_encode($trackingData);
-
-    $stmt->bind_param(
-        "issss",
-        $orderId,
-        $awbNumber,
-        $courierName,
-        $trackingJson,
-        $status
-    );
-
-    return $stmt->execute();
-}
-
-function sendOrderConfirmation($orderId, $email, $trackingNumber, $awbNumber, $courierName)
-{
-    // Implement email sending logic here
-    // You can use PHPMailer or your existing email setup
-    // This is a placeholder function
-    return true;
 }
