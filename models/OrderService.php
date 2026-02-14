@@ -19,21 +19,19 @@ class OrderService
     {
         return 'ORD' . strtoupper(uniqid());
     }
-
-    /**
+ /**
      * Create or get user from session data
      */
-    public function getOrCreateUser($userData, $password = null)
-    {
+      public function getOrCreateUser($userData, $password = null) {
         // Check if user exists by email
         $email = $userData['email'];
-
+        
         $sql = "SELECT id FROM users WHERE email = ?";
         $stmt = $this->conn->prepare($sql);
         $stmt->bind_param("s", $email);
         $stmt->execute();
         $result = $stmt->get_result();
-
+        
         if ($result->num_rows > 0) {
             // Existing user
             $user = $result->fetch_assoc();
@@ -43,17 +41,17 @@ class OrderService
             if (!$password) {
                 $password = bin2hex(random_bytes(8)); // Generate random password
             }
-
+            
             $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-
+            
             $sql = "INSERT INTO users (
                 name, first_name, last_name, mobile, email, password,
                 address, city, state, zip_code, user_type, status,
                 email_verified, newsletter_subscribed, created_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'customer', 'active', 1, 0, NOW())";
-
+            
             $fullName = $userData['first_name'] . ' ' . $userData['last_name'];
-
+            
             $stmt = $this->conn->prepare($sql);
             $stmt->bind_param(
                 "ssssssssss",
@@ -68,194 +66,145 @@ class OrderService
                 $userData['state'],
                 $userData['postcode']
             );
-
+            
             if ($stmt->execute()) {
                 return $stmt->insert_id;
             }
         }
-
+        
         return null;
-    }
-
-    /**
-     * Create main order record
-     */
-    public function createOrder($orderData, $userId, $paymentMethod, $razorpayOrderId = null, $isCodAdvance = false)
-    {
-        $orderNumber = $this->generateOrderNumber();
-
-        // Check if tax amount exists in orderData, otherwise set to 0
-        $taxAmount = $orderData['tax'] ?? 0;
-        
-        // Determine payment status
-        $paymentStatus = 'pending';
-        if ($paymentMethod === 'razorpay' && !$isCodAdvance) {
-            $paymentStatus = 'paid'; // Full payment via Razorpay
-        } elseif ($paymentMethod === 'cod' || ($paymentMethod === 'razorpay' && $isCodAdvance)) {
-            $paymentStatus = 'partially_paid'; // COD with advance or partial payment
-        }
-
-        $sql = "INSERT INTO orders (
-            user_id, order_number, total_amount, discount_amount,
-            shipping_amount, tax_amount, final_amount, razorpay_order_id,
-            payment_method, payment_status, order_status, shipping_address,
-            billing_address, notes, advance_paid, cod_remaining, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())";
-
-        $shippingAddress = json_encode([
-            'name' => $orderData['billing_first_name'] . ' ' . $orderData['billing_last_name'],
-            'phone' => $orderData['billing_phone'],
-            'email' => $orderData['billing_email'],
-            'address' => $orderData['billing_address_1'],
-            'address2' => $orderData['billing_address_2'] ?? '',
-            'city' => $orderData['billing_city'],
-            'state' => $orderData['billing_state'],
-            'country' => $orderData['billing_country'],
-            'postcode' => $orderData['billing_postcode']
-        ]);
-
-        $billingAddress = $shippingAddress; // Same as shipping for now
-
-        $stmt = $this->conn->prepare($sql);
-
-        if (!$stmt) {
-            error_log("Prepare failed: " . $this->conn->error);
-            return null;
-        }
-
-        // Store all values in variables for bind_param
-        $subtotal = floatval($orderData['subtotal']);
-        $discount = floatval($orderData['discount']);
-        $shippingFee = floatval($orderData['shipping_fee']);
-        $finalTotal = floatval($orderData['total']);
-        $notes = $orderData['order_note'] ?? '';
-        
-        // COD advance calculation
-        $advancePaid = 0;
-        $codRemaining = $finalTotal;
-        
-        if ($paymentMethod === 'cod' || ($paymentMethod === 'razorpay' && $isCodAdvance)) {
-            $advancePaid = 200.00; // Fixed advance amount
-            $codRemaining = $finalTotal - $advancePaid;
-        }
-
-        // Convert empty string to NULL for Razorpay order ID
-        $razorpayOrderId = empty($razorpayOrderId) ? null : $razorpayOrderId;
-
-        // Fix: Bind parameters - 17 placeholders now
-        $stmt->bind_param(
-            "isddddssssssdds", // 17 parameters
-            $userId,                    // i
-            $orderNumber,               // s
-            $subtotal,                  // d
-            $discount,                  // d
-            $shippingFee,               // d
-            $taxAmount,                 // d
-            $finalTotal,                // d
-            $razorpayOrderId,           // s
-            $paymentMethod,             // s
-            $paymentStatus,             // s (changed from hardcoded)
-            $orderData['order_status'] ?? 'pending', // s
-            $shippingAddress,           // s
-            $billingAddress,            // s
-            $notes,                     // s
-            $advancePaid,              // d
-            $codRemaining              // d
-        );
-
-        if ($stmt->execute()) {
-            $orderId = $stmt->insert_id;
-            
-            // Insert order items with SKU
-            if (!empty($orderData['items'])) {
-                $this->addOrderItems($orderId, $orderData['items']);
-            }
-            
-            error_log("Order created successfully. Order ID: $orderId, Payment Status: $paymentStatus, Advance Paid: $advancePaid");
-            
-            return [
-                'order_id' => $orderId,
-                'order_number' => $orderNumber,
-                'payment_status' => $paymentStatus,
-                'advance_paid' => $advancePaid,
-                'cod_remaining' => $codRemaining
-            ];
-        } else {
-            error_log("SQL Error: " . $stmt->error);
-            return null;
-        }
     }
     
     /**
-     * Add order items with SKU
+     * Create main order record
      */
-    public function addOrderItems($orderId, $items)
-    {
+    public function createOrder($orderData, $userId, $paymentMethod, $razorpayOrderId = null) {
+    $orderNumber = $this->generateOrderNumber();
+    
+    // Check if tax amount exists in orderData, otherwise set to 0
+    $taxAmount = $orderData['tax'] ?? 0;
+    
+    $sql = "INSERT INTO orders (
+        user_id, order_number, total_amount, discount_amount,
+        shipping_amount, tax_amount, final_amount, razorpay_order_id,
+        payment_method, payment_status, order_status, shipping_address,
+        billing_address, notes, created_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending', ?, ?, ?, NOW())";
+    
+    $shippingAddress = json_encode([
+        'name' => $orderData['billing_first_name'] . ' ' . $orderData['billing_last_name'],
+        'phone' => $orderData['billing_phone'],
+        'address' => $orderData['billing_address_1'],
+        'address2' => $orderData['billing_address_2'] ?? '',
+        'city' => $orderData['billing_city'],
+        'state' => $orderData['billing_state'],
+        'country' => $orderData['billing_country'],
+        'postcode' => $orderData['billing_postcode']
+    ]);
+    
+    $billingAddress = $shippingAddress; // Same as shipping for now
+    
+    $stmt = $this->conn->prepare($sql);
+    
+    if (!$stmt) {
+        error_log("Prepare failed: " . $this->conn->error);
+        return null;
+    }
+    
+    // Store all values in variables for bind_param
+    $subtotal = floatval($orderData['subtotal']);
+    $discount = floatval($orderData['discount']);
+    $shippingFee = floatval($orderData['shipping_fee']);
+    $finalTotal = floatval($orderData['total']);
+    $notes = $orderData['order_note'] ?? '';
+    
+    // Convert empty string to NULL for Razorpay order ID
+    $razorpayOrderId = empty($razorpayOrderId) ? null : $razorpayOrderId;
+    
+    // Debug: Check what we're binding
+    error_log("User ID: $userId");
+    error_log("Order Number: $orderNumber");
+    error_log("Subtotal: $subtotal");
+    error_log("Discount: $discount");
+    error_log("Shipping Fee: $shippingFee");
+    error_log("Tax Amount: $taxAmount");
+    error_log("Total: $finalTotal");
+    error_log("Razorpay Order ID: " . ($razorpayOrderId ?: 'NULL'));
+    error_log("Payment Method: $paymentMethod");
+    error_log("Notes: $notes");
+    
+    // Fix: Bind parameters by reference using variables
+    // Count the ? in SQL: we have 13 placeholders
+    // Parameter types: i (user_id), s (order_number), ddddd (amounts), sssss (strings)
+    $stmt->bind_param(
+        "isddddssssss", // 13 placeholders: 1 integer, 1 string, 5 doubles, 6 strings
+        $userId,                    // i
+        $orderNumber,               // s
+        $subtotal,                  // d
+        $discount,                  // d
+        $shippingFee,               // d
+        $taxAmount,                 // d
+        $finalTotal,                // d
+        $razorpayOrderId,           // s (could be null)
+        $paymentMethod,             // s
+        $shippingAddress,           // s
+        $billingAddress,            // s
+        $notes                      // s
+    );
+    
+    if ($stmt->execute()) {
+        $orderId = $stmt->insert_id;
+        error_log("Order created successfully. Order ID: $orderId");
+        return [
+            'order_id' => $orderId,
+            'order_number' => $orderNumber
+        ];
+    } else {
+        error_log("SQL Error: " . $stmt->error);
+        error_log("Full SQL: " . $sql);
+        return null;
+    }
+}
+    
+    /**
+     * Add items to order
+     */
+     public function addOrderItems($orderId, $items) {
         $sql = "INSERT INTO order_items (
-            order_id, product_id, variant_id, product_name, 
-            quantity, unit_price, total_price, size, color, sku
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            order_id, product_id, product_name, quantity,
+            unit_price, total_price, attributes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)";
         
         $stmt = $this->conn->prepare($sql);
         
-        if (!$stmt) {
-            error_log("Prepare failed for order items: " . $this->conn->error);
-            return false;
-        }
-        
         foreach ($items as $item) {
-            // Get SKU from product or variant
-            $sku = $this->getProductSku($item['product_id'], $item['variant_id'] ?? 0);
+            $attributes = json_encode([
+                'color' => $item['color'] ?? '',
+                'size' => $item['size'] ?? '',
+                'sku' => $item['sku'] ?? '',
+                'variant_id' => $item['variant_id'] ?? 0
+            ]);
             
             $stmt->bind_param(
-                "iiisiddsss",
+                "iisidds",
                 $orderId,
                 $item['product_id'],
-                $item['variant_id'] ?? 0,
                 $item['product_name'],
                 $item['quantity'],
                 $item['unit_price'],
                 $item['total_price'],
-                $item['size'] ?? '',
-                $item['color'] ?? '',
-                $sku
+                $attributes
             );
             
             if (!$stmt->execute()) {
-                error_log("Failed to insert order item: " . $stmt->error);
+                error_log("Failed to add order item: " . $stmt->error);
+                return false;
             }
         }
         
         return true;
     }
-    
-    /**
-     * Get product SKU
-     */
-    public function getProductSku($productId, $variantId = 0)
-    {
-        if ($variantId > 0) {
-            $sql = "SELECT sku FROM product_variants WHERE id = ?";
-            $stmt = $this->conn->prepare($sql);
-            $stmt->bind_param("i", $variantId);
-            $stmt->execute();
-            $result = $stmt->get_result();
-            if ($row = $result->fetch_assoc()) {
-                return $row['sku'];
-            }
-        }
-        
-        $sql = "SELECT pro_sku FROM products WHERE pro_id = ?";
-        $stmt = $this->conn->prepare($sql);
-        $stmt->bind_param("i", $productId);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        if ($row = $result->fetch_assoc()) {
-            return $row['pro_sku'];
-        }
-        
-        return '';
-    }
+
     
     /**
      * Update order payment status

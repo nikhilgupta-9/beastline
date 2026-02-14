@@ -367,7 +367,7 @@ $colorMap = [
         height: auto;
     }
 
-    @media (max-width: 756px ) {
+    @media (max-width: 756px) {
         .img-thumbnail {
             width: 40%;
             height: auto;
@@ -632,16 +632,29 @@ $colorMap = [
                                                     break;
                                                 }
                                             }
+
+                                            $size_sku = '';
+                                            foreach ($variants as $variant) {
+                                                if ($variant['size'] === $size) {
+                                                    $size_sku = $variant['sku'];
+                                                    break;
+                                                }
+                                            }
                                         ?>
                                             <button type="button"
                                                 class="size-option-btn <?= !$size_in_stock ? 'out-of-stock' : '' ?>"
                                                 data-size="<?= htmlspecialchars($size) ?>"
+                                                data-sku="<?= htmlspecialchars($size_sku) ?>"
                                                 <?= !$size_in_stock ? 'disabled' : '' ?>>
                                                 <?= htmlspecialchars($size) ?>
+
                                             </button>
+
                                         <?php endforeach; ?>
                                     </div>
                                     <input type="hidden" name="size" id="selected_size" value="">
+                                    <input type="hidden" name="sku" id="selected_sku" value="">
+
                                 </div>
                             <?php endif; ?>
 
@@ -1014,6 +1027,7 @@ $colorMap = [
     <?php endif; ?>
 
     <!--footer area start-->
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
     <?php include_once "includes/footer.php"; ?>
     <!--footer area end-->
 
@@ -1075,7 +1089,8 @@ $colorMap = [
 
                     // Get selected variant details
                     const selectedSize = document.getElementById('selected_size').value;
-                    const selectedColor = document.getElementById('selected_color').value;
+                    const selectedColor = document.getElementById('selected_color').value || '';
+                    const selectedSku = document.getElementById('selected_sku').value;
                     const quantity = document.getElementById('quantity').value;
                     const productId = this.getAttribute('data-product-id');
                     const price = this.getAttribute('data-price');
@@ -1098,6 +1113,7 @@ $colorMap = [
                         action: 'buy_now',
                         product_id: productId,
                         variant_id: variantId,
+                        sku: selectedSku || '<?= $product['sku'] ?>',
                         size: selectedSize,
                         color: selectedColor,
                         quantity: quantity,
@@ -1180,71 +1196,57 @@ $colorMap = [
 
             // Size selection
             $('.size-option-btn:not(.out-of-stock)').click(function() {
-                var size = $(this).data('size');
 
-                // Update selected size
                 $('.size-option-btn').removeClass('selected');
                 $(this).addClass('selected');
-                $('#selected_size').val(size);
 
-                // Update variant details
+                $('#selected_size').val($(this).data('size'));
+                $('#selected_sku').val($(this).data('sku'));
+                $('#selected_variant_id').val($(this).data('variant-id'));
+
                 updateVariantDetails();
             });
 
-            // Function to update variant details
+
             function updateVariantDetails() {
-                var color = $('#selected_color').val();
-                var size = $('#selected_size').val();
 
-                // if (color && size) {
-                if (size) {
-                    // Hide notification
-                    $('#variantNotification').hide();
+    var variantId = $('#selected_variant_id').val();
+    if (!variantId) return;
 
-                    // AJAX call to get variant details
-                    $.ajax({
-                        url: '<?= $site ?>ajax/get-variant-details.php',
-                        method: 'POST',
-                        dataType: 'json', // ✅ REQUIRED
-                        data: {
-                            product_id: <?= $product_id ?>,
-                            color: color,
-                            size: size
-                        },
-                        success: function(response) {
-                            console.log('Variant response:', response); // debug
+    $('#variantNotification').hide();
 
-                            if (response.success && response.variant) {
+    $.ajax({
+        url: '<?= $site ?>ajax/get-variant-details.php',
+        method: 'POST',
+        dataType: 'json',
+        data: { variant_id: variantId },
+        success: function(response) {
 
-                                // ✅ SET VARIANT ID
-                                $('#selected_variant_id').val(response.variant.id);
+            console.log('Variant response:', response);
 
-                                console.log('Variant ID set:', response.variant.id);
+            if (response.success) {
 
-                                // price
-                                if (response.variant.price > 0) {
-                                    $('#variantPrice').html('Price: <strong>₹ ' + response.variant.price + '</strong>');
-                                } else {
-                                    $('#variantPrice').html('');
-                                }
-
-                                // stock
-                                if (response.variant.stock <= 10) {
-                                    $('#variantStock').html('Stock: <span style="color:#ffc107;">Only ' + response.variant.stock + ' left</span>');
-                                } else {
-                                    $('#variantStock').html('Stock: <span style="color:#28a745;">In Stock</span>');
-                                }
-
-                                $('#quantity').attr('max', response.variant.stock);
-                                $('#selectedVariantDetails').show();
-                            } else {
-                                console.log('Variant not found');
-                            }
-                        }
-                    });
-
+                if (response.variant.price > 0) {
+                    $('#variantPrice').html('Price: <strong>₹ ' + response.variant.price + '</strong>');
                 }
+
+                if (response.variant.stock <= 10) {
+                    $('#variantStock').html(
+                        'Stock: <span style="color:#ffc107;">Only ' + response.variant.stock + ' left</span>'
+                    );
+                } else {
+                    $('#variantStock').html(
+                        'Stock: <span style="color:#28a745;">In Stock</span>'
+                    );
+                }
+
+                $('#quantity').attr('max', response.variant.stock);
+                $('#selectedVariantDetails').show();
             }
+        }
+    });
+}
+
 
             // add to cart function 
             $('#productForm').submit(function(e) {

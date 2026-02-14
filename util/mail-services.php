@@ -542,27 +542,35 @@ class EmailService
 
             case 'order_confirmation':
 
-                $order = $data;
+                $order = $data['order_data']; // ✅ VERY IMPORTANT
                 $itemsHtml = '';
 
                 foreach ($order['items'] as $item) {
-                    $img = !empty($item['image'])
-                    ? "https://beastline.in/admin/assets/img/uploads/" . $item['image']
-                    : "https://beastline.in/assets/img/no-image.png";
 
+                    $img = !empty($item['image'])
+                        ? "https://beastline.in/admin/assets/img/uploads/variants/" . $item['image']
+                        : "https://beastline.in/assets/img/product/product2.jpg";
 
                     $itemsHtml .= "
                     <tr>
-                        <td style='padding:15px 0; border-bottom:1px solid #eee;'>
+                        <td style='padding:15px 0; border-bottom:1px solid #eaeaea;'>
                             <table width='100%' cellpadding='0' cellspacing='0'>
                                 <tr>
-                                    <td width='80'>
-                                        <img src='{$img}' width='70' style='border-radius:6px;' />
+                                    <td width='90'>
+                                        <img src='{$img}' width='80' style='border-radius:8px; border:1px solid #eee;' />
                                     </td>
                                     <td style='padding-left:15px;'>
-                                        <div style='font-size:14px; font-weight:600;'>{$item['product_name']} × {$item['quantity']}</div>
-                                        <div style='font-size:12px; color:#777;'>
-                                            {$item['color']} / {$item['size']}
+                                        <div style='font-size:14px; font-weight:600; color:#222;'>
+                                            {$item['product_name']}
+                                        </div>
+                                        <div style='font-size:12px; color:#777; margin-top:4px;'>
+                                            Size: {$item['color']} / {$item['size']}
+                                        </div>
+                                        <div style='font-size:12px; color:#555; margin-top:6px;'>
+                                            Qty: {$item['quantity']}
+                                        </div>
+                                        <div style='font-size:12px; color:#555; margin-top:6px;'>
+                                            SKU: {$item['sku']}
                                         </div>
                                     </td>
                                 </tr>
@@ -572,103 +580,112 @@ class EmailService
                 }
 
                 return "
-                    <!DOCTYPE html>
-                    <html>
-                    <head>
-                    <meta charset='UTF-8'>
-                    <title>Order Update</title>
-                    </head>
+                <!DOCTYPE html>
+                <html>
+                <head>
+                <meta charset='UTF-8'>
+                <title>Order Confirmed</title>
+                </head>
 
-                    <body style='margin:0; padding:0; background:#f5f5f5; font-family:Arial, sans-serif;'>
+                <body style='margin:0; padding:0; background:#f7f8fa; font-family:Arial, Helvetica, sans-serif;'>
 
-                    <table width='100%' cellpadding='0' cellspacing='0'>
-                        <tr>
-                            <td align='center'>
+                <table width='100%' cellpadding='0' cellspacing='0'>
+                <tr>
+                <td align='center'>
 
-                                <table width='600' cellpadding='0' cellspacing='0' style='background:#ffffff; margin:30px 0;'>
+                <!-- Container -->
+                <table width='600' cellpadding='0' cellspacing='0'
+                    style='background:#ffffff; margin:40px 0; border-radius:10px; overflow:hidden;'>
 
-                                    <tr>
-                                        <td style='padding:20px; border-bottom:1px solid #eee;'>
-                                            <table width='100%'>
-                                                <tr>
-                                                    <td>
-                                                        <img src='https://beastline.in/assets/img/logo/beastline-logo.png'
-                                                            height='28'
-                                                            alt='Beastline'>
-                                                    </td>
-                                                    <td align='right' style='font-size:12px; color:#999;'>
-                                                        ORDER {$order['order_number']}
-                                                    </td>
-                                                </tr>
-                                            </table>
-                                        </td>
-                                    </tr>
+                    <!-- Header -->
+                    <tr>
+                        <td style='padding:22px 25px; border-bottom:1px solid #eee;'>
+                            <table width='100%'>
+                                <tr>
+                                    <td>
+                                        <img src='https://beastline.in/assets/img/logo/beastline-logo.png'
+                                            height='40' alt='Beastline'>
+                                    </td>
+                                    <td align='right' style='font-size:12px; color:#888;'>
+                                        <b>Order ID : #{$order['order_number']}</b>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
 
-                                    <tr>
-                                        <td style='padding:25px 20px; border-top:1px solid #eee;'>
-                                            <h3 style='font-size:15px; margin-bottom:6px;'>Shipping address</h3>
-                                            <p style='
-                                            font-size:13px; color:#555; line-height:1.6;'>
-                                                {$order['shipping_address']['name']}<br>
-                                                {$order['shipping_address']['address']}<br>
-                                                {$order['shipping_address']['city']},
-                                                {$order['shipping_address']['state']} - {$order['shipping_address']['postcode']}<br>
-                                                Phone: {$order['shipping_address']['phone']}
-                                            </p>
-                                        </td>
-                                    </tr>
+                    <!-- Confirmation -->
+                    <tr>
+                        <td style='padding:30px 25px 10px;'>
+                            <h2 style='margin:0; font-size:22px; color:#111;'>Order Confirmed 🎉</h2>
+                            <p style='margin-top:8px; font-size:14px; color:#555;'>
+                                Hi {$data['name']}, thank you for shopping with Beastline.
+                                Your order has been successfully placed.
+                            </p>
+                        </td>
+                    </tr>
 
+                    <!-- Address -->
+                    <tr>
+                        <td style='padding:20px 25px; background:#fafafa; border-top:1px solid #eee;'>
+                            <h3 style='margin:0 0 8px; font-size:15px; color:#222;'>Shipping Address</h3>
+                            <p style='margin:0; font-size:13px; color:#555; line-height:1.6;'>
+                                {$order['shipping_address']['name']}<br>
+                                {$order['shipping_address']['address']}<br>
+                                {$order['shipping_address']['city']},
+                                {$order['shipping_address']['state']} - {$order['shipping_address']['postcode']}<br>
+                                Phone: {$order['shipping_address']['phone']}
+                            </p>
+                        </td>
+                    </tr>
 
-                                    <tr>
-                                        <td style='padding:30px 20px 10px;'>
-                                            <h2 style='margin:0; font-size:20px;'>Your order has been confirmed</h2>
-                                            <p style='color:#666; font-size:14px;'>
-                                                Thanks for shopping with Beastline. We’ll notify you once your order ships.
-                                            </p>
-                                        </td>
-                                    </tr>
+                    <!-- Button -->
+                    <tr>
+                        <td style='padding:25px;'>
+                            <a href='https://beastline.in/track-order.php?order_id={$order['order_number']}'
+                            style='display:inline-block; background:#000; color:#fff;
+                                    padding:12px 22px; text-decoration:none;
+                                    font-size:14px; border-radius:6px;'>
+                                Track Your Order
+                            </a>
+                        </td>
+                    </tr>
 
-                                    <tr>
-                                        <td style='padding:10px 20px;'>
-                                            <a href='https://beastline.in/track-order.php?order_id={$order['order_number']}'
-                                            style='display:inline-block; background:#000; color:#fff;
-                                                    padding:12px 20px; text-decoration:none; font-size:14px;
-                                                    border-radius:4px;'>
-                                                View your order
-                                            </a>
-                                        </td>
-                                    </tr>
+                    <!-- Items -->
+                    <tr>
+                        <td style='padding:10px 25px 0;'>
+                            <h3 style='font-size:16px; color:#222;'>Order Items</h3>
+                        </td>
+                    </tr>
 
-                                    <tr>
-                                        <td style='padding:30px 20px 10px;'>
-                                            <h3 style='font-size:16px; margin-bottom:10px;'>Items in this shipment</h3>
-                                        </td>
-                                    </tr>
-
-                                    <tr>
-                                        <td style='padding:0 20px;'>
-                                        <table width='100%' cellpadding='0' cellspacing='0'>
-                                        {$itemsHtml}
-                                        </table>
-                                        </td>
-                                    </tr>
-
-                                    <tr>
-                                        <td style='padding:30px 20px; font-size:12px; color:#777;'>
-                                            Need help? Contact us at
-                                            <a href='mailto:support@beastline.in'>support@beastline.in</a>
-                                        </td>
-                                    </tr>
-
-                                </table>
-
-                                </td>
-                            </tr>
+                    <tr>
+                        <td style='padding:0 25px 20px;'>
+                        <table width='100%' cellpadding='0' cellspacing='0'>
+                        {$itemsHtml}
                         </table>
+                        </td>
+                    </tr>
 
-                        </body>
-                    </html>
-                    ";
+                    <!-- Footer -->
+                    <tr>
+                        <td style='padding:20px 25px; border-top:1px solid #eee;
+                                font-size:12px; color:#777; text-align:center;'>
+                            Need help? Email us at
+                            <a href='mailto:support@beastline.in' style='color:#000;'>support@beastline.in</a><br><br>
+                            © " . date('Y') . " Beastline. All rights reserved.
+                        </td>
+                    </tr>
+
+                </table>
+                <!-- End Container -->
+
+                </td>
+                </tr>
+                </table>
+
+                </body>
+                </html>
+                ";
 
 
                 // Add more basic templates as needed...

@@ -51,6 +51,7 @@ try {
                 'total_price' => $item_total,
                 'color' => $buyNowItem['color'] ?? '',
                 'size' => $buyNowItem['size'] ?? '',
+                'sku' => $buyNowItem['sku'] ?? '',
                 'variant_id' => $buyNowItem['variant_id'] ?? 0
             ];
             $subtotal = $item_total;
@@ -86,7 +87,7 @@ try {
     }
     
     // Calculate totals
-    $shipping_fee = ($subtotal >= 1000) ? 0 : 1.00;
+    $shipping_fee = ($subtotal >= 1000) ? 0 : 0;
     $discount = 0;
     
     if (isset($_SESSION['promotion_code'])) {

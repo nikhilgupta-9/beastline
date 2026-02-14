@@ -11,6 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Get product details
         $product_id = intval($_POST['product_id']);
         $variant_id = intval($_POST['variant_id']);
+        $sku = $_POST['sku']?? '';
         $size = $_POST['size'] ?? '';
         $color = $_POST['color'] ?? '';
         $quantity = intval($_POST['quantity']);
@@ -26,6 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $buyNowItem = [
             'product_id' => $product_id,
             'variant_id' => $variant_id,
+            'sku' => $sku,
             'size' => $size,
             'color' => $color,
             'quantity' => $quantity,

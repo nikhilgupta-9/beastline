@@ -27,6 +27,7 @@ if (!$isBuyNow && (!isset($_SESSION['cart']) || empty($_SESSION['cart']))) {
     exit();
 }
 
+// print_r($_SESSION['buy_now']);
 if ($isBuyNow) {
     // PROCESS BUY NOW SESSION
     $buyNowItem = $_SESSION['buy_now'];
@@ -718,7 +719,7 @@ $contact = contact_us();
                                 <div class="error-message" id="payment_method_error"></div>
 
                                 <!-- Terms and Conditions -->
-                                <div class="form_group mt-4">
+                                <div class="form_group mt-4">   
                                     <label class="checkbox-label">
                                         <input type="checkbox" name="terms" required>
                                         I have read and agree to the website <a href="<?= $site ?>terms" target="_blank" class="text-danger">terms and conditions</a> *

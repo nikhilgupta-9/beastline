@@ -30,21 +30,47 @@ if (!$order) {
     exit('No pending email');
 }
 
-// ✅ Decode billing_address JSON
-$billing = json_decode($order['billing_address'], true);
+$user_id = (int)$order['user_id'];
 
-if (!$billing || empty($billing['email'])) {
-    $conn->query("
-        UPDATE orders 
-        SET email_status='failed' 
-        WHERE order_id={$orderId}
-    ");
-    $conn->commit();
-    exit('Email missing');
+// 1️⃣ Try billing email
+$billing = json_decode($order['billing_address'], true);
+$email   = $billing['email'] ?? '';
+$name    = $billing['name'] ?? 'Customer';
+
+// 2️⃣ Fallback to user table
+if (empty($email) && $user_id > 0) {
+
+    $uStmt = $conn->prepare("
+            SELECT email, name 
+            FROM users 
+            WHERE id = ?
+            LIMIT 1
+        ");
+    $uStmt->bind_param("i", $user_id);
+    $uStmt->execute();
+    $user = $uStmt->get_result()->fetch_assoc();
+
+    if ($user && !empty($user['email'])) {
+        $email = $user['email'];
+        $name  = $user['name'] ?? $name;
+    }
 }
 
-$email = $billing['email'];
-$name  = $billing['name'] ?? 'Customer';
+// 3️⃣ Still no email → fail
+if (empty($email)) {
+
+    $failStmt = $conn->prepare("
+            UPDATE orders 
+            SET email_status = 'failed'
+            WHERE order_id = ?
+        ");
+    $failStmt->bind_param("i", $orderId);
+    $failStmt->execute();
+
+    $conn->commit();
+    exit('Email not found');
+}
+
 
 // Build email data
 $emailData = buildEmailData($orderId, $conn);
@@ -72,15 +98,20 @@ function buildEmailData($orderId, $conn)
     ")->fetch_assoc();
 
     $itemsRes = $conn->query("
-        SELECT 
-            oi.product_name,
-            oi.quantity,
-            oi.attributes,
-            p.pro_img AS product_image
-        FROM order_items oi
-        LEFT JOIN products p ON p.id = oi.product_id
-        WHERE oi.order_id = {$orderId}
-    ");
+    SELECT 
+        oi.product_name,
+        oi.quantity,
+        oi.attributes,
+        pi.image_url AS product_image
+    FROM order_items oi
+    LEFT JOIN products p ON p.id = oi.product_id
+    LEFT JOIN product_images pi ON pi.product_id = p.id
+    WHERE oi.order_id = {$orderId}
+    ORDER BY pi.is_main DESC, pi.display_order ASC
+    LIMIT 1
+");
+
+
 
     $items = [];
 
@@ -92,7 +123,8 @@ function buildEmailData($orderId, $conn)
             'quantity'     => (int)$item['quantity'],
             'size'         => !empty($attr['size']) ? strtoupper($attr['size']) : '-',
             'color'        => !empty($attr['color']) ? ucfirst($attr['color']) : '-',
-            'image'        => $item['product_image']
+            'sku'          => !empty($attr['sku']) ? $attr['sku'] : '-',   // ✅ FIX
+            'image'        => !empty($item['product_image']) ? $item['product_image'] : null
         ];
     }
 

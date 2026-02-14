@@ -2,21 +2,16 @@
 session_start();
 include_once "../config/connect.php";
 
-if (isset($_POST['product_id']) && isset($_POST['color']) && isset($_POST['size'])) {
+if (isset($_POST['variant_id'])) {
 
-    $product_id = intval($_POST['product_id']);
-    $color = mysqli_real_escape_string($conn, $_POST['color']);
-    $size = mysqli_real_escape_string($conn, $_POST['size']);
-
+    $variant_id = intval($_POST['variant_id']);
 
     $sql = "SELECT * FROM product_variants 
-            WHERE product_id = ? 
-            AND color = ? 
-            AND size = ? 
-            AND status = 1 
+            WHERE id = ? AND status = 1 
             LIMIT 1";
+
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("iss", $product_id, $color, $size);
+    $stmt->bind_param("i", $variant_id);
     $stmt->execute();
     $result = $stmt->get_result();
 
@@ -25,7 +20,7 @@ if (isset($_POST['product_id']) && isset($_POST['color']) && isset($_POST['size'
             'success' => true,
             'variant' => [
                 'id' => $row['id'],
-                'price' => $row['price'] ? floatval($row['price']) : 0, 
+                'price' => floatval($row['price']),
                 'stock' => intval($row['quantity']),
                 'sku' => $row['sku']
             ]
