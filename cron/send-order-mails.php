@@ -30,47 +30,21 @@ if (!$order) {
     exit('No pending email');
 }
 
-$user_id = (int)$order['user_id'];
-
-// 1️⃣ Try billing email
+// ✅ Decode billing_address JSON
 $billing = json_decode($order['billing_address'], true);
-$email   = $billing['email'] ?? '';
-$name    = $billing['name'] ?? 'Customer';
 
-// 2️⃣ Fallback to user table
-if (empty($email) && $user_id > 0) {
-
-    $uStmt = $conn->prepare("
-            SELECT email, name 
-            FROM users 
-            WHERE id = ?
-            LIMIT 1
-        ");
-    $uStmt->bind_param("i", $user_id);
-    $uStmt->execute();
-    $user = $uStmt->get_result()->fetch_assoc();
-
-    if ($user && !empty($user['email'])) {
-        $email = $user['email'];
-        $name  = $user['name'] ?? $name;
-    }
-}
-
-// 3️⃣ Still no email → fail
-if (empty($email)) {
-
-    $failStmt = $conn->prepare("
-            UPDATE orders 
-            SET email_status = 'failed'
-            WHERE order_id = ?
-        ");
-    $failStmt->bind_param("i", $orderId);
-    $failStmt->execute();
-
+if (!$billing || empty($billing['email'])) {
+    $conn->query("
+        UPDATE orders 
+        SET email_status='failed' 
+        WHERE order_id={$orderId}
+    ");
     $conn->commit();
-    exit('Email not found');
+    exit('Email missing');
 }
 
+$email = $billing['email'];
+$name  = $billing['name'] ?? 'Customer';
 
 // Build email data
 $emailData = buildEmailData($orderId, $conn);
@@ -98,42 +72,35 @@ function buildEmailData($orderId, $conn)
     ")->fetch_assoc();
 
     $itemsRes = $conn->query("
-    SELECT 
-        oi.product_name,
-        oi.quantity,
-        oi.attributes,
-        pi.image_url AS product_image
-    FROM order_items oi
-    LEFT JOIN products p ON p.id = oi.product_id
-    LEFT JOIN product_images pi ON pi.product_id = p.id
-    WHERE oi.order_id = {$orderId}
-    ORDER BY pi.is_main DESC, pi.display_order ASC
-    LIMIT 1
-");
-
-
+        SELECT * FROM order_items WHERE order_id = {$orderId}
+    ");
 
     $items = [];
-
     while ($item = $itemsRes->fetch_assoc()) {
         $attr = json_decode($item['attributes'], true) ?? [];
 
         $items[] = [
             'product_name' => $item['product_name'],
-            'quantity'     => (int)$item['quantity'],
-            'size'         => !empty($attr['size']) ? strtoupper($attr['size']) : '-',
-            'color'        => !empty($attr['color']) ? ucfirst($attr['color']) : '-',
-            'sku'          => !empty($attr['sku']) ? $attr['sku'] : '-',   // ✅ FIX
-            'image'        => !empty($item['product_image']) ? $item['product_image'] : null
+            'quantity'     => $item['quantity'],
+            'size'         => $attr['size'] ?? '-',
+            'color'        => $attr['color'] ?? '-',
+            'image'        => $item['product_image'] ?? null
         ];
     }
 
+    // Decode shipping address JSON
+    $shipping = json_decode($order['shipping_address'], true);
+
     return [
-        'order_number'     => $order['order_number'],
-        'order_date'       => date('d M Y', strtotime($order['created_at'])),
-        'order_total'      => number_format($order['final_amount'], 2),
-        'tracking_no'      => $order['tracking_number'] ?? null,
-        'items'            => $items,
-        'shipping_address' => json_decode($order['shipping_address'], true)
+        'order_id'      => $order['order_id'],
+        'order_number'  => $order['order_number'],
+        'order_date'    => date('d M Y', strtotime($order['created_at'])),
+        'order_total'   => number_format($order['final_amount'], 2),
+        'payment_method'=> $order['payment_method'],
+        'tracking_no'   => $order['tracking_number'] ?? null,
+        'items'         => $items,
+
+        // 👇 IMPORTANT
+        'shipping_address' => $shipping
     ];
 }

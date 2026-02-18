@@ -1005,30 +1005,3 @@ function getBannersByLocation($conn, $location)
     $stmt->execute();
     return $stmt->get_result();
 }
-
-function getVariantByProductAndSize($conn, $productId, $size, $color = null)
-{
-    $sql = "SELECT id, sku, price 
-            FROM product_variants 
-            WHERE product_id = ? 
-              AND size = ? 
-              AND status = 1";
-
-    if ($color) {
-        $sql .= " AND color = ?";
-    }
-
-    $sql .= " LIMIT 1";
-
-    $stmt = $conn->prepare($sql);
-
-    if ($color) {
-        $stmt->bind_param("iss", $productId, $size, $color);
-    } else {
-        $stmt->bind_param("is", $productId, $size);
-    }
-
-    $stmt->execute();
-    return $stmt->get_result()->fetch_assoc();
-}
-

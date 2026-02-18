@@ -53,7 +53,7 @@ try {
         $subtotal += $item['total_price'];
     }
 
-    $shipping_fee = ($subtotal >= 1000) ? 0 : 0;
+    $shipping_fee = ($subtotal >= 1000) ? 0 : 1.00;
     $discount = $orderData['discount'] ?? 0;
     $total = $subtotal - $discount + $shipping_fee;
 
@@ -98,19 +98,41 @@ try {
         $paymentStatus = 'paid';
     }
 
+
     $normalizedItems = [];
 
+    // foreach ($cartItems as $item) {
+    //     $normalizedItems[] = [
+    //         'product_name' => $item['product_name'] ?? 'Product',
+    //         'sku' => $item['sku'] ?? 'SKU-' . ($item['product_id'] ?? rand(100, 999)),
+    //         'quantity' => (string)$item['quantity'],
+    //         'price' => (string)$item['unit_price'],
+    //         'tax_rate' => $item['tax_rate'] ?? '0',
+    //         'hsn_code' => $item['hsn_code'] ?? '',
+    //         'discount' => '0'
+    //     ];
+    // }
+
+    $sql = "SELECT sku, weight, selling_price FROM products WHERE pro_id = ?";
+    $stmt = $conn->prepare($sql);
+
     foreach ($cartItems as $item) {
+        $stmt->bind_param("i", $item['product_id']);
+        $stmt->execute();
+        $p = $stmt->get_result()->fetch_assoc();
+
         $normalizedItems[] = [
-            'product_name' => $item['product_name'] ?? 'Product',
-            'sku' => $item['sku'] ?? 'SKU-' . ($item['product_id'] ?? rand(100, 999)),
-            'quantity' => (string)$item['quantity'],
-            'price' => (string)$item['unit_price'],
-            'tax_rate' => $item['tax_rate'] ?? '0',
-            'hsn_code' => $item['hsn_code'] ?? '',
-            'discount' => '0'
+            'product_name'     => $item['product_name'],
+            'sku'              => $p['sku'],
+            'quantity'         => (string)$item['quantity'],
+            'price'            => (string)$p['selling_price'],
+            'tax_rate'         => '5',
+            'hsn_code'         => '91308',
+            'discount'         => '0',
+            'weight'           => (float)$p['weight']
         ];
     }
+
 
     // --- SYNC TO ITHINK LOGISTICS USING SYNC API ---
     $shouldSyncToLogistics = true;
@@ -238,7 +260,7 @@ try {
 
                 error_log("⚠️ iThink sync failed for order #{$orderNumber}: " . $errorMsg);
 
-                            $conn->query("
+                $conn->query("
                     UPDATE orders SET
                     order_status = 'confirmed',
                     logistics_sync_status = 'failed',
@@ -299,10 +321,11 @@ echo json_encode($response);
 function calculateOrderWeight($cartItems)
 {
     $totalWeight = 0;
+
     foreach ($cartItems as $item) {
-        // Get weight from product if available, otherwise use default
-        $itemWeight = isset($item['weight']) ? $item['weight'] : 0.3;
-        $totalWeight += ($item['quantity'] * $itemWeight);
+        $weight = isset($item['weight']) ? (float)$item['weight'] : 0.3;
+        $totalWeight += $weight * $item['quantity'];
     }
-    return max(0.5, $totalWeight); // Minimum 0.5kg
+
+    return round(max(0.5, $totalWeight), 2);
 }

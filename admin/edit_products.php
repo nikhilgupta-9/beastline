@@ -160,20 +160,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update-product'])) {
         $variants = json_decode($_POST['variants_json'] ?? '[]', true);
 
         if (!empty($variants)) {
+            // First, get all existing variant IDs for this product
+            $existing_ids = [];
+            $id_query = "SELECT id FROM product_variants WHERE product_id = $pro_id";
+            $id_result = mysqli_query($conn, $id_query);
+            while ($row = mysqli_fetch_assoc($id_result)) {
+                $existing_ids[] = $row['id'];
+            }
+
+            $processed_ids = [];
 
             foreach ($variants as $index => $variant) {
-
-                $variant_id = intval($variant['db_id'] ?? 0); // pass DB id from frontend
+                $variant_id = intval($variant['db_id'] ?? 0);
                 $color = mysqli_real_escape_string($conn, $variant['color']);
                 $size = mysqli_real_escape_string($conn, $variant['size']);
                 $sku = mysqli_real_escape_string($conn, $variant['sku']);
                 $price = floatval($variant['price']);
-                $compare_at_price = floatval($variant['compare_at_price']);
+                $compare_at_price = floatval($variant['compare_at_price'] ?? 0);
                 $quantity = intval($variant['quantity']);
 
                 $image_name = $variant['existing_image'] ?? '';
 
-                // new image upload?
+                // Handle new image upload
                 if (
                     isset($_FILES['variant_images']['name'][$index])
                     && $_FILES['variant_images']['error'][$index] === 0
@@ -188,36 +196,47 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update-product'])) {
                         $_FILES['variant_images']['tmp_name'][$index],
                         $upload_dir . $file_name
                     )) {
+                        // Delete old image if exists
+                        if (!empty($image_name) && file_exists($upload_dir . $image_name)) {
+                            unlink($upload_dir . $image_name);
+                        }
                         $image_name = $file_name;
                     }
                 }
 
-
-
                 if ($variant_id > 0) {
-
-                    // UPDATE existing
+                    // UPDATE existing variant
                     $sql = "UPDATE product_variants SET 
-                        color='$color',
-                        size='$size',
-                        sku='$sku',
-                        price=$price,
-                        compare_at_price=$compare_at_price,
-                        quantity=$quantity,
-                        image='$image_name'
-                    WHERE id=$variant_id";
+                    color='$color',
+                    size='$size',
+                    sku='$sku',
+                    price=$price,
+                    compare_at_price=$compare_at_price,
+                    quantity=$quantity,
+                    image='$image_name'
+                    WHERE id=$variant_id AND product_id=$pro_id";
 
-                    mysqli_query($conn, $sql);
+                    if (mysqli_query($conn, $sql)) {
+                        $processed_ids[] = $variant_id;
+                    }
                 } else {
-
-                    // INSERT new
+                    // INSERT new variant
                     $sql = "INSERT INTO product_variants 
-                    (product_id,color,size,sku,price,compare_at_price,quantity,image,status)
+                    (product_id, color, size, sku, price, compare_at_price, quantity, image, status)
                     VALUES
-                    ($pro_id,'$color','$size','$sku',$price,$compare_at_price,$quantity,'$image_name',1)";
+                    ($pro_id, '$color', '$size', '$sku', $price, $compare_at_price, $quantity, '$image_name', 1)";
 
-                    mysqli_query($conn, $sql);
+                    if (mysqli_query($conn, $sql)) {
+                        $processed_ids[] = mysqli_insert_id($conn);
+                    }
                 }
+            }
+
+            // Delete variants that were not in the submitted data
+            $variants_to_delete = array_diff($existing_ids, $processed_ids);
+            if (!empty($variants_to_delete)) {
+                $delete_ids = implode(',', $variants_to_delete);
+                mysqli_query($conn, "DELETE FROM product_variants WHERE id IN ($delete_ids)");
             }
         }
 
@@ -539,7 +558,7 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
                                                     <input type="number" class="form-control" name="weight" step="0.01" value="<?= $product['weight'] ?? 0 ?>">
                                                 </div>
 
-                                                <div class="col-md-4 mb-3">
+                                                <div class="col-md-4 mb-3 d-none">
                                                     <label class="form-label">Stock Status *</label>
                                                     <input type="number" class="form-control" name="stock" value="<?= $product['stock'] ?? 0 ?>">
                                                     <!-- <select class="form-control" name="stock" required>
@@ -549,7 +568,7 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
                                                     </select> -->
                                                 </div>
 
-                                                <div class="col-md-4 mb-3">
+                                                <div class="col-md-4 mb-3 d-none">
                                                     <label class="form-label">Quantity</label>
                                                     <input type="number" class="form-control" name="qty" min="0" value="<?= $product['qty'] ?>">
                                                 </div>
@@ -660,6 +679,7 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
                                                                             <th>Price</th>
                                                                             <th>Quantity</th>
                                                                             <th>Image</th>
+                                                                            <th>Action</th>
                                                                         </tr>
                                                                     </thead>
                                                                     <tbody>
@@ -706,6 +726,14 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
                                                                                     <?php endif; ?>
                                                                                     <input type="file" class="form-control form-control-sm"
                                                                                         name="variant_images[<?= $index ?>]" accept="image/*">
+                                                                                </td>
+                                                                                <td>
+                                                                                    <!-- Replace your existing delete button with this -->
+                                                                                    <button type="button"
+                                                                                        class="btn btn-danger btn-sm delete-variant-btn"
+                                                                                        data-variant-id="<?= intval($variant['db_id'] ?? 0) ?>">
+                                                                                        <i class="fas fa-trash"></i> Delete
+                                                                                    </button>
                                                                                 </td>
                                                                             </tr>
                                                                         <?php endforeach; ?>
@@ -871,6 +899,7 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-colorpicker/3.4.0/js/bootstrap-colorpicker.min.js"></script>
     <!-- JavaScript -->
 
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
         // Initialize CKEditor
         document.addEventListener('DOMContentLoaded', function() {
@@ -913,18 +942,18 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
             if (productType === 'clothing') {
                 <?php foreach ($sizes_clothing as $size): ?>
                     sizeOptions += `
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="checkbox" name="sizes[]" value="<?= $size ?>">
-                            <span class="form-check-label"><?= $size ?></span>
-                        </div>`;
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" name="sizes[]" value="<?= $size ?>">
+                        <span class="form-check-label"><?= $size ?></span>
+                    </div>`;
                 <?php endforeach; ?>
             } else if (productType === 'shoes') {
                 <?php foreach ($sizes_shoes as $size): ?>
                     sizeOptions += `
-                        <div class="form-check form-check-inline">
-                            <input class="form-check-input" type="checkbox" name="sizes[]" value="<?= $size ?>">
-                            <span class="form-check-label"><?= $size ?></span>
-                        </div>`;
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" name="sizes[]" value="<?= $size ?>">
+                        <span class="form-check-label"><?= $size ?></span>
+                    </div>`;
                 <?php endforeach; ?>
             }
 
@@ -937,77 +966,67 @@ $season_options = ['All Season', 'Summer', 'Winter', 'Spring', 'Fall'];
         });
 
         // Track new image inputs
-let imageInputCount = 0;
+        let imageInputCount = 0;
 
-// Function to add new image input field
-function addImageInput() {
-    const container = document.getElementById('newImagesContainer');
-    const div = document.createElement('div');
-    div.className = 'input-group mb-2';
-    div.innerHTML = `
-        <input type="file" 
-               class="form-control" 
-               name="additional_images[]" 
-               accept="image/*">
-        <button type="button" 
-                class="btn btn-outline-danger" 
-                onclick="removeImageInput(this)">
-            <i class="fas fa-times"></i>
-        </button>
-    `;
-    container.appendChild(div);
-    imageInputCount++;
-}
+        // Function to add new image input field
+        function addImageInput() {
+            const container = document.getElementById('newImagesContainer');
+            const div = document.createElement('div');
+            div.className = 'input-group mb-2';
+            div.innerHTML = `
+            <input type="file" 
+                   class="form-control" 
+                   name="additional_images[]" 
+                   accept="image/*">
+            <button type="button" 
+                    class="btn btn-outline-danger" 
+                    onclick="removeImageInput(this)">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+            container.appendChild(div);
+            imageInputCount++;
+        }
 
-// Function to remove image input field
-function removeImageInput(button) {
-    button.closest('.input-group').remove();
-}
+        // Function to remove image input field
+        function removeImageInput(button) {
+            button.closest('.input-group').remove();
+        }
 
-// Function to remove existing additional image via AJAX
-function removeAdditionalImage(imageId) {
-    if (!confirm('Are you sure you want to remove this image?')) {
-        return;
-    }
-    
-    // Show loading
-    const imageElement = document.getElementById('image-' + imageId);
-    imageElement.innerHTML = '<div class="text-center p-3"><div class="spinner-border spinner-border-sm"></div> Removing...</div>';
-    
-    // AJAX request to delete image
-    const formData = new FormData();
-    formData.append('delete_image_id', imageId);
-    
-    fetch(window.location.href, {
-        method: 'POST',
-        body: formData
-    })
-    .then(response => response.text())
-    .then(data => {
-        // Reload page to reflect changes
-        window.location.reload();
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Error removing image. Please try again.');
-        window.location.reload();
-    });
-}
+        // Function to remove existing additional image via AJAX
+        function removeAdditionalImage(imageId) {
+            if (!confirm('Are you sure you want to remove this image?')) {
+                return;
+            }
 
-// Initialize with one image input
-document.addEventListener('DOMContentLoaded', function() {
-    addImageInput(); // Add initial image input
-    
-    // Initialize CKEditor (keep existing)
-    CKEDITOR.replace('short_desc');
-    CKEDITOR.replace('pro_desc');
-    
-    // Load size options based on current product type
-    const productType = document.getElementById('productType').value;
-    if (productType) {
-        loadSizeOptions(productType);
-    }
-});
+            // Show loading
+            const imageElement = document.getElementById('image-' + imageId);
+            imageElement.innerHTML = '<div class="text-center p-3"><div class="spinner-border spinner-border-sm"></div> Removing...</div>';
+
+            // AJAX request to delete image
+            const formData = new FormData();
+            formData.append('delete_image_id', imageId);
+
+            fetch(window.location.href, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.text())
+                .then(data => {
+                    // Reload page to reflect changes
+                    window.location.reload();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error removing image. Please try again.');
+                    window.location.reload();
+                });
+        }
+
+        // Initialize with one image input
+        document.addEventListener('DOMContentLoaded', function() {
+            addImageInput(); // Add initial image input
+        });
 
         // Attributes management
         let attributes = <?= json_encode($attributes) ?>;
@@ -1035,9 +1054,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 const tag = document.createElement('span');
                 tag.className = 'badge bg-light text-dark p-2 me-2 mb-2';
                 tag.innerHTML = `
-                    ${attr.name}: ${attr.value}
-                    <button type="button" class="btn-close ms-2" onclick="removeAttribute(${index})"></button>
-                `;
+                ${attr.name}: ${attr.value}
+                <button type="button" class="btn-close ms-2" onclick="removeAttribute(${index})"></button>
+            `;
                 container.appendChild(tag);
             });
 
@@ -1050,6 +1069,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Generate variants
+        // Generate variants
         function generateVariants() {
             const selectedColors = Array.from(document.querySelectorAll('input[name="colors[]"]:checked'))
                 .map(cb => cb.value);
@@ -1061,24 +1081,49 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
+            // Get existing variants from the current table (if any)
+            const existingVariants = [];
+            $('#variantsContainer tbody tr').each(function() {
+                const existingVariant = {
+                    db_id: $(this).find('input[name$="[db_id]"]').val() || 0,
+                    color: $(this).find('input[name$="[color]"]').val() || $(this).find('td:eq(0)').text().trim(),
+                    size: $(this).find('input[name$="[size]"]').val() || $(this).find('td:eq(1)').text().trim(),
+                    sku: $(this).find('input[name$="[sku]"]').val(),
+                    price: $(this).find('input[name$="[price]"]').val(),
+                    compare_at_price: $(this).find('input[name$="[compare_at_price]"]').val() || 0,
+                    quantity: $(this).find('input[name$="[quantity]"]').val(),
+                    existing_image: $(this).find('input[name$="[existing_image]"]').val() || ''
+                };
+
+                // Only add if it has valid data
+                if (existingVariant.color && existingVariant.size) {
+                    existingVariants.push(existingVariant);
+                }
+            });
+
             const variants = [];
             let index = 0;
 
             selectedColors.forEach(color => {
                 selectedSizes.forEach(size => {
+                    // Check if this combination already exists
+                    const existingVariant = existingVariants.find(v =>
+                        v.color === color && v.size === size
+                    );
+
                     // Generate SKU based on product SKU, color and size
                     const baseSku = document.querySelector('input[name="sku"]').value;
-                    const variantSku = `${baseSku}-${color.substring(0, 3).toUpperCase()}-${size.toUpperCase()}`;
+                    const variantSku = existingVariant ? existingVariant.sku : `${baseSku}-${color.substring(0, 3).toUpperCase()}-${size.toUpperCase()}`;
 
                     variants.push({
-                        id: index,
+                        db_id: existingVariant ? existingVariant.db_id : 0, // Preserve DB ID if exists
                         color: color,
                         size: size,
                         sku: variantSku,
-                        price: document.querySelector('input[name="selling_price"]').value || 0,
-                        compare_at_price: document.querySelector('input[name="mrp"]').value || 0,
-                        quantity: document.querySelector('input[name="qty"]').value || 0,
-                        existing_image: '' // For existing images on edit
+                        price: existingVariant ? existingVariant.price : (document.querySelector('input[name="selling_price"]').value || 0),
+                        compare_at_price: existingVariant ? existingVariant.compare_at_price : (document.querySelector('input[name="mrp"]').value || 0),
+                        quantity: existingVariant ? existingVariant.quantity : (document.querySelector('input[name="qty"]').value || 0),
+                        existing_image: existingVariant ? existingVariant.existing_image : ''
                     });
 
                     index++;
@@ -1088,7 +1133,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Update variants JSON
             document.getElementById('variantsJson').value = JSON.stringify(variants);
 
-            // Generate HTML table
+            // Generate HTML table WITH DELETE BUTTON
             let html = `
         <div class="table-responsive">
             <table class="table table-bordered">
@@ -1100,6 +1145,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         <th>Price</th>
                         <th>Quantity</th>
                         <th>Image</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody>`;
@@ -1108,6 +1154,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 html += `
             <tr>
                 <td>
+                    <input type="hidden" name="variants[${idx}][db_id]" value="${variant.db_id}">
                     <input type="hidden" name="variants[${idx}][color]" value="${variant.color}">
                     ${variant.color}
                 </td>
@@ -1127,11 +1174,33 @@ document.addEventListener('DOMContentLoaded', function() {
                     <input type="number" class="form-control form-control-sm" 
                            name="variants[${idx}][quantity]" value="${variant.quantity}" min="0">
                 </td>
-                <td>
-                    <input type="file" class="form-control form-control-sm" 
-                           name="variant_images[${idx}]" accept="image/*">
-                </td>
-            </tr>`;
+                <td>`;
+
+                if (variant.existing_image) {
+                    html += `
+                <div class="mb-1">
+                    <img src="assets/img/uploads/variants/${variant.existing_image}"
+                         style="width: 50px; height: 50px; object-fit: cover;"
+                         class="img-thumbnail">
+                    <input type="hidden"
+                           name="variants[${idx}][existing_image]"
+                           value="${variant.existing_image}">
+                    <small class="d-block">Current image</small>
+                </div>`;
+                }
+
+                html += `
+            <input type="file" class="form-control form-control-sm" 
+                   name="variant_images[${idx}]" accept="image/*">
+        </td>
+        <td>
+            <button type="button" 
+                    class="btn btn-danger btn-sm delete-variant-btn" 
+                    data-variant-id="${variant.db_id}">
+                <i class="fas fa-trash"></i> Delete
+            </button>
+        </td>
+    </tr>`;
             });
 
             html += `</tbody></table></div>`;
@@ -1141,6 +1210,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Form validation
         document.getElementById('productForm').addEventListener('submit', function(e) {
+            // Update variants JSON one last time before submission
+            updateVariantsJsonAfterDelete();
+
             const productName = document.querySelector('input[name="pro_name"]').value.trim();
             const sku = document.querySelector('input[name="sku"]').value.trim();
             const sellingPrice = parseFloat(document.querySelector('input[name="selling_price"]').value);
@@ -1166,6 +1238,217 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             return true;
+        });
+        // ============================================
+        // VARIANT DELETION FUNCTIONS
+        // ============================================
+
+        // Function to delete a variant
+        function deleteVariant(variantId, buttonElement) {
+            if (!confirm('Are you sure you want to delete this variant? This action cannot be undone.')) {
+                return;
+            }
+
+            // Get the row element
+            const rowElement = $(buttonElement).closest('tr');
+
+            // Show loading state on the delete button
+            const deleteBtn = $(buttonElement);
+            const originalText = deleteBtn.html();
+            deleteBtn.html('<i class="fas fa-spinner fa-spin"></i>').prop('disabled', true);
+
+            // Show loading overlay
+            showVariantLoading();
+
+            // If variantId is 0, it's a new unsaved variant - just remove from UI
+            if (variantId === 0) {
+                setTimeout(function() {
+                    rowElement.fadeOut(400, function() {
+                        $(this).remove();
+
+                        // Check if table is empty
+                        if ($('#variantsContainer tbody tr').length === 0) {
+                            $('#variantsContainer').html('<p class="text-muted">No variants available.</p>');
+                        }
+
+                        // Show success message
+                        showVariantNotification('success', 'Variant removed successfully!');
+
+                        // Update variants JSON
+                        updateVariantsJsonAfterDelete();
+
+                        // Hide loading
+                        hideVariantLoading();
+                    });
+                }, 500);
+                return;
+            }
+
+            // AJAX request to delete variant from database
+            $.ajax({
+                url: 'ajax/delete-variant.php',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    variant_id: variantId
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Remove the row from table with animation
+                        rowElement.fadeOut(400, function() {
+                            $(this).remove();
+
+                            // Check if table is empty
+                            if ($('#variantsContainer tbody tr').length === 0) {
+                                $('#variantsContainer').html('<p class="text-muted">No variants available.</p>');
+                            }
+
+                            // Show success message
+                            showVariantNotification('success', 'Variant deleted successfully!');
+
+                            // Update variants JSON
+                            updateVariantsJsonAfterDelete();
+                        });
+                    } else {
+                        // Show error message
+                        showVariantNotification('error', response.message || 'Failed to delete variant');
+
+                        // Restore button
+                        deleteBtn.html(originalText).prop('disabled', false);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('AJAX Error:', error);
+                    console.error('Response:', xhr.responseText);
+
+                    // Show error message
+                    showVariantNotification('error', 'Network error. Please try again.');
+
+                    // Restore button
+                    deleteBtn.html(originalText).prop('disabled', false);
+                },
+                complete: function() {
+                    hideVariantLoading();
+                }
+            });
+        }
+
+        // Function to update variants JSON after deletion
+        function updateVariantsJsonAfterDelete() {
+            const variants = [];
+
+            $('#variantsContainer tbody tr').each(function(index) {
+                const variant = {
+                    db_id: $(this).find('input[name$="[db_id]"]').val() || 0,
+                    color: $(this).find('input[name$="[color]"]').val() || $(this).find('td:eq(0)').text().trim(),
+                    size: $(this).find('input[name$="[size]"]').val() || $(this).find('td:eq(1)').text().trim(),
+                    sku: $(this).find('input[name$="[sku]"]').val(),
+                    price: $(this).find('input[name$="[price]"]').val(),
+                    compare_at_price: $(this).find('input[name$="[compare_at_price]"]').val() || 0,
+                    quantity: $(this).find('input[name$="[quantity]"]').val(),
+                    existing_image: $(this).find('input[name$="[existing_image]"]').val() || ''
+                };
+
+                variants.push(variant);
+            });
+
+            $('#variantsJson').val(JSON.stringify(variants));
+
+            // Debug log to see what's being saved
+            console.log('Updated variants JSON:', JSON.stringify(variants));
+        }
+
+        // Helper function to show variant loading
+        function showVariantLoading() {
+            if (!$('#variant-loading-overlay').length) {
+                $('body').append(`
+                <div id="variant-loading-overlay" style="
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.5);
+                    z-index: 9999;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                ">
+                    <div style="
+                        background: white;
+                        padding: 20px 30px;
+                        border-radius: 8px;
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+                        font-size: 16px;
+                    ">
+                        <i class="fas fa-spinner fa-spin me-2"></i> Deleting variant...
+                    </div>
+                </div>
+            `);
+            }
+        }
+
+        // Helper function to hide variant loading
+        function hideVariantLoading() {
+            $('#variant-loading-overlay').remove();
+        }
+
+        // Helper function to show notifications
+        function showVariantNotification(type, message) {
+            const toastId = 'variant-toast-' + Date.now();
+            const bgColor = type === 'success' ? '#28a745' : '#dc3545';
+            const icon = type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle';
+
+            $('body').append(`
+            <div id="${toastId}" style="
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${bgColor};
+                color: white;
+                padding: 15px 25px;
+                border-radius: 5px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                z-index: 10000;
+                font-size: 14px;
+                animation: slideIn 0.3s ease;
+            ">
+                <i class="fas ${icon} me-2"></i>
+                ${message}
+            </div>
+        `);
+
+            setTimeout(() => {
+                $(`#${toastId}`).fadeOut(400, function() {
+                    $(this).remove();
+                });
+            }, 3000);
+        }
+
+        // Add CSS animation for notifications
+        $('head').append(`
+        <style>
+            @keyframes slideIn {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+        </style>
+    `);
+
+        // Document ready handler for existing delete buttons
+        $(document).ready(function() {
+            // Attach delete handlers to existing delete buttons (for page load)
+            $(document).on('click', '.delete-variant-btn', function(e) {
+                e.preventDefault();
+                const variantId = $(this).data('variant-id') || 0;
+                deleteVariant(variantId, this);
+            });
         });
     </script>
 </body>

@@ -19,19 +19,21 @@ class OrderService
     {
         return 'ORD' . strtoupper(uniqid());
     }
- /**
+
+    /**
      * Create or get user from session data
      */
-      public function getOrCreateUser($userData, $password = null) {
+    public function getOrCreateUser($userData, $password = null)
+    {
         // Check if user exists by email
         $email = $userData['email'];
-        
+
         $sql = "SELECT id FROM users WHERE email = ?";
         $stmt = $this->conn->prepare($sql);
         $stmt->bind_param("s", $email);
         $stmt->execute();
         $result = $stmt->get_result();
-        
+
         if ($result->num_rows > 0) {
             // Existing user
             $user = $result->fetch_assoc();
@@ -41,17 +43,17 @@ class OrderService
             if (!$password) {
                 $password = bin2hex(random_bytes(8)); // Generate random password
             }
-            
+
             $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-            
+
             $sql = "INSERT INTO users (
                 name, first_name, last_name, mobile, email, password,
                 address, city, state, zip_code, user_type, status,
                 email_verified, newsletter_subscribed, created_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'customer', 'active', 1, 0, NOW())";
-            
+
             $fullName = $userData['first_name'] . ' ' . $userData['last_name'];
-            
+
             $stmt = $this->conn->prepare($sql);
             $stmt->bind_param(
                 "ssssssssss",
@@ -66,125 +68,127 @@ class OrderService
                 $userData['state'],
                 $userData['postcode']
             );
-            
+
             if ($stmt->execute()) {
                 return $stmt->insert_id;
             }
         }
-        
+
         return null;
     }
-    
-    /**
+
+    /**   
      * Create main order record
      */
-    public function createOrder($orderData, $userId, $paymentMethod, $razorpayOrderId = null) {
-    $orderNumber = $this->generateOrderNumber();
-    
-    // Check if tax amount exists in orderData, otherwise set to 0
-    $taxAmount = $orderData['tax'] ?? 0;
-    
-    $sql = "INSERT INTO orders (
+    public function createOrder($orderData, $userId, $paymentMethod, $razorpayOrderId = null)
+    {
+        $orderNumber = $this->generateOrderNumber();
+
+        // Check if tax amount exists in orderData, otherwise set to 0
+        $taxAmount = $orderData['tax'] ?? 0;
+
+        $sql = "INSERT INTO orders (
         user_id, order_number, total_amount, discount_amount,
         shipping_amount, tax_amount, final_amount, razorpay_order_id,
         payment_method, payment_status, order_status, shipping_address,
         billing_address, notes, created_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending', ?, ?, ?, NOW())";
-    
-    $shippingAddress = json_encode([
-        'name' => $orderData['billing_first_name'] . ' ' . $orderData['billing_last_name'],
-        'phone' => $orderData['billing_phone'],
-        'address' => $orderData['billing_address_1'],
-        'address2' => $orderData['billing_address_2'] ?? '',
-        'city' => $orderData['billing_city'],
-        'state' => $orderData['billing_state'],
-        'country' => $orderData['billing_country'],
-        'postcode' => $orderData['billing_postcode']
-    ]);
-    
-    $billingAddress = $shippingAddress; // Same as shipping for now
-    
-    $stmt = $this->conn->prepare($sql);
-    
-    if (!$stmt) {
-        error_log("Prepare failed: " . $this->conn->error);
-        return null;
+
+        $shippingAddress = json_encode([
+            'name' => $orderData['billing_first_name'] . ' ' . $orderData['billing_last_name'],
+            'phone' => $orderData['billing_phone'],
+            'email' => $orderData['billing_email'],
+            'address' => $orderData['billing_address_1'],
+            'address2' => $orderData['billing_address_2'] ?? '',
+            'city' => $orderData['billing_city'],
+            'state' => $orderData['billing_state'],
+            'country' => $orderData['billing_country'],
+            'postcode' => $orderData['billing_postcode']
+        ]);
+
+        $billingAddress = $shippingAddress; // Same as shipping for now
+
+        $stmt = $this->conn->prepare($sql);
+
+        if (!$stmt) {
+            error_log("Prepare failed: " . $this->conn->error);
+            return null;
+        }
+
+        // Store all values in variables for bind_param
+        $subtotal = floatval($orderData['subtotal']);
+        $discount = floatval($orderData['discount']);
+        $shippingFee = floatval($orderData['shipping_fee']);
+        $finalTotal = floatval($orderData['total']);
+        $notes = $orderData['order_note'] ?? '';
+
+        // Convert empty string to NULL for Razorpay order ID
+        $razorpayOrderId = empty($razorpayOrderId) ? null : $razorpayOrderId;
+
+        // Debug: Check what we're binding
+        error_log("User ID: $userId");
+        error_log("Order Number: $orderNumber");
+        error_log("Subtotal: $subtotal");
+        error_log("Discount: $discount");
+        error_log("Shipping Fee: $shippingFee");
+        error_log("Tax Amount: $taxAmount");
+        error_log("Total: $finalTotal");
+        error_log("Razorpay Order ID: " . ($razorpayOrderId ?: 'NULL'));
+        error_log("Payment Method: $paymentMethod");
+        error_log("Notes: $notes");
+
+        // Fix: Bind parameters by reference using variables
+        // Count the ? in SQL: we have 13 placeholders
+        // Parameter types: i (user_id), s (order_number), ddddd (amounts), sssss (strings)
+        $stmt->bind_param(
+            "isddddssssss", // 13 placeholders: 1 integer, 1 string, 5 doubles, 6 strings
+            $userId,                    // i
+            $orderNumber,               // s
+            $subtotal,                  // d
+            $discount,                  // d
+            $shippingFee,               // d
+            $taxAmount,                 // d
+            $finalTotal,                // d
+            $razorpayOrderId,           // s (could be null)
+            $paymentMethod,             // s
+            $shippingAddress,           // s
+            $billingAddress,            // s
+            $notes                      // s
+        );
+
+        if ($stmt->execute()) {
+            $orderId = $stmt->insert_id;
+            error_log("Order created successfully. Order ID: $orderId");
+            return [
+                'order_id' => $orderId,
+                'order_number' => $orderNumber
+            ];
+        } else {
+            error_log("SQL Error: " . $stmt->error);
+            error_log("Full SQL: " . $sql);
+            return null;
+        }
     }
-    
-    // Store all values in variables for bind_param
-    $subtotal = floatval($orderData['subtotal']);
-    $discount = floatval($orderData['discount']);
-    $shippingFee = floatval($orderData['shipping_fee']);
-    $finalTotal = floatval($orderData['total']);
-    $notes = $orderData['order_note'] ?? '';
-    
-    // Convert empty string to NULL for Razorpay order ID
-    $razorpayOrderId = empty($razorpayOrderId) ? null : $razorpayOrderId;
-    
-    // Debug: Check what we're binding
-    error_log("User ID: $userId");
-    error_log("Order Number: $orderNumber");
-    error_log("Subtotal: $subtotal");
-    error_log("Discount: $discount");
-    error_log("Shipping Fee: $shippingFee");
-    error_log("Tax Amount: $taxAmount");
-    error_log("Total: $finalTotal");
-    error_log("Razorpay Order ID: " . ($razorpayOrderId ?: 'NULL'));
-    error_log("Payment Method: $paymentMethod");
-    error_log("Notes: $notes");
-    
-    // Fix: Bind parameters by reference using variables
-    // Count the ? in SQL: we have 13 placeholders
-    // Parameter types: i (user_id), s (order_number), ddddd (amounts), sssss (strings)
-    $stmt->bind_param(
-        "isddddssssss", // 13 placeholders: 1 integer, 1 string, 5 doubles, 6 strings
-        $userId,                    // i
-        $orderNumber,               // s
-        $subtotal,                  // d
-        $discount,                  // d
-        $shippingFee,               // d
-        $taxAmount,                 // d
-        $finalTotal,                // d
-        $razorpayOrderId,           // s (could be null)
-        $paymentMethod,             // s
-        $shippingAddress,           // s
-        $billingAddress,            // s
-        $notes                      // s
-    );
-    
-    if ($stmt->execute()) {
-        $orderId = $stmt->insert_id;
-        error_log("Order created successfully. Order ID: $orderId");
-        return [
-            'order_id' => $orderId,
-            'order_number' => $orderNumber
-        ];
-    } else {
-        error_log("SQL Error: " . $stmt->error);
-        error_log("Full SQL: " . $sql);
-        return null;
-    }
-}
-    
+
     /**
      * Add items to order
      */
-     public function addOrderItems($orderId, $items) {
+    public function addOrderItems($orderId, $items)
+    {
         $sql = "INSERT INTO order_items (
             order_id, product_id, product_name, quantity,
             unit_price, total_price, attributes
         ) VALUES (?, ?, ?, ?, ?, ?, ?)";
-        
+
         $stmt = $this->conn->prepare($sql);
-        
+
         foreach ($items as $item) {
             $attributes = json_encode([
                 'color' => $item['color'] ?? '',
                 'size' => $item['size'] ?? '',
-                'sku' => $item['sku'] ?? '',
                 'variant_id' => $item['variant_id'] ?? 0
             ]);
-            
+
             $stmt->bind_param(
                 "iisidds",
                 $orderId,
@@ -195,17 +199,16 @@ class OrderService
                 $item['total_price'],
                 $attributes
             );
-            
+
             if (!$stmt->execute()) {
                 error_log("Failed to add order item: " . $stmt->error);
                 return false;
             }
         }
-        
+
         return true;
     }
 
-    
     /**
      * Update order payment status
      */

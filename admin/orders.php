@@ -585,7 +585,11 @@ $result = mysqli_query($conn, $sql);
                                                                 </a>
                                                                 
                                                             </td>
-                                                            <td><?php echo htmlspecialchars($row['order_number']); ?> <br> <?php echo htmlspecialchars($row['razorpay_order_id'] ?? 'NA'); ?></td>
+                                                            <td>
+                                                                <a href="order_details.php?id=<?php echo $row['order_id']; ?>">
+                                                                <?php echo htmlspecialchars($row['order_number']); ?> 
+                                                                </a>
+                                                                <br> <?php echo htmlspecialchars($row['razorpay_order_id'] ?? 'NA'); ?></td>
                                                             <td class="customer-info">
                                                                 <div><strong><?php echo $customerName; ?></strong></div>
                                                                 <?php if (!empty($row['email'])): ?>

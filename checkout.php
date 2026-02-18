@@ -719,10 +719,10 @@ $contact = contact_us();
                                 <div class="error-message" id="payment_method_error"></div>
 
                                 <!-- Terms and Conditions -->
-                                <div class="form_group mt-4">   
+                                <div class="form_group mt-4">
                                     <label class="checkbox-label">
                                         <input type="checkbox" name="terms" required>
-                                        I have read and agree to the website <a href="<?= $site ?>terms" target="_blank" class="text-danger">terms and conditions</a> *
+                                        I have read and agree to the website <a href="<?= $site ?>policy/terms-conditions" target="_blank" class="text-danger">terms and conditions</a> *
                                     </label>
                                     <div class="error-message" id="terms_error"></div>
                                 </div>
@@ -791,39 +791,57 @@ $contact = contact_us();
                 showLoading();
 
                 try {
+                    // Prepare cart items from PHP
+                    const cartItems = <?= json_encode($cart_items) ?>;
+
                     const response = await $.ajax({
-                        url: '<?= $site ?>ajax/create-order.php',
+                        url: '<?= $site ?>ajax/create-magic-order.php',
                         method: 'POST',
                         dataType: 'json',
                         data: {
-                            action: 'create_order',
-                            form_data: $('#checkoutForm').serialize() 
+                            form_data: $('#checkoutForm').serialize(),
+                            cart_items: JSON.stringify(cartItems)
                         }
                     });
 
                     if (response.success) {
+                        // Magic Checkout options - NEW FORMAT
                         const options = {
                             key: response.key_id,
-                            amount: response.final_amount * 100,
-                            currency: 'INR',
+                            one_click_checkout: true, // IMPORTANT: Enables Magic Checkout
                             name: 'Beastline',
-                            description: 'Order Payment',
                             order_id: response.razorpay_order_id,
-                            handler: async function(razorpayResponse) {
-                                await verifyPayment(razorpayResponse, false);
-                            },
+                            show_coupons: true, // Show coupon widget
+                            redirect: true, // Redirect after payment
+                            callback_url: '<?= $site ?>payment-callback.php', // Your callback URL
+
+                            // Prefill customer info
                             prefill: {
                                 name: $('[name="billing_first_name"]').val() + ' ' + $('[name="billing_last_name"]').val(),
                                 email: $('[name="billing_email"]').val(),
                                 contact: $('[name="billing_phone"]').val()
                             },
+
+                            // Notes
+                            notes: {
+                                address: $('[name="billing_address_1"]').val() + ', ' + $('[name="billing_city"]').val()
+                            },
+
+                            // Theme
                             theme: {
                                 color: '#0f0f0f'
                             },
+
+                            // Payment handler (for non-redirect mode)
+                            handler: function(razorpayResponse) {
+                                // This is used when redirect is false
+                                verifyPayment(razorpayResponse, false);
+                            },
+
+                            // Modal events
                             modal: {
                                 ondismiss: function() {
                                     hideLoading();
-                                    // Clear pending order if user dismisses modal
                                     $.ajax({
                                         url: '<?= $site ?>ajax/clear-pending-order.php',
                                         method: 'POST'
@@ -832,6 +850,7 @@ $contact = contact_us();
                             }
                         };
 
+                        // Initialize Magic Checkout
                         const rzp = new Razorpay(options);
                         rzp.open();
                     } else {
@@ -839,7 +858,7 @@ $contact = contact_us();
                     }
                 } catch (error) {
                     hideLoading();
-                    console.error('Payment error:', error);
+                    console.error('Magic Checkout error:', error);
                     alert('Error: ' + (error.message || 'Please try again'));
                 }
             }

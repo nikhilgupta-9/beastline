@@ -52,7 +52,7 @@ $setting = new Setting($conn);
                         ORDER BY c.display_order, c.categories 
                         LIMIT 7";
 
-               
+
 
                 $shop_categories_result = mysqli_query($conn, $shop_categories_sql);
                 $shop_categories = [];
@@ -61,7 +61,7 @@ $setting = new Setting($conn);
                 }
                 ?>
 
-                <div class="col-lg-3 col-md-6 col-sm-6 mb-4 mb-md-0">
+                <div class="col-12 col-sm-6 col-md-6 col-lg-3 mb-4 mb-md-0">
                     <div class="footer_widget">
                         <h3 class="footer_title mb-4" style="color: #ffffff; font-size: 16px; font-weight: 600; text-transform: uppercase;">SHOP</h3>
                         <ul class="footer_links list-unstyled">
@@ -92,7 +92,7 @@ $setting = new Setting($conn);
                                         style="color: #e74c3c; text-decoration: none; font-weight: 500; transition: color 0.3s;"
                                         onmouseover="this.style.color='#ff6b6b'"
                                         onmouseout="this.style.color='#e74c3c'">
-                                        <i class="fas fa-arrow-right me-1"></i> View All Categories
+                                        <i class="fa fa-arrow-right me-1"></i> View All Categories
                                     </a>
                                 </li>
                             <?php else: ?>
@@ -110,7 +110,7 @@ $setting = new Setting($conn);
                 </div>
 
                 <!-- Help Section -->
-                <div class="col-lg-3 col-md-6 col-sm-6 mb-4 mb-md-0">
+                <div class="col-12 col-sm-6 col-md-6 col-lg-3 mb-4 mb-md-0">
                     <div class="footer_widget">
                         <h3 class="footer_title mb-4" style="color: #ffffff; font-size: 16px; font-weight: 600; text-transform: uppercase;">HELP</h3>
                         <ul class="footer_links list-unstyled">
@@ -201,16 +201,25 @@ $setting = new Setting($conn);
                         </div>
 
                         <div class="app_download mt-4">
-                            <h3 class="footer_title mb-3" style="color: #ffffff; font-size: 16px; font-weight: 600; text-transform: uppercase;">DOWNLOAD OUR APP</h3>
-                            <div class="app_links d-flex flex-column">
-                                <a href="<?= $site ?>comming-soon.html" class="app_store mb-2">
-                                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Download_on_the_App_Store_RGB_blk.svg/1024px-Download_on_the_App_Store_RGB_blk.svg.png" alt="App Store" style="max-width: 120px;">
+                            <div class="d-flex justify-content-center">
+                            <h3 class="footer_title mb-3" style="color: #ffffff; font-size: 16px; font-weight: 600; text-transform: uppercase;">
+                                DOWNLOAD OUR APP
+                            </h3>
+                            </div>
+                            <div class="app_links d-flex flex-row align-items-center justify-content-center gap-3">
+                                <a href="<?= $site ?>comming-soon.html" class="app_store">
+                                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Download_on_the_App_Store_RGB_blk.svg/1024px-Download_on_the_App_Store_RGB_blk.svg.png"
+                                        alt="App Store"
+                                        style="max-width: 120px;">
                                 </a>
                                 <a href="<?= $site ?>comming-soon.html" class="play_store">
-                                    <img src="https://c.clc2l.com/t/g/o/google-playstore-Iauj7q.png" alt="Google Play" style="max-width: 50px;">
+                                    <img src="https://c.clc2l.com/t/g/o/google-playstore-Iauj7q.png"
+                                        alt="Google Play"
+                                        style="max-width: 50px;">
                                 </a>
                             </div>
                         </div>
+
                     </div>
                 </div>
             </div>

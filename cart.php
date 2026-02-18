@@ -897,7 +897,7 @@ $contact = contact_us();
         function removeCartItem(cartItemId) {
             if (confirm('Are you sure you want to remove this item from cart?')) {
                 $.ajax({
-                    url: '<?= $site ?>ajax/remove-from-cart.php',
+                    url: '<?= $site ?>ajax/remove-from-cart1.php',
                     method: 'POST',
                     data: {
                         action: 'remove_item',

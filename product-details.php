@@ -235,6 +235,10 @@ $colorMap = [
 
     <!--modernizr min js here-->
     <script src="<?= $site ?>assets/js/vendor/modernizr-3.7.1.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"
+        integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
+        crossorigin="anonymous"></script>
+
 
 </head>
 <style>
@@ -388,6 +392,60 @@ $colorMap = [
         padding: 10px;
         position: relative;
         bottom: 50px;
+    }
+
+    /* Add to your stylesheet */
+    .spinner-border {
+        display: inline-block;
+        width: 1rem;
+        height: 1rem;
+        vertical-align: text-bottom;
+        border: 0.2em solid currentColor;
+        border-right-color: transparent;
+        border-radius: 50%;
+        animation: spinner-border .75s linear infinite;
+    }
+
+    @keyframes spinner-border {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .alert {
+        padding: 0.75rem 1.25rem;
+        border: 1px solid transparent;
+        border-radius: 0.25rem;
+    }
+
+    .alert-info {
+        color: #0c5460;
+        background-color: #d1ecf1;
+        border-color: #bee5eb;
+    }
+
+    .position-fixed {
+        position: fixed;
+    }
+
+    .top-0 {
+        top: 0;
+    }
+
+    .start-50 {
+        left: 50%;
+    }
+
+    .translate-middle-x {
+        transform: translateX(-50%);
+    }
+
+    .mt-3 {
+        margin-top: 1rem;
+    }
+
+    .z-index-high {
+        z-index: 9999;
     }
 </style>
 
@@ -689,14 +747,17 @@ $colorMap = [
                             <!-- Replace your existing buy now button section with this: -->
                             <div class="product_variant1 mb-3">
                                 <div class="d-flex buy-now-wrapper">
-                                    <button type="button"
-                                        id="buyNowBtn"
+
+                                    <!-- In your product page HTML, update the buy now button -->
+                                    <button type="button" id="buyNowBtn"
                                         class="buy-now-button"
                                         <?= $total_stock == 0 ? 'disabled' : '' ?>
                                         data-product-id="<?= $product_id ?>"
-                                        data-price="<?= $product['selling_price'] ?>">
+                                        data-price="<?= $product['selling_price'] ?>"
+                                        data-sku="<?= htmlspecialchars($product['sku']) ?>">
                                         BUY NOW
                                     </button>
+
                                 </div>
                             </div>
 
@@ -1027,122 +1088,170 @@ $colorMap = [
     <?php endif; ?>
 
     <!--footer area start-->
-    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
     <?php include_once "includes/footer.php"; ?>
     <!--footer area end-->
 
+    <script src="https://checkout.razorpay.com/v1/magic-checkout.js"></script>
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const mainImage = document.getElementById('main-product-image');
-            const thumbnailLinks = document.querySelectorAll('.thumbnail-link');
-            const currentIndexSpan = document.querySelector('.current-index');
-            const totalImagesSpan = document.querySelector('.total-images');
-            const mainPrevBtn = document.querySelector('.prev-btn');
-            const mainNextBtn = document.querySelector('.next-btn');
-            const thumbPrevBtn = document.querySelector('.thumb-prev-btn');
-            const thumbNextBtn = document.querySelector('.thumb-next-btn');
-            const thumbnailsWrapper = document.querySelector('.thumbnails-wrapper');
-            const thumbnailsList = document.querySelector('.product-thumbnails');
-            const popupLink = document.querySelector('.magnific-popup-image');
+            $('#buyNowBtn').click(function(e) {
+                e.preventDefault();
 
-            const buyNowBtn = document.getElementById('buyNowBtn');
+                const selectedSize = $('#selected_size').val();
+                if ($('.product_variant.size').length && !selectedSize) {
+                    $('#variantNotification').show().delay(3000).fadeOut();
+                    return;
+                }
 
-            let currentIndex = 0;
-            const totalImages = thumbnailLinks.length;
+                const btn = $(this);
+                const originalText = btn.html();
+                btn.html('<span class="spinner-border spinner-border-sm"></span> Processing...').prop('disabled', true);
 
-            document.getElementById('productCarousel').addEventListener('slide.bs.carousel', function(event) {
-                const currentIndex = event.to;
-                const totalImages = <?= count($product_images) ?>;
-
-                // Update counter in each carousel item
-                document.querySelectorAll('.carousel-item .current-index').forEach(span => {
-                    span.textContent = currentIndex + 1;
-                });
-
-                // Update active thumbnail
-                document.querySelectorAll('.thumbnail-link').forEach((btn, index) => {
-                    if (index === currentIndex) {
-                        btn.classList.add('active', 'border-primary', 'border-2');
-                        btn.classList.remove('border-1');
-                    } else {
-                        btn.classList.remove('active', 'border-primary', 'border-2');
-                        btn.classList.add('border-1');
-                    }
-                });
-            });
-            // Image hover zoom effect
-            document.querySelectorAll('.main-product-img').forEach(img => {
-                img.addEventListener('mouseenter', function() {
-                    this.style.transform = 'scale(1.5)';
-                    this.style.transition = 'transform 0.3s ease';
-                });
-
-                img.addEventListener('mouseleave', function() {
-                    this.style.transform = 'scale(1)';
-                });
-            });
-
-
-            if (buyNowBtn) {
-                buyNowBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-
-                    // Get selected variant details
-                    const selectedSize = document.getElementById('selected_size').value;
-                    const selectedColor = document.getElementById('selected_color').value || '';
-                    const selectedSku = document.getElementById('selected_sku').value;
-                    const quantity = document.getElementById('quantity').value;
-                    const productId = this.getAttribute('data-product-id');
-                    const price = this.getAttribute('data-price');
-
-                    // Check if size is selected (if sizes exist)
-                    const sizeRequired = document.querySelector('.product_variant.size');
-                    if (sizeRequired && !selectedSize) {
-                        document.getElementById('variantNotification').style.display = 'block';
-                        setTimeout(() => {
-                            document.getElementById('variantNotification').style.display = 'none';
-                        }, 3000);
-                        return;
-                    }
-
-                    // Get variant ID if exists
-                    const variantId = document.getElementById('selected_variant_id').value || 0;
-
-                    // Prepare buy now data
-                    const buyNowData = {
-                        action: 'buy_now',
-                        product_id: productId,
-                        variant_id: variantId,
-                        sku: selectedSku || '<?= $product['sku'] ?>',
+                // Create order
+                $.ajax({
+                    url: '<?= $site ?>ajax/buy-now.php',
+                    method: 'POST',
+                    data: {
+                        product_id: btn.data('product-id'),
+                        variant_id: $('#selected_variant_id').val() || 0,
+                        quantity: $('#quantity').val(),
                         size: selectedSize,
-                        color: selectedColor,
-                        quantity: quantity,
-                        price: price,
-                        product_name: document.querySelector('h1 a').textContent
-                    };
+                        color: $('#selected_color').val() || '',
+                        price: btn.data('price')
+                    },
+                    dataType: 'json',
+                    success: function(data) {
+                        if (data.success) {
+                            const options = {
+                                key: data.key_id,
+                                name: 'Beastline',
+                                description: data.product_name,
+                                order_id: data.razorpay_order_id,
 
-                    // Send AJAX request to create buy now session
-                    fetch('<?= $site ?>ajax/buy-now.php', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/x-www-form-urlencoded',
-                            },
-                            body: new URLSearchParams(buyNowData)
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                // Redirect to checkout page
-                                window.location.href = '<?= $site ?>checkout';
-                            } else {
-                                alert(data.message || 'Error processing buy now request');
+                                shipping_info_url: '<?= $site ?>ajax/shipping-info.php',
+                                get_promotions_url: '<?= $site ?>ajax/get-promotions.php',
+                                apply_promotion_url: '<?= $site ?>ajax/apply-promotion.php',
+
+                                prefill: {
+                                    name: '<?= $_SESSION['user_name'] ?? '' ?>',
+                                    email: '<?= $_SESSION['user_email'] ?? '' ?>',
+                                    contact: '<?= $_SESSION['user_phone'] ?? '' ?>'
+                                },
+
+                                theme: {
+                                    color: '#0f0f0f'
+                                },
+
+                                onPaymentSuccess: function(response) {
+                                    console.log('Payment success response:', response);
+
+                                    // Show verification message
+                                    const notification = $('<div class="alert alert-info position-fixed top-0 start-50 translate-middle-x mt-3" style="z-index:9999;">Verifying your order...</div>').appendTo('body');
+
+                                    // Verify payment
+                                    $.ajax({
+                                        url: '<?= $site ?>ajax/verify-magic-payment.php',
+                                        method: 'POST',
+                                        contentType: 'application/json',
+                                        data: JSON.stringify({
+                                            razorpay_payment_id: response.razorpay_payment_id,
+                                            razorpay_order_id: response.razorpay_order_id,
+                                            razorpay_signature: response.razorpay_signature
+                                        }),
+                                        dataType: 'json',
+                                        success: function(verification) {
+                                            notification.remove();
+                                            if (verification.success) {
+                                                window.location.href = verification.confirmation_url;
+                                            } else {
+                                                alert('❌ Verification Failed: ' + verification.message);
+                                                resetButton(btn, originalText);
+                                            }
+                                        },
+                                        error: function(xhr, status, error) {
+                                            notification.remove();
+                                            console.error('Verification Error Details:');
+                                            console.error('Status:', status);
+                                            console.error('Error:', error);
+                                            console.error('Response Text:', xhr.responseText);
+                                            console.error('Status Code:', xhr.status);
+
+                                            // Show detailed error
+                                            let errorMsg = 'Verification failed: ';
+                                            if (xhr.status === 404) {
+                                                errorMsg += 'verify-magic-payment.php not found (404)';
+                                            } else if (xhr.status === 500) {
+                                                errorMsg += 'Server error (500) - Check PHP error logs';
+                                            } else if (xhr.responseText) {
+                                                errorMsg += xhr.responseText.substring(0, 200);
+                                            } else {
+                                                errorMsg += error || 'Unknown error';
+                                            }
+
+                                            alert('❌ ' + errorMsg);
+                                            resetButton(btn, originalText);
+                                        }
+                                    });
+                                },
+
+                                modal: {
+                                    ondismiss: function() {
+                                        console.log('Modal dismissed - payment cancelled');
+                                        resetButton(btn, originalText);
+                                    }
+                                }
+                            };
+
+                            const rzp = new Razorpay(options);
+                            rzp.on('payment.failed', function(response) {
+                                console.error('Payment failure:', response);
+                                alert('❌ Payment failed: ' + (response.error.description || 'Please try again'));
+                                resetButton(btn, originalText);
+                            });
+
+                            rzp.on('payment.cancel', function() {
+                                console.log('Payment cancelled by user');
+                                resetButton(btn, originalText);
+                            });
+                            rzp.open();
+                        } else {
+                            alert('❌ Order creation failed: ' + (data.message || 'Unknown error'));
+                            resetButton(btn, originalText);
+                        }
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('Order Creation Error Details:');
+                        console.error('Status:', status);
+                        console.error('Error:', error);
+                        console.error('Response Text:', xhr.responseText);
+                        console.error('Status Code:', xhr.status);
+
+                        let errorMsg = 'Order creation failed: ';
+                        if (xhr.status === 404) {
+                            errorMsg += 'buy-now.php not found (404)';
+                        } else if (xhr.status === 500) {
+                            errorMsg += 'Server error (500) - Check PHP error logs';
+                        } else if (xhr.responseText) {
+                            // Try to parse JSON response
+                            try {
+                                const jsonResponse = JSON.parse(xhr.responseText);
+                                errorMsg += jsonResponse.message || xhr.responseText;
+                            } catch (e) {
+                                errorMsg += xhr.responseText.substring(0, 200);
                             }
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                            alert('Network error. Please try again.');
-                        });
+                        } else {
+                            errorMsg += error || 'Unknown error';
+                        }
+
+                        alert('❌ ' + errorMsg);
+                        resetButton(btn, originalText);
+                    }
                 });
+            });
+
+            function resetButton(btn, originalText) {
+                btn.html(originalText || 'BUY NOW').prop('disabled', false);
             }
         });
     </script>
@@ -1210,42 +1319,44 @@ $colorMap = [
 
             function updateVariantDetails() {
 
-    var variantId = $('#selected_variant_id').val();
-    if (!variantId) return;
+                var variantId = $('#selected_variant_id').val();
+                if (!variantId) return;
 
-    $('#variantNotification').hide();
+                $('#variantNotification').hide();
 
-    $.ajax({
-        url: '<?= $site ?>ajax/get-variant-details.php',
-        method: 'POST',
-        dataType: 'json',
-        data: { variant_id: variantId },
-        success: function(response) {
+                $.ajax({
+                    url: '<?= $site ?>ajax/get-variant-details.php',
+                    method: 'POST',
+                    dataType: 'json',
+                    data: {
+                        variant_id: variantId
+                    },
+                    success: function(response) {
 
-            console.log('Variant response:', response);
+                        console.log('Variant response:', response);
 
-            if (response.success) {
+                        if (response.success) {
 
-                if (response.variant.price > 0) {
-                    $('#variantPrice').html('Price: <strong>₹ ' + response.variant.price + '</strong>');
-                }
+                            if (response.variant.price > 0) {
+                                $('#variantPrice').html('Price: <strong>₹ ' + response.variant.price + '</strong>');
+                            }
 
-                if (response.variant.stock <= 10) {
-                    $('#variantStock').html(
-                        'Stock: <span style="color:#ffc107;">Only ' + response.variant.stock + ' left</span>'
-                    );
-                } else {
-                    $('#variantStock').html(
-                        'Stock: <span style="color:#28a745;">In Stock</span>'
-                    );
-                }
+                            if (response.variant.stock <= 10) {
+                                $('#variantStock').html(
+                                    'Stock: <span style="color:#ffc107;">Only ' + response.variant.stock + ' left</span>'
+                                );
+                            } else {
+                                $('#variantStock').html(
+                                    'Stock: <span style="color:#28a745;">In Stock</span>'
+                                );
+                            }
 
-                $('#quantity').attr('max', response.variant.stock);
-                $('#selectedVariantDetails').show();
+                            $('#quantity').attr('max', response.variant.stock);
+                            $('#selectedVariantDetails').show();
+                        }
+                    }
+                });
             }
-        }
-    });
-}
 
 
             // add to cart function 
@@ -1433,6 +1544,8 @@ $colorMap = [
 
         });
     </script>
+
+
 
 </body>
 

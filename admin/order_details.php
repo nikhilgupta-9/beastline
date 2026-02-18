@@ -34,21 +34,26 @@ if ($order_id === null) {
         $order = $result->fetch_assoc();
 
         // Get order items with product variant information
-        $stmt_items = $conn->prepare("
-            SELECT oi.*, 
-                   p.pro_img as product_image,
-                   pv.color, pv.size, pv.sku, pv.quantity as variant_quantity
-            FROM `order_items` oi
-            LEFT JOIN `products` p ON oi.product_id = p.id
-            LEFT JOIN `product_variants` pv ON (
-                oi.product_id = pv.product_id 
-                AND (oi.attributes LIKE CONCAT('%\"color\":\"', pv.color, '\"%') 
-                     OR oi.attributes LIKE CONCAT('%\"size\":\"', pv.size, '\"%')
-                     OR oi.product_name LIKE CONCAT('%', pv.sku, '%'))
-            )
-            WHERE oi.order_id = ?
-            ORDER BY oi.id
-        ");
+       $stmt_items = $conn->prepare("
+    SELECT 
+        oi.*,
+        pi.image_url AS product_image,
+        pv.color,
+        pv.size,
+        pv.sku,
+        pv.quantity AS variant_quantity
+    FROM order_items oi
+    LEFT JOIN product_variants pv 
+        ON pv.sku = JSON_UNQUOTE(JSON_EXTRACT(oi.attributes, '$.sku'))
+        AND pv.size = JSON_UNQUOTE(JSON_EXTRACT(oi.attributes, '$.size'))
+    LEFT JOIN product_images pi
+        ON pi.product_id = oi.product_id
+        AND pi.is_main = 1
+    WHERE oi.order_id = ?
+    ORDER BY oi.id
+");
+
+
         $stmt_items->bind_param("s", $order_id);
         $stmt_items->execute();
         $items_result = $stmt_items->get_result();
@@ -457,68 +462,14 @@ if ($order_id === null) {
                             </div>
                         <?php endif; ?>
 
-                        <!-- Statistics Cards -->
-                        <div class="row mb-4">
-                            <div class="col-xl-3 col-md-6">
-                                <div class="stats-card">
-                                    <div class="d-flex align-items-start">
-                                        <div class="stats-icon icon-primary">
-                                            <i class="fas fa-receipt"></i>
-                                        </div>
-                                        <div class="ms-3">
-                                            <h5 class="mb-1">Order #<?= htmlspecialchars($order['order_number']) ?></h5>
-                                            <p class="text-muted mb-0">Order Number</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-xl-3 col-md-6">
-                                <div class="stats-card">
-                                    <div class="d-flex align-items-start">
-                                        <div class="stats-icon icon-success">
-                                            <i class="fas fa-rupee-sign"></i>
-                                        </div>
-                                        <div class="ms-3">
-                                            <h5 class="mb-1">₹<?= number_format($order['final_amount'], 2) ?></h5>
-                                            <p class="text-muted mb-0">Final Amount</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-xl-3 col-md-6">
-                                <div class="stats-card">
-                                    <div class="d-flex align-items-start">
-                                        <div class="stats-icon icon-info">
-                                            <i class="fas fa-cube"></i>
-                                        </div>
-                                        <div class="ms-3">
-                                            <h5 class="mb-1"><?= count($order_items) ?></h5>
-                                            <p class="text-muted mb-0">Items</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-xl-3 col-md-6">
-                                <div class="stats-card">
-                                    <div class="d-flex align-items-start">
-                                        <div class="stats-icon icon-warning">
-                                            <i class="fas fa-calendar"></i>
-                                        </div>
-                                        <div class="ms-3">
-                                            <h5 class="mb-1"><?= date('M d, Y', strtotime($order['created_at'])) ?></h5>
-                                            <p class="text-muted mb-0">Order Date</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                       
 
                         <div class="white_card card_height_100 mb_30">
                             <div class="card-header card-header-light">
                                 <div class="d-flex justify-content-between align-items-center flex-wrap">
                                     <div class="mb-2 mb-md-0">
                                         <h3 class="mb-0 fw-bold">Order Details</h3>
-                                        <p class="text-muted mb-0">Complete information for order #<?= htmlspecialchars($order['order_number']) ?></p>
+                                        <p class="text-dark mb-0">Complete information for order  <b>#<?= htmlspecialchars($order['order_number']) ?></b></p>
                                     </div>
                                     <div class="d-flex gap-2 flex-wrap">
                                         <a href="orders.php" class="btn btn-outline-primary btn-sm">
@@ -738,7 +689,7 @@ if ($order_id === null) {
                                                         </div>
                                                         <div class="col-md-1 col-3">
                                                             <?php if (!empty($item['product_image'])): ?>
-                                                                <img src="<?= htmlspecialchars($item['product_image']) ?>"
+                                                                <img src="assets/img/uploads/<?= htmlspecialchars($item['product_image']) ?>"
                                                                     alt="Product Image" class="product-image">
                                                             <?php else: ?>
                                                                 <div class="product-image d-flex align-items-center justify-content-center bg-light">
