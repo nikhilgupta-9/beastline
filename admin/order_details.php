@@ -509,8 +509,8 @@ if ($order_id === null) {
 
                                 $paymentStatusClass = 'badge-payment-confirmed';
                                 if (
-                                    strtolower($order['payment_status']) === 'completed' ||
-                                    strtolower($order['payment_status']) === 'paid'
+                                    strtolower($order['payment_method']) === 'prepaid' ||
+                                    strtolower($order['payment_method']) === 'paid'
                                 ) {
                                     $paymentStatusClass = 'badge-payment-completed';
                                 }
@@ -527,7 +527,7 @@ if ($order_id === null) {
                                         <div>
                                             <span class="text-muted">Payment Status:</span>
                                             <span class="status-badge <?= $paymentStatusClass ?> ms-2">
-                                                <?= ucfirst($order['payment_status']) ?>
+                                                <?= ucfirst($order['payment_method']) ?>
                                             </span>
                                         </div>
                                     </div>

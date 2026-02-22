@@ -10,7 +10,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Database Configuration
-$local = false; // Set to false for live server
+$local = true; // Set to false for live server
 
 if ($local) {
     $host = 'localhost';
@@ -18,8 +18,8 @@ if ($local) {
     $password = '';
     $dbName = 'beast_line_db';
     // $site = "http://localhost/beast-line/";
-    define('BASE_URL', 'http://localhost/beast-line/') ;
-    define('ADMIN_URL', 'http://localhost/beast-line/admin/') ;
+    define('BASE_URL', 'http://localhost/beastline1/') ;
+    define('ADMIN_URL', 'http://localhost/beastline1/admin/') ;
 } else {
     $host = 'localhost';
         $username = 'u950539402_beastLine_db';

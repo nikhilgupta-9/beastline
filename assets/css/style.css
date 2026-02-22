@@ -3022,8 +3022,8 @@ textarea:-ms-input-placeholder {
 
 .single_product {
   transition: 0.3s;
-  border: 1px solid #14141417;
-  padding: 10px;
+  border: 1px solid #1414140a;
+  padding: 1px;
 }
 .single_product:hover .add_to_cart {
   opacity: 1;

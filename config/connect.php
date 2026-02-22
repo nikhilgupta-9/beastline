@@ -1,46 +1,39 @@
 <?php
+// if (session_status() === PHP_SESSION_NONE) {
+//     session_start();
+// }
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
-/* -------------------------
-   Auto Detect Base URL
-------------------------- */
-$protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? "https://" : "http://";
-$host = $_SERVER['HTTP_HOST'];
 
-// If project is inside a folder (e.g. localhost/beast-line/)
-$projectFolder = trim(dirname($_SERVER['SCRIPT_NAME']), '/');
+// Database Configuration
+$local = true; // Set to false for live server
 
-$site = $protocol . $host . '/' . ($projectFolder ? $projectFolder . '/' : '');
-
-// Make `$site` global
-global $site;
-
-/* -------------------------
-   Database Configuration
-------------------------- */
-if ($host === 'localhost') {
-    // Local DB
-    $dbHost = 'localhost';
+if ($local) {
+    $host = 'localhost';
     $username = 'root';
     $password = '';
     $dbName = 'beast_line_db';
+    $site = "http://localhost/beastline1/";
 } else {
-    // Live DB
-    $dbHost = 'localhost';
+    $host = 'localhost';
     $username = 'u950539402_beastLine_db';
     $password = 'I~H!=Sf9&';
     $dbName = 'u950539402_beastLine_db';
+    $site = 'https://beastline.in/';
 }
+// Make `$site` global
+global $site;
 
 // Create Database Connection
-$conn = new mysqli($dbHost, $username, $password, $dbName);
+$conn = new mysqli($host, $username, $password, $dbName);
 
 // Check Connection
 if ($conn->connect_error) {
     die("Database Connection Failed: " . $conn->connect_error);
 }
 
-// UTF-8 Encoding
+// Optional: Set Character Encoding to UTF-8
 $conn->set_charset("utf8");
+
 ?>

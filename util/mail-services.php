@@ -39,7 +39,7 @@ class EmailService
     private function initializeMailer()
     {
         $this->mailer = new PHPMailer(true);
-        
+
         // Configure SMTP
         $this->mailer->isSMTP();
         $this->mailer->Host       = $this->smtp['host'];
@@ -55,6 +55,12 @@ class EmailService
         }
 
         $this->mailer->setFrom($this->smtp['from_email'], $this->smtp['from_name']);
+
+        // Where replies go
+        $this->mailer->addReplyTo(
+            'support@beastline.in',
+            'Beastline Support'
+        );
     }
 
     // ==================== REGISTRATION EMAILS ====================
@@ -62,7 +68,7 @@ class EmailService
     public function sendRegistrationEmail($email, $name, $verification_link = '')
     {
         $subject = 'Welcome to Beastline - Complete Your Registration';
-        
+
         $html = $this->getEmailTemplate('registration', [
             'name' => $name,
             'verification_link' => $verification_link,
@@ -75,7 +81,7 @@ class EmailService
     public function sendRegistrationOTP($email, $name, $otp)
     {
         $subject = 'Verify Your Email - Beastline';
-        
+
         $html = $this->getEmailTemplate('registration_otp', [
             'name' => $name,
             'otp' => $otp,
@@ -88,7 +94,7 @@ class EmailService
     public function sendWelcomeEmail($email, $name)
     {
         $subject = 'Welcome to Beastline! Start Your Style Journey';
-        
+
         $html = $this->getEmailTemplate('welcome', [
             'name' => $name,
             'site' => $this->site
@@ -102,7 +108,7 @@ class EmailService
     public function sendPasswordResetOTP($email, $name, $otp)
     {
         $subject = 'Password Reset OTP - Beastline';
-        
+
         $html = $this->getEmailTemplate('password_reset_otp', [
             'name' => $name,
             'otp' => $otp,
@@ -115,7 +121,7 @@ class EmailService
     public function sendPasswordResetConfirmation($email, $name)
     {
         $subject = 'Password Reset Successful - Beastline';
-        
+
         $html = $this->getEmailTemplate('password_reset_success', [
             'name' => $name,
             'site' => $this->site
@@ -127,7 +133,7 @@ class EmailService
     public function sendAccountLockedEmail($email, $name, $unlock_link)
     {
         $subject = 'Account Security Alert - Beastline';
-        
+
         $html = $this->getEmailTemplate('account_locked', [
             'name' => $name,
             'unlock_link' => $unlock_link,
@@ -142,7 +148,7 @@ class EmailService
     public function sendOrderConfirmation($email, $name, $order_data)
     {
         $subject = 'Order Confirmed - #' . $order_data['order_number'] . ' - Beastline';
-        
+
         $html = $this->getEmailTemplate('order_confirmation', [
             'name' => $name,
             'order_data' => $order_data,
@@ -155,7 +161,7 @@ class EmailService
     public function sendOrderProcessing($email, $name, $order_data)
     {
         $subject = 'Your Order is Being Processed - #' . $order_data['order_number'] . ' - Beastline';
-        
+
         $html = $this->getEmailTemplate('order_processing', [
             'name' => $name,
             'order_data' => $order_data,
@@ -168,7 +174,7 @@ class EmailService
     public function sendOrderShipped($email, $name, $order_data, $tracking_info)
     {
         $subject = 'Your Order Has Shipped! - #' . $order_data['order_number'] . ' - Beastline';
-        
+
         $html = $this->getEmailTemplate('order_shipped', [
             'name' => $name,
             'order_data' => $order_data,
@@ -182,7 +188,7 @@ class EmailService
     public function sendOrderDelivered($email, $name, $order_data)
     {
         $subject = 'Your Order Has Been Delivered - #' . $order_data['order_number'] . ' - Beastline';
-        
+
         $html = $this->getEmailTemplate('order_delivered', [
             'name' => $name,
             'order_data' => $order_data,
@@ -195,7 +201,7 @@ class EmailService
     public function sendOrderCancelled($email, $name, $order_data, $reason = '')
     {
         $subject = 'Order Cancelled - #' . $order_data['order_number'] . ' - Beastline';
-        
+
         $html = $this->getEmailTemplate('order_cancelled', [
             'name' => $name,
             'order_data' => $order_data,
@@ -211,7 +217,7 @@ class EmailService
     public function sendPaymentReceived($email, $name, $payment_data)
     {
         $subject = 'Payment Received - #' . $payment_data['order_number'] . ' - Beastline';
-        
+
         $html = $this->getEmailTemplate('payment_received', [
             'name' => $name,
             'payment_data' => $payment_data,
@@ -224,7 +230,7 @@ class EmailService
     public function sendPaymentFailed($email, $name, $order_data, $reason = '')
     {
         $subject = 'Payment Failed - #' . $order_data['order_number'] . ' - Beastline';
-        
+
         $html = $this->getEmailTemplate('payment_failed', [
             'name' => $name,
             'order_data' => $order_data,
@@ -238,7 +244,7 @@ class EmailService
     public function sendInvoice($email, $name, $invoice_data)
     {
         $subject = 'Invoice - #' . $invoice_data['invoice_number'] . ' - Beastline';
-        
+
         $html = $this->getEmailTemplate('invoice', [
             'name' => $name,
             'invoice_data' => $invoice_data,
@@ -258,7 +264,7 @@ class EmailService
     public function sendShippingUpdate($email, $name, $shipping_data)
     {
         $subject = 'Shipping Update - #' . $shipping_data['order_number'] . ' - Beastline';
-        
+
         $html = $this->getEmailTemplate('shipping_update', [
             'name' => $name,
             'shipping_data' => $shipping_data,
@@ -271,7 +277,7 @@ class EmailService
     public function sendOutForDelivery($email, $name, $delivery_data)
     {
         $subject = 'Your Order is Out for Delivery! - #' . $delivery_data['order_number'] . ' - Beastline';
-        
+
         $html = $this->getEmailTemplate('out_for_delivery', [
             'name' => $name,
             'delivery_data' => $delivery_data,
@@ -284,7 +290,7 @@ class EmailService
     public function sendDeliveryAttemptFailed($email, $name, $delivery_data)
     {
         $subject = 'Delivery Attempt Failed - #' . $delivery_data['order_number'] . ' - Beastline';
-        
+
         $html = $this->getEmailTemplate('delivery_attempt_failed', [
             'name' => $name,
             'delivery_data' => $delivery_data,
@@ -299,7 +305,7 @@ class EmailService
     public function sendReturnRequestReceived($email, $name, $return_data)
     {
         $subject = 'Return Request Received - #' . $return_data['return_number'] . ' - Beastline';
-        
+
         $html = $this->getEmailTemplate('return_request_received', [
             'name' => $name,
             'return_data' => $return_data,
@@ -312,7 +318,7 @@ class EmailService
     public function sendReturnApproved($email, $name, $return_data)
     {
         $subject = 'Return Approved - #' . $return_data['return_number'] . ' - Beastline';
-        
+
         $html = $this->getEmailTemplate('return_approved', [
             'name' => $name,
             'return_data' => $return_data,
@@ -325,7 +331,7 @@ class EmailService
     public function sendRefundProcessed($email, $name, $refund_data)
     {
         $subject = 'Refund Processed - #' . $refund_data['refund_number'] . ' - Beastline';
-        
+
         $html = $this->getEmailTemplate('refund_processed', [
             'name' => $name,
             'refund_data' => $refund_data,
@@ -340,7 +346,7 @@ class EmailService
     public function sendCustomerServiceResponse($email, $name, $ticket_data)
     {
         $subject = 'Re: Support Ticket #' . $ticket_data['ticket_number'] . ' - Beastline';
-        
+
         $html = $this->getEmailTemplate('customer_service_response', [
             'name' => $name,
             'ticket_data' => $ticket_data,
@@ -353,7 +359,7 @@ class EmailService
     public function sendFeedbackRequest($email, $name, $order_data)
     {
         $subject = 'How was your experience? - #' . $order_data['order_number'] . ' - Beastline';
-        
+
         $html = $this->getEmailTemplate('feedback_request', [
             'name' => $name,
             'order_data' => $order_data,
@@ -368,7 +374,7 @@ class EmailService
     public function sendNewsletter($email, $name, $newsletter_content)
     {
         $subject = $newsletter_content['subject'] ?? 'Latest Updates from Beastline';
-        
+
         $html = $this->getEmailTemplate('newsletter', [
             'name' => $name,
             'content' => $newsletter_content,
@@ -381,7 +387,7 @@ class EmailService
     public function sendPromotionalOffer($email, $name, $offer_data)
     {
         $subject = $offer_data['subject'] ?? 'Special Offer Just For You! - Beastline';
-        
+
         $html = $this->getEmailTemplate('promotional_offer', [
             'name' => $name,
             'offer_data' => $offer_data,
@@ -394,7 +400,7 @@ class EmailService
     public function sendAbandonedCartReminder($email, $name, $cart_data)
     {
         $subject = 'Complete Your Purchase - Items Waiting in Your Cart - Beastline';
-        
+
         $html = $this->getEmailTemplate('abandoned_cart_reminder', [
             'name' => $name,
             'cart_data' => $cart_data,
@@ -409,7 +415,7 @@ class EmailService
     public function sendNewOrderNotification($admin_email, $order_data)
     {
         $subject = 'New Order Received - #' . $order_data['order_number'] . ' - Beastline';
-        
+
         $html = $this->getEmailTemplate('admin_new_order', [
             'order_data' => $order_data,
             'site' => $this->site
@@ -421,7 +427,7 @@ class EmailService
     public function sendLowStockNotification($admin_email, $product_data)
     {
         $subject = 'Low Stock Alert - ' . $product_data['product_name'] . ' - Beastline';
-        
+
         $html = $this->getEmailTemplate('admin_low_stock', [
             'product_data' => $product_data,
             'site' => $this->site
@@ -438,35 +444,36 @@ class EmailService
             // Reset mailer for each email
             $this->mailer->clearAddresses();
             $this->mailer->clearAttachments();
-            
+
             $this->mailer->addAddress($to_email, $to_name);
             $this->mailer->isHTML(true);
             $this->mailer->Subject = $subject;
             $this->mailer->Body = $html;
-            
+
             // Add plain text version
             $plain_text = strip_tags($html);
             $this->mailer->AltBody = $plain_text;
-            
+
             return $this->mailer->send();
-            
         } catch (Exception $e) {
-            error_log("Email send failed: " . $e->getMessage());
-            return false;
+            return [
+                'success' => false,
+                'error'   => $this->mailer->ErrorInfo ?: $e->getMessage()
+            ];
         }
     }
 
     private function getEmailTemplate($template_name, $data)
     {
         $template_file = __DIR__ . "/email_templates/{$template_name}.html";
-        
+
         if (file_exists($template_file)) {
             $html = file_get_contents($template_file);
         } else {
             // Fallback to basic template
             $html = $this->getBasicTemplate($template_name, $data);
         }
-        
+
         // Replace variables in template
         foreach ($data as $key => $value) {
             if (is_array($value)) {
@@ -482,7 +489,7 @@ class EmailService
             }
             $html = str_replace("{{{$key}}}", htmlspecialchars($value), $html);
         }
-        
+
         return $html;
     }
 
@@ -490,7 +497,7 @@ class EmailService
     {
         $name = $data['name'] ?? 'Customer';
         $site = $this->site;
-        
+
         switch ($type) {
             case 'password_reset_otp':
                 return "
@@ -532,56 +539,161 @@ class EmailService
                 </body>
                 </html>
                 ";
-                
+
             case 'order_confirmation':
                 $order = $data['order_data'];
+                $itemsHtml = '';
+
+                foreach ($order['items'] as $item) {
+                    // Safely get values with defaults
+                    $productName = htmlspecialchars($item['product_name'] ?? 'Product');
+                    $color = htmlspecialchars($item['color'] ?? '-');
+                    $size = htmlspecialchars($item['size'] ?? '-');
+                    $quantity = intval($item['quantity'] ?? 1);
+                    $sku = htmlspecialchars($item['sku'] ?? 'N/A'); // Fix: Provide default value
+
+                    $img = !empty($item['image'])
+                        ? "https://beastline.in/admin/assets/img/uploads/variants/" . $item['image']
+                        : "https://beastline.in/assets/img/product/product2.jpg";
+
+                    $itemsHtml .= "
+                        <tr>
+                            <td style='padding:15px 0; border-bottom:1px solid #eaeaea;'>
+                                <table width='100%' cellpadding='0' cellspacing='0'>
+                                    <tr>
+                                        <td width='90'>
+                                            <img src='{$img}' width='80' style='border-radius:8px; border:1px solid #eee;' />
+                                        </td>
+                                        <td style='padding-left:15px;'>
+                                            <div style='font-size:14px; font-weight:600; color:#222;'>
+                                                {$productName}
+                                            </div>
+                                            <div style='font-size:12px; color:#777; margin-top:4px;'>
+                                                Size: {$color} / {$size}
+                                            </div>
+                                            <div style='font-size:12px; color:#555; margin-top:6px;'>
+                                                Qty: {$quantity}
+                                            </div>
+                                            <div style='font-size:12px; color:#555; margin-top:6px;'>
+                                                SKU: {$sku}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </td>
+                        </tr>";
+                }
                 return "
                 <!DOCTYPE html>
                 <html>
                 <head>
-                    <title>Order Confirmation</title>
-                    <style>
-                        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-                        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-                        .header { background: linear-gradient(135deg, #c7a17a 0%, #8b6b4d 100%); color: white; padding: 20px; text-align: center; border-radius: 5px 5px 0 0; }
-                        .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 5px 5px; }
-                        .order-details { background: white; padding: 20px; border-radius: 5px; margin: 20px 0; }
-                        .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
-                    </style>
+                <meta charset='UTF-8'>
+                <title>Order Confirmed</title>
                 </head>
-                <body>
-                    <div class='container'>
-                        <div class='header'>
-                            <h2>Order Confirmed!</h2>
-                        </div>
-                        <div class='content'>
-                            <h3>Hello {$name},</h3>
-                            <p>Thank you for your order! We're excited to let you know that we've received your order and it is now being processed.</p>
-                            
-                            <div class='order-details'>
-                                <h4>Order Details</h4>
-                                <p><strong>Order Number:</strong> #{$order['order_number']}</p>
-                                <p><strong>Order Date:</strong> {$order['order_date']}</p>
-                                <p><strong>Order Total:</strong> ₹{$order['order_total']}</p>
-                                <p><strong>Shipping Address:</strong> {$order['shipping_address']}</p>
-                            </div>
-                            
-                            <p>You can track your order status by visiting <a href='{$site}track-order/'>Order Tracking</a>.</p>
-                            <p>If you have any questions, please contact our customer support.</p>
-                            
-                            <p>Best regards,<br>The Beastline Team</p>
-                        </div>
-                        <div class='footer'>
-                            <p>This is an automated message. Please do not reply to this email.</p>
-                            <p>&copy; " . date('Y') . " Beastline. All rights reserved.</p>
-                        </div>
-                    </div>
+
+                <body style='margin:0; padding:0; background:#f7f8fa; font-family:Arial, Helvetica, sans-serif;'>
+
+                <table width='100%' cellpadding='0' cellspacing='0'>
+                <tr>
+                <td align='center'>
+
+                <!-- Container -->
+                <table width='600' cellpadding='0' cellspacing='0'
+                    style='background:#ffffff; margin:40px 0; border-radius:10px; overflow:hidden;'>
+
+                    <!-- Header -->
+                    <tr>
+                        <td style='padding:22px 25px; border-bottom:1px solid #eee;'>
+                            <table width='100%'>
+                                <tr>
+                                    <td>
+                                        <img src='https://beastline.in/assets/img/logo/beastline-logo.png'
+                                            height='40' alt='Beastline'>
+                                    </td>
+                                    <td align='right' style='font-size:12px; color:#888;'>
+                                        <b>Order ID : #{$order['order_number']}</b>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- Confirmation -->
+                    <tr>
+                        <td style='padding:30px 25px 10px;'>
+                            <h2 style='margin:0; font-size:22px; color:#111;'>Order Confirmed 🎉</h2>
+                            <p style='margin-top:8px; font-size:14px; color:#555;'>
+                                Hi {$data['name']}, thank you for shopping with Beastline.
+                                Your order has been successfully placed.
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Address -->
+                    <tr>
+                        <td style='padding:20px 25px; background:#fafafa; border-top:1px solid #eee;'>
+                            <h3 style='margin:0 0 8px; font-size:15px; color:#222;'>Shipping Address</h3>
+                            <p style='margin:0; font-size:13px; color:#555; line-height:1.6;'>
+                                {$order['shipping_address']['name']}<br>
+                                {$order['shipping_address']['address']}<br>
+                                {$order['shipping_address']['city']},
+                                {$order['shipping_address']['state']} - {$order['shipping_address']['postcode']}<br>
+                                Phone: {$order['shipping_address']['phone']}
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Button -->
+                    <tr>
+                        <td style='padding:25px;'>
+                            <a href='https://beastline.in/track-order.php?order_id={$order['order_number']}'
+                            style='display:inline-block; background:#000; color:#fff;
+                                    padding:12px 22px; text-decoration:none;
+                                    font-size:14px; border-radius:6px;'>
+                                Track Your Order
+                            </a>
+                        </td>
+                    </tr>
+
+                    <!-- Items -->
+                    <tr>
+                        <td style='padding:10px 25px 0;'>
+                            <h3 style='font-size:16px; color:#222;'>Order Items</h3>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td style='padding:0 25px 20px;'>
+                        <table width='100%' cellpadding='0' cellspacing='0'>
+                        {$itemsHtml}
+                        </table>
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td style='padding:20px 25px; border-top:1px solid #eee;
+                                font-size:12px; color:#777; text-align:center;'>
+                            Need help? Email us at
+                            <a href='mailto:support@beastline.in' style='color:#000;'>support@beastline.in</a><br><br>
+                            © " . date('Y') . " Beastline. All rights reserved.
+                        </td>
+                    </tr>
+
+                </table>
+                <!-- End Container -->
+
+                </td>
+                </tr>
+                </table>
+
                 </body>
                 </html>
                 ";
-                
-            // Add more basic templates as needed...
-            
+
+
+                // Add more basic templates as needed...
+
             default:
                 return "
                 <!DOCTYPE html>
@@ -646,22 +758,22 @@ class EmailService
     public function sendBulkEmails($recipients, $subject, $template, $data = [])
     {
         $results = [];
-        
+
         foreach ($recipients as $recipient) {
             $data['name'] = $recipient['name'];
             $html = $this->getEmailTemplate($template, $data);
-            
+
             $result = $this->sendEmail($recipient['email'], $recipient['name'], $subject, $html);
             $results[] = [
                 'email' => $recipient['email'],
                 'success' => $result,
                 'error' => $result ? '' : $this->mailer->ErrorInfo
             ];
-            
+
             // Small delay to prevent rate limiting
             usleep(100000); // 0.1 second
         }
-        
+
         return $results;
     }
 
@@ -688,9 +800,8 @@ class EmailService
     public static function sendQuickEmail($to_email, $to_name, $subject, $message)
     {
         global $conn, $site;
-        
+
         $emailService = new self($conn, $site);
         return $emailService->sendEmail($to_email, $to_name, $subject, $message);
     }
 }
-?>

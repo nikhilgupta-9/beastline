@@ -313,7 +313,7 @@ $banners = get_banner();
             ?>
 
                 <!-- Each product in a grid column - adjust the column classes based on how many products per row you want -->
-                <div class="col-lg-3 col-md-3 col-sm-6 col-6 mb-30">
+                <div class="col-lg-3 col-md-3 col-sm-6 col-6 my-2 px-1">
                     <article class="single_product">
                         <figure>
                             <div class="product_thumb">
@@ -334,7 +334,7 @@ $banners = get_banner();
 
                             </div>
                             <figcaption class="product_content">
-                                <div class="product_content_inner">
+                                <div class="product_content_inner px-2">
                                     <h4 class="product_name">
                                         <a href="<?= $product_link ?>">
                                             <?= htmlspecialchars($f_p['pro_name']) ?>

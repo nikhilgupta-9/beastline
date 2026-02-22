@@ -249,10 +249,10 @@ $setting = new Setting($conn);
                 <div class="col-lg-4 col-md-4">
                     <div class="footer_bottom_right text-center text-md-right">
                         <div class="payment_methods mb-3">
-                            <p style="color: #999999; font-size: 14px; margin-bottom: 5px;">We accept:</p>
-                            <a href="#">
-                                <img src="<?= $site ?>assets/img/icon/payment.png" alt="Payment Methods" style="max-width: 200px;">
-                            </a>
+                            <!--<p style="color: #999999; font-size: 14px; margin-bottom: 5px;">We accept:</p>-->
+                            <!--<a href="#">-->
+                            <!--    <img src="<?= $site ?>assets/img/icon/payment.png" alt="Payment Methods" style="max-width: 200px;">-->
+                            <!--</a>-->
                         </div>
 
                     </div>

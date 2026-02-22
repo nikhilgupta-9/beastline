@@ -69,6 +69,9 @@ $available_colors = [];
 $available_sizes = [];
 $variant_stock = 0;
 
+// Define custom size order
+$size_order = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+
 while ($variant = $variants_result->fetch_assoc()) {
     $variants[] = $variant;
 
@@ -85,6 +88,18 @@ while ($variant = $variants_result->fetch_assoc()) {
     // Calculate total stock
     $variant_stock += $variant['quantity'];
 }
+
+// Sort sizes according to custom order
+usort($available_sizes, function($a, $b) use ($size_order) {
+    $pos_a = array_search($a, $size_order);
+    $pos_b = array_search($b, $size_order);
+    
+    // If size not found in custom order, put it at the end
+    if ($pos_a === false) $pos_a = count($size_order);
+    if ($pos_b === false) $pos_b = count($size_order);
+    
+    return $pos_a - $pos_b;
+});
 
 // Calculate if product has variants
 $has_variants = !empty($variants);
@@ -1092,166 +1107,122 @@ $colorMap = [
     <!--footer area end-->
 
     <script src="https://checkout.razorpay.com/v1/magic-checkout.js"></script>
-
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
+        $(document).ready(function() {
             $('#buyNowBtn').click(function(e) {
                 e.preventDefault();
+                const btn = $(this);
 
+                // Basic Validation
                 const selectedSize = $('#selected_size').val();
                 if ($('.product_variant.size').length && !selectedSize) {
                     $('#variantNotification').show().delay(3000).fadeOut();
                     return;
                 }
 
-                const btn = $(this);
-                const originalText = btn.html();
+                // Prepare Data
+                const orderData = {
+                    product_id: btn.data('product-id'),
+                    variant_id: $('#selected_variant_id').val() || 0,
+                    quantity: $('#quantity').val(),
+                    size: selectedSize,
+                    color: $('#selected_color').val() || '',
+                    price: btn.data('price')
+                };
+
                 btn.html('<span class="spinner-border spinner-border-sm"></span> Processing...').prop('disabled', true);
 
                 // Create order
                 $.ajax({
                     url: '<?= $site ?>ajax/buy-now.php',
                     method: 'POST',
-                    data: {
-                        product_id: btn.data('product-id'),
-                        variant_id: $('#selected_variant_id').val() || 0,
-                        quantity: $('#quantity').val(),
-                        size: selectedSize,
-                        color: $('#selected_color').val() || '',
-                        price: btn.data('price')
-                    },
+                    data: orderData,
                     dataType: 'json',
-                    success: function(data) {
-                        if (data.success) {
-                            const options = {
-                                key: data.key_id,
-                                name: 'Beastline',
-                                description: data.product_name,
-                                order_id: data.razorpay_order_id,
+                    success: function(orderResponse) {
+                        if (!orderResponse.success) {
+                            alert('Error: ' + orderResponse.message);
+                            resetButton(btn);
+                            return;
+                        }
 
-                                shipping_info_url: '<?= $site ?>ajax/shipping-info.php',
-                                get_promotions_url: '<?= $site ?>ajax/get-promotions.php',
-                                apply_promotion_url: '<?= $site ?>ajax/apply-promotion.php',
+                        // Magic Checkout Options - USING 'handler' (correct)
+                        const options = {
+                            key: orderResponse.key_id,
+                            name: 'Beastline',
+                            order_id: orderResponse.razorpay_order_id,
+                            one_click_checkout: true,
+                            show_coupons: true,
 
-                                prefill: {
-                                    name: '<?= $_SESSION['user_name'] ?? '' ?>',
-                                    email: '<?= $_SESSION['user_email'] ?? '' ?>',
-                                    contact: '<?= $_SESSION['user_phone'] ?? '' ?>'
-                                },
+                            prefill: {
+                                name: '<?= $_SESSION['user_name'] ?? '' ?>',
+                                email: '<?= $_SESSION['user_email'] ?? '' ?>',
+                                contact: '<?= $_SESSION['user_phone'] ?? '' ?>'
+                            },
 
-                                theme: {
-                                    color: '#0f0f0f'
-                                },
+                            theme: {
+                                color: '#0f0f0f'
+                            },
 
-                                onPaymentSuccess: function(response) {
-                                    console.log('Payment success response:', response);
+                            // ✅ CORRECT: Use 'handler' not 'onPaymentSuccess'
+                            handler: function(paymentResponse) {
+                                console.log('Payment Success:', paymentResponse);
 
-                                    // Show verification message
-                                    const notification = $('<div class="alert alert-info position-fixed top-0 start-50 translate-middle-x mt-3" style="z-index:9999;">Verifying your order...</div>').appendTo('body');
+                                const notification = $('<div class="alert alert-info">Verifying your order...</div>').appendTo('body');
 
-                                    // Verify payment
-                                    $.ajax({
-                                        url: '<?= $site ?>ajax/verify-magic-payment.php',
-                                        method: 'POST',
-                                        contentType: 'application/json',
-                                        data: JSON.stringify({
-                                            razorpay_payment_id: response.razorpay_payment_id,
-                                            razorpay_order_id: response.razorpay_order_id,
-                                            razorpay_signature: response.razorpay_signature
-                                        }),
-                                        dataType: 'json',
-                                        success: function(verification) {
-                                            notification.remove();
-                                            if (verification.success) {
-                                                window.location.href = verification.confirmation_url;
-                                            } else {
-                                                alert('❌ Verification Failed: ' + verification.message);
-                                                resetButton(btn, originalText);
-                                            }
-                                        },
-                                        error: function(xhr, status, error) {
-                                            notification.remove();
-                                            console.error('Verification Error Details:');
-                                            console.error('Status:', status);
-                                            console.error('Error:', error);
-                                            console.error('Response Text:', xhr.responseText);
-                                            console.error('Status Code:', xhr.status);
-
-                                            // Show detailed error
-                                            let errorMsg = 'Verification failed: ';
-                                            if (xhr.status === 404) {
-                                                errorMsg += 'verify-magic-payment.php not found (404)';
-                                            } else if (xhr.status === 500) {
-                                                errorMsg += 'Server error (500) - Check PHP error logs';
-                                            } else if (xhr.responseText) {
-                                                errorMsg += xhr.responseText.substring(0, 200);
-                                            } else {
-                                                errorMsg += error || 'Unknown error';
-                                            }
-
-                                            alert('❌ ' + errorMsg);
-                                            resetButton(btn, originalText);
+                                $.ajax({
+                                    url: '<?= $site ?>ajax/verify-magic-payment.php',
+                                    method: 'POST',
+                                    contentType: 'application/json',
+                                    data: JSON.stringify({
+                                        razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                                        razorpay_order_id: paymentResponse.razorpay_order_id,
+                                        razorpay_signature: paymentResponse.razorpay_signature
+                                    }),
+                                    dataType: 'json',
+                                    success: function(verifyResponse) {
+                                        notification.remove();
+                                        if (verifyResponse.success) {
+                                            window.location.href = verifyResponse.confirmation_url;
+                                        } else {
+                                            alert('❌ Verification Failed: ' + verifyResponse.message);
+                                            resetButton(btn);
                                         }
-                                    });
-                                },
-
-                                modal: {
-                                    ondismiss: function() {
-                                        console.log('Modal dismissed - payment cancelled');
-                                        resetButton(btn, originalText);
+                                    },
+                                    error: function(xhr) {
+                                        notification.remove();
+                                        console.error('Verification Error:', xhr.responseText);
+                                        alert('❌ Verification failed. Check console.');
+                                        resetButton(btn);
                                     }
+                                });
+                            },
+
+                            modal: {
+                                ondismiss: function() {
+                                    resetButton(btn);
                                 }
-                            };
-
-                            const rzp = new Razorpay(options);
-                            rzp.on('payment.failed', function(response) {
-                                console.error('Payment failure:', response);
-                                alert('❌ Payment failed: ' + (response.error.description || 'Please try again'));
-                                resetButton(btn, originalText);
-                            });
-
-                            rzp.on('payment.cancel', function() {
-                                console.log('Payment cancelled by user');
-                                resetButton(btn, originalText);
-                            });
-                            rzp.open();
-                        } else {
-                            alert('❌ Order creation failed: ' + (data.message || 'Unknown error'));
-                            resetButton(btn, originalText);
-                        }
-                    },
-                    error: function(xhr, status, error) {
-                        console.error('Order Creation Error Details:');
-                        console.error('Status:', status);
-                        console.error('Error:', error);
-                        console.error('Response Text:', xhr.responseText);
-                        console.error('Status Code:', xhr.status);
-
-                        let errorMsg = 'Order creation failed: ';
-                        if (xhr.status === 404) {
-                            errorMsg += 'buy-now.php not found (404)';
-                        } else if (xhr.status === 500) {
-                            errorMsg += 'Server error (500) - Check PHP error logs';
-                        } else if (xhr.responseText) {
-                            // Try to parse JSON response
-                            try {
-                                const jsonResponse = JSON.parse(xhr.responseText);
-                                errorMsg += jsonResponse.message || xhr.responseText;
-                            } catch (e) {
-                                errorMsg += xhr.responseText.substring(0, 200);
                             }
-                        } else {
-                            errorMsg += error || 'Unknown error';
-                        }
+                        };
 
-                        alert('❌ ' + errorMsg);
-                        resetButton(btn, originalText);
+                        const rzp = new Razorpay(options);
+
+                        rzp.on('payment.failed', function(response) {
+                            alert('Payment failed: ' + (response.error.description || 'Please try again'));
+                            resetButton(btn);
+                        });
+
+                        rzp.open();
+                    },
+                    error: function(xhr) {
+                        console.error('Order Creation Error:', xhr.responseText);
+                        alert('Failed to create order. Please try again.');
+                        resetButton(btn);
                     }
                 });
             });
 
-            function resetButton(btn, originalText) {
-                btn.html(originalText || 'BUY NOW').prop('disabled', false);
+            function resetButton(btn) {
+                btn.html('BUY NOW').prop('disabled', false);
             }
         });
     </script>

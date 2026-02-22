@@ -1,4 +1,5 @@
 <?php
+
 session_start();
 include_once "config/connect.php";
 
@@ -281,9 +282,16 @@ if($order['payment_method'] == 'cod') {
                     <strong><?= htmlspecialchars($order['order_number']) ?></strong>
                 </div>
                 <div class="order-detail-row">
-                    <span>Date:</span>
+                    <span>Order Date:</span>
                     <span><?= date('F d, Y h:i A', strtotime($order['created_at'])) ?></span>
                 </div>
+                
+                <?php if(!empty($order['razorpay_created_at'])): ?>
+                <div class="order-detail-row">
+                    <span>Payment Date:</span>
+                    <span><?= date('F d, Y h:i A', $order['razorpay_created_at']) ?></span>
+                </div>
+                <?php endif; ?>
                 <div class="order-detail-row">
                     <span>Order Status:</span>
                     <span class="badge bg-<?= 
@@ -297,17 +305,9 @@ if($order['payment_method'] == 'cod') {
                 </div>
                 <div class="order-detail-row">
                     <span>Payment Method:</span>
-                    <span class="text-uppercase"><?= htmlspecialchars($order['payment_method']) ?></span>
+                    <span class="text-uppercase"><?= $order['payment_method'] == 'COD' ? 'COD' : 'Prepaid' ?></span>
                 </div>
-                <div class="order-detail-row">
-                    <span>Payment Status:</span>
-                    <span class="badge bg-<?= 
-                        $order['payment_status'] == 'paid' ? 'success' : 
-                        ($order['payment_status'] == 'cod_advance_paid' ? 'warning' : 'secondary') 
-                    ?>">
-                        <?= ucfirst(str_replace('_', ' ', $order['payment_status'])) ?>
-                    </span>
-                </div>
+               
                 
                 <?php if(!empty($order_items)): ?>
                 <div class="order-items mt-4">
@@ -476,23 +476,133 @@ function parseAddressFromString($address_string) {
 }
 
 ?>
+<!-- In your order-confirmation.php - Replace the existing script with this -->
 <script>
 $(document).ready(function () {
-
-    <?php if ($order['email_status'] === 'pending'): ?>
+    <?php if ($order['email_status'] === 'pending' || $order['logistics_sync_status'] !== 'synced'): ?>
+        console.log("🚀 Processing order #<?= $order_id ?>");
+        console.log("Email status: <?= $order['email_status'] ?>, Logistics status: <?= $order['logistics_sync_status'] ?>");
+        
+        // Show loading indicator
+        $('#sync-status').html(`
+            <div class="alert alert-info mt-3">
+                <i class="fa fa-spinner fa-spin"></i> 
+                Confirming your order and syncing with logistics... Please wait.
+            </div>
+        `);
+        
+        // Call the combined processor
         $.ajax({
-            url: "<?= $site ?>cron/send-order-mails.php",
+            url: "<?= $site ?>cron/sync-tracking.php",
             type: "GET",
-            data: { order_id: <?= (int)$order_id ?> },
-            timeout: 2000,
-            success: function () {
-                console.log("Order mail triggered");
+            data: { 
+                order_id: <?= (int)$order_id ?>,
+                ajax: 1
             },
-            error: function () {
-                console.log("Mail trigger failed");
+            dataType: 'json',
+            timeout: 30000, // 30 seconds for logistics sync
+            success: function(response) {
+                console.log("✅ Process response:", response);
+                
+                // Remove loading indicator
+                $('#sync-status').remove();
+                
+                if (response.success) {
+                    // Show email status
+                    if (response.email_status === 'sent') {
+                        console.log("✅ Email sent successfully");
+                    }
+                    
+                    // Update UI with tracking info if available
+                    if (response.tracking_number) {
+                        console.log("✅ Tracking number received:", response.tracking_number);
+                        $('#tracking-info').html(`
+                            <div class="alert alert-success mt-3">
+                                <i class="fa fa-truck"></i> 
+                                <strong>Tracking Number:</strong> ${response.tracking_number}
+                                ${response.courier_name ? `<br><small>Courier: ${response.courier_name}</small>` : ''}
+                            </div>
+                        `);
+                        
+                        // Reload page after 2 seconds to show tracking
+                        setTimeout(function() {
+                            location.reload();
+                        }, 2000);
+                    }
+                    
+                    // Check logistics status
+                   if (response.logistics_status === 'synced') {
+                        console.log("✅ Logistics fully synced");
+                    } else if (response.logistics_status === 'accepted') {
+                        console.log("⏳ Accepted by courier, AWB pending");
+                    } else if (response.logistics_status === 'failed') {
+                        console.warn("⚠️ Logistics failed:", response.logistics_message);
+                        $('#logistics-warning').html(`
+                            <div class="alert alert-warning mt-3">
+                                <i class="fa fa-exclamation-triangle"></i>
+                                <strong>Note:</strong> Order confirmed but logistics sync is pending. 
+                                We'll process it automatically. 
+                                ${response.logistics_message ? `<br><small>${response.logistics_message}</small>` : ''}
+                            </div>
+                        `);
+                    }
+                } else {
+                    console.error("❌ Process failed:", response.message);
+                    
+                    $('#sync-status').html(`
+                        <div class="alert alert-danger mt-3">
+                            <i class="fa fa-exclamation-circle"></i> 
+                            <strong>Error:</strong> ${response.message ? response.message : 'Unknown error'}
+                            <br><small>Don't worry, your order is confirmed. We'll process it shortly.</small>
+                        </div>
+                    `);
+                }
+            },  
+            error: function(xhr, status, error) {
+                console.error("❌ AJAX Error - Status:", status);
+                console.error("❌ Error details:", error);
+                
+                // Remove loading indicator
+                $('#sync-status').remove();
+                
+                // Show user-friendly message
+                $('#sync-status').html(`
+                    <div class="alert alert-info mt-3">
+                        <i class="fa fa-check-circle"></i> 
+                        <strong>Order Confirmed!</strong>
+                        <br>Your order has been placed successfully. We'll send you a confirmation email shortly.
+                    </div>
+                `);
+                
+                // Still show tracking if available
+                <?php if(!empty($order['tracking_number'])): ?>
+                $('#tracking-info').html(`
+                    <div class="alert alert-success mt-3">
+                        <i class="fa fa-truck"></i> 
+                        <strong>Tracking Number:</strong> <?= $order['tracking_number'] ?>
+                        <?= !empty($order['courier_name']) ? '<br><small>Courier: ' . $order['courier_name'] . '</small>' : '' ?>
+                    </div>
+                `);
+                <?php endif; ?>
+            },
+            complete: function() {
+                console.log("📡 AJAX request completed");
             }
         });
+    <?php else: ?>
+        console.log("ℹ️ Order #<?= $order_id ?> already processed");
+        
+        // Show tracking if available
+        <?php if(!empty($order['tracking_number'])): ?>
+        $('#tracking-info').html(`
+            <div class="alert alert-success mt-3">
+                <i class="fa fa-truck"></i> 
+                <strong>Tracking Number:</strong> <?= $order['tracking_number'] ?>
+                <?= !empty($order['courier_name']) ? '<br><small>Courier: ' . $order['courier_name'] . '</small>' : '' ?>
+            </div>
+        `);
+        <?php endif; ?>
     <?php endif; ?>
-
 });
+
 </script>

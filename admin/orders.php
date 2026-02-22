@@ -288,7 +288,7 @@ $result = mysqli_query($conn, $sql);
             color: #28a745;
         }
 
-        .badge-pending {
+        .badge-cod {
             background-color: rgba(220, 53, 69, 0.2);
             color: #dc3545;
         }
@@ -521,7 +521,7 @@ $result = mysqli_query($conn, $sql);
                                                     <th scope="col">Products</th>
                                                     <th scope="col">Amount</th>
                                                     <th scope="col">Order Status</th>
-                                                    <th scope="col">Payment Status</th>
+                                                    <!--<th scope="col">Payment Status</th>-->
                                                     <th scope="col">Payment Method</th>
                                                     <th scope="col">Date</th>
                                                     <th scope="col">Action</th>
@@ -559,11 +559,17 @@ $result = mysqli_query($conn, $sql);
 
                                                         // Payment Status badge
                                                         $paymentStatusClass = 'badge-pending';
-                                                        if (strtolower($row['payment_status']) === 'paid' || strtolower($row['payment_status']) === 'delivered') {
+                                                        if (strtolower($row['payment_status']) === 'paid') {
                                                             $paymentStatusClass = 'badge-paid';
                                                             $paymentStatusText = 'Paid';
-                                                        } else {
-                                                            $paymentStatusText = 'Pending';
+                                                            
+                                                        }elseif( strtolower($row['payment_method'] ?? '') === 'prepaid') {
+                                                            $paymentStatusClass = 'badge-paid';
+                                                            $paymentStatusText = 'Prepaid';
+                                                        }
+                                                        else {
+                                                            $paymentStatusClass = 'badge-cod';
+                                                            $paymentStatusText = 'COD';
                                                         }
 
                                                         // Format date
@@ -626,12 +632,16 @@ $result = mysqli_query($conn, $sql);
                                                                     <?php echo $orderStatusText; ?>
                                                                 </span>
                                                             </td>
+                                                            <!--<td>-->
+                                                            <!--    <span class="badge <?php echo $paymentStatusClass; ?>">-->
+                                                            <!--        <?php echo $paymentStatusText; ?>-->
+                                                            <!--    </span>-->
+                                                            <!--</td>-->
                                                             <td>
-                                                                <span class="badge <?php echo $paymentStatusClass; ?>">
-                                                                    <?php echo $paymentStatusText; ?>
+                                                                <span class="badge <?php echo $paymentStatusClass; ?>">    
+                                                                <?php echo ucfirst(htmlspecialchars($row['payment_method'] ?? 'NA')); ?>
                                                                 </span>
                                                             </td>
-                                                            <td><?php echo ucfirst(htmlspecialchars($row['payment_method'])); ?></td>
                                                             <td class="text-center"><?php echo $orderDate; ?></td>
                                                             <td class="text-center">
                                                                 <div class="d-flex justify-content-center gap-2">
