@@ -90,6 +90,16 @@ $is_logged_in = isset($_SESSION['user_id']);
 
 <!-- desktop menu  -->
 <header>
+    <!-- Top Announcement Bar - Professional Marquee -->
+<div style="background-color: #000000; color: #ffffff; padding: 8px 0; overflow: hidden; width: 100%; border-bottom: 1px solid #333;" class="d-none">
+    <div class="container">
+        <marquee behavior="scroll" direction="left" scrollamount="5" onmouseover="this.stop();" onmouseout="this.start();" style="color: #ffffff; font-weight: 500; font-size: 14px;">
+            <span style="display: inline-block; padding: 0 20px;">🎉 SPECIAL OFFER: Get ₹100 discount on first purchase for new customers! Limited time offer. Shop Now! 🎉</span>
+            <span style="display: inline-block; padding: 0 20px;">✨ FREE Shipping on orders above ₹999 ✨</span>
+            <span style="display: inline-block; padding: 0 20px;">🏆 Trusted by 500+ Happy Customers 🏆</span>
+        </marquee>
+    </div>
+</div>
     <div class="main_header sticky-header">
         <div class="container">
             <div class="row align-items-center">
@@ -177,7 +187,7 @@ $is_logged_in = isset($_SESSION['user_id']);
                                     <li><a href="<?= $site ?>register/"><i class="fa fa-user-plus me-2"></i>Register</a></li>
                                     <li class="dropdown-divider"></li>
                                     <li><a href="https://beastline.ithinklogistics.co.in"><i class="fa fa-truck me-2"></i>Track Order</a></li>
-                                    <li><a href="<?= $site ?>help/"><i class="fa fa-question-circle me-2"></i>Help</a></li>
+                                    <li><a href="<?= $site ?>contact/"><i class="fa fa-question-circle me-2"></i>Help</a></li>
                                 <?php endif; ?>
                             </ul>
                         </div>
@@ -204,7 +214,7 @@ $is_logged_in = isset($_SESSION['user_id']);
                 <div class="empty-cart text-center py-5">
                     <i class="pe-7s-cart" style="font-size: 60px; color: #ddd;"></i>
                     <p class="mt-3">Your cart is empty</p>
-                    <a href="<?= $site ?>shop/" class="btn btn-dark mt-2">Continue Shopping</a>
+                    <a href="<?= $site ?>category/sale" class="btn btn-dark mt-2">Continue Shopping</a>
                 </div>
             </div>
         </div>
@@ -233,88 +243,132 @@ $is_logged_in = isset($_SESSION['user_id']);
 </header>
 
 <!-- JavaScript for dynamic header -->
+<!-- JavaScript for dynamic header -->
 <script>
-    $(document).ready(function() {
-        // Load mini cart on page load
+$(document).ready(function() {
+    // Load mini cart on page load
+    loadMiniCart(); // Add this line to load cart when page loads
+
+    // Toggle mini cart sidebar
+    $('.mini_cart_wrapper_trigger').click(function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $('.mini_cart').addClass('active');
+        $('.off_canvars_overlay').addClass('active');
+        
+        // Reload mini cart content when opening
         loadMiniCart();
+    });
 
-        // Toggle mini cart sidebar
-        $('.mini_cart_wrapper_trigger').click(function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            $('.mini_cart').addClass('active');
-            $('.off_canvars_overlay').addClass('active');
-            loadMiniCart();
-        });
+    // Close mini cart
+    $('.mini_cart_close a, .off_canvars_overlay').click(function() {
+        $('.mini_cart').removeClass('active');
+        $('.off_canvars_overlay').removeClass('active');
+    });
 
-        // Close mini cart
-        $('.mini_cart_close a, .off_canvars_overlay').click(function() {
-            $('.mini_cart').removeClass('active');
-            $('.off_canvars_overlay').removeClass('active');
-        });
+    // Load mini cart content via AJAX
+    function loadMiniCart() {
+        $.ajax({
+            url: '<?= $site ?>ajax/get-mini-cart-sidebar.php',
+            method: 'GET',
+            dataType: 'json',
+            beforeSend: function() {
+                $('#miniCartContent').html('<div class="text-center py-4"><div class="spinner-border spinner-border-sm"></div> Loading...</div>');
+            },
+            success: function(response) {
+                $('#miniCartContent').html(response.content);
+                $('#cartSubtotal').text('₹' + response.subtotal);
+                $('#cartTotal').text('₹' + response.total);
 
-        // Load mini cart content via AJAX
-        function loadMiniCart() {
-            $.ajax({
-                url: '<?= $site ?>ajax/get-mini-cart-sidebar.php',
-                method: 'GET',
-                beforeSend: function() {
-                    $('#miniCartContent').html('<div class="text-center py-4"><div class="spinner-border spinner-border-sm"></div> Loading...</div>');
-                },
-                success: function(response) {
-                    $('#miniCartContent').html(response.content);
-                    $('#cartSubtotal').text('₹' + response.subtotal);
-                    $('#cartTotal').text('₹' + response.total);
-
-                    if (response.item_count > 0) {
-                        $('#miniCartTotals').show();
-                        $('#miniCartActions').show();
-                    } else {
-                        $('#miniCartTotals').hide();
-                        $('#miniCartActions').hide();
-                    }
+                if (response.item_count > 0) {
+                    $('#miniCartTotals').show();
+                    $('#miniCartActions').show();
+                } else {
+                    $('#miniCartTotals').hide();
+                    $('#miniCartActions').hide();
                 }
-            });
-        }
-
-        // Update cart count
-        function updateCartCount() {
-            $.ajax({
-                url: '<?= $site ?>ajax/get-cart-count.php',
-                method: 'GET',
-                success: function(response) {
-                    $('.item_count').text(response.count);
-                }
-            });
-        }
-
-        // Auto-update cart count every 30 seconds
-        setInterval(updateCartCount, 30000);
-
-        // Search suggestions
-        $('#headerSearchInput').on('input', function() {
-            var query = $(this).val();
-            if (query.length >= 2) {
-                $.ajax({
-                    url: '<?= $site ?>ajax/search-suggestions.php',
-                    method: 'GET',
-                    data: {
-                        q: query
-                    },
-                    success: function(response) {
-                        $('#searchSuggestions').html(response).show();
-                    }
-                });
-            } else {
-                $('#searchSuggestions').hide();
+            },
+            error: function(xhr, status, error) {
+                console.error('Error loading cart:', error);
+                $('#miniCartContent').html('<div class="text-center py-4 text-danger">Error loading cart</div>');
             }
         });
+    }
 
-        // Close search suggestions on click outside
-        $(document).click(function(e) {
-            if (!$(e.target).closest('.search_list').length) {
-                $('#searchSuggestions').hide();
+    // Update cart count
+    function updateCartCount() {
+        $.ajax({
+            url: '<?= $site ?>ajax/get-cart-count.php',
+            method: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                $('.item_count').text(response.count);
+            },
+            error: function(xhr, status, error) {
+                console.error('Error updating cart count:', error);
+            }
+        });
+    }
+
+    // Auto-update cart count every 30 seconds
+    setInterval(updateCartCount, 30000);
+
+    // Search suggestions
+    $('#headerSearchInput').on('input', function() {
+        var query = $(this).val();
+        if (query.length >= 2) {
+            $.ajax({
+                url: '<?= $site ?>ajax/search-suggestions.php',
+                method: 'GET',
+                data: { q: query },
+                success: function(response) {
+                    $('#searchSuggestions').html(response).show();
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error loading search suggestions:', error);
+                }
+            });
+        } else {
+            $('#searchSuggestions').hide();
+        }
+    });
+
+    // Handle remove cart item (delegation since items are loaded dynamically)
+    $(document).on('click', '.remove-cart-item', function(e) {
+        e.preventDefault();
+        var key = $(this).data('key');
+        
+        $.ajax({
+            url: '<?= $site ?>ajax/remove-from-cart.php',
+            method: 'POST',
+            data: { key: key },
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    // Reload mini cart
+                    loadMiniCart();
+                    // Update cart count
+                    updateCartCount();
+                    // Show success message (optional)
+                    if (response.message) {
+                        alert(response.message);
+                    }
+                } else {
+                    alert('Error removing item from cart');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Error removing item:', error);
+                alert('Error removing item from cart');
             }
         });
     });
+
+    // Close search suggestions on click outside
+    $(document).click(function(e) {
+        if (!$(e.target).closest('.search_list').length) {
+            $('#searchSuggestions').hide();
+        }
+    });
+});
 </script>

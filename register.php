@@ -188,6 +188,9 @@ $cart_count = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
 
     <!--modernizr min js here-->
     <script src="<?= $site ?>assets/js/vendor/modernizr-3.7.1.min.js"></script>
+
+    <?php include_once "includes/meta_pixel.php" ?>
+    
     <style>
         .register-message {
             padding: 10px 15px;

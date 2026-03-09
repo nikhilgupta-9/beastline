@@ -283,6 +283,7 @@ if (isset($_SESSION['user_id'])) {
     </style>
        <!--modernizr min js here-->
     <script src="<?= $site ?>assets/js/vendor/modernizr-3.7.1.min.js"></script>
+    <?php include_once "includes/meta_pixel.php" ?>
 </head>
 <body>
     <?php include_once "includes/header.php" ?>
@@ -440,7 +441,7 @@ if (isset($_SESSION['user_id'])) {
                 hideLoading();
                 
                 if (response.success) {
-                    displayProgressBar(response.progress);
+                    displayProgressBar(response.progress);    
                     displayTimeline(response.timeline);
                     displayOrderDetails(response.order_details);
                     

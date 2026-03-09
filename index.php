@@ -49,6 +49,7 @@ $banners = get_banner();
 
 	<!--modernizr min js here-->
 	<script src="<?= $site ?>assets/js/vendor/modernizr-3.7.1.min.js"></script>
+	<?php include_once "includes/meta_pixel.php" ?>
 </head>
 <style>
 	/* Banner Video Base Fix */
@@ -123,7 +124,7 @@ $banners = get_banner();
 	<?php include_once "includes/header.php" ?>
 
 	<!--slider area start-->
-	<section class="slider_section mb-100">
+	<section class="slider_section mb-40">
 		<div class="slider_area owl-carousel">
 
 			<?php if (!empty($banners)) {
@@ -134,7 +135,7 @@ $banners = get_banner();
 							<div class="row">
 								<div class="col-12">
 									<div class="slider_content">
-										<h2 class="text-light fw-3">Get 30% Off &amp; Free Shipping</h2>
+										<h2 class="">Get 30% Off &amp; Free Shipping</h2>
 										<h1 class="text-light"><?= $b['title'] ?></h1>
 										<p class="text-light"><?= $b['description'] ?></p>
 										<a href="<?= $b['link_url'] ?>">Shop Now +</a>
@@ -152,43 +153,47 @@ $banners = get_banner();
 	<!--slider area end-->
 
 	<!--categories product area start-->
-	<div class="categories_product_area   mb-92">
-		<div class="container">
-			<div class="row">
-				<div class="col-12">
-					<div class="section_title">
-						<h2>Top Categories</h2>
+	<?php
+	$category = get_category_home();
+	if ($category) {
+	?>
+		<div class="categories_product_area   mb-92">
+			<div class="container">
+				<div class="row">
+					<div class="col-12">
+						<div class="section_title">
+							<h2>Top Categories</h2>
+						</div>
 					</div>
 				</div>
-			</div>
-			<div class="row">
-				<div class="product_carousel product_column4 owl-carousel">
-					<?php
-					$category = get_category_home();
-					foreach ($category as $cate) {
-					?>
-						<div class="col-lg-3">
-							<article class="single_categories">
-								<figure>
-									<div class="categories_thumb">
-										<a href="<?= $site ?>shop/<?= $cate['slug_url'] ?>">
-											<img src="<?= $site ?>admin/uploads/category/<?= $cate['image'] ?>" alt="<?= $cate['categories'] ?>">
-										</a>
-									</div>
-									<figcaption class="categories_content">
-										<h4 class="product_name"><a href="<?= $site ?>shop/<?= $cate['slug_url'] ?>"><?= $cate['categories'] ?></a></h4>
-										<div class="product_collection">
-											<p>13 Products</p>
-											<a href="<?= $site ?>shop/<?= $cate['slug_url'] ?>">+ Shop Collection</a>
+				<div class="row">
+					<div class="product_carousel product_column4 owl-carousel">
+						<?php
+
+						foreach ($category as $cate) {
+						?>
+							<div class="col-lg-3">
+								<article class="single_categories">
+									<figure>
+										<div class="categories_thumb">
+											<a href="<?= $site ?>shop/<?= $cate['slug_url'] ?>">
+												<img src="<?= $site ?>admin/uploads/category/<?= $cate['image'] ?>" alt="<?= $cate['categories'] ?>">
+											</a>
 										</div>
-									</figcaption>
-								</figure>
-							</article>
-						</div>
-					<?php
-					}
-					?>
-					<div class="col-lg-3">
+										<figcaption class="categories_content">
+											<h4 class="product_name"><a href="<?= $site ?>shop/<?= $cate['slug_url'] ?>"><?= $cate['categories'] ?></a></h4>
+											<div class="product_collection">
+												<p>13 Products</p>
+												<a href="<?= $site ?>shop/<?= $cate['slug_url'] ?>">+ Shop Collection</a>
+											</div>
+										</figcaption>
+									</figure>
+								</article>
+							</div>
+						<?php
+						}
+						?>
+						<!-- <div class="col-lg-3">
 						<article class="single_categories">
 							<figure>
 								<div class="categories_thumb">
@@ -203,12 +208,13 @@ $banners = get_banner();
 								</figcaption>
 							</figure>
 						</article>
-					</div>
+					</div> -->
 
+					</div>
 				</div>
 			</div>
 		</div>
-	</div>
+	<?php } ?>
 	<!--categories product area end-->
 
 	<!--discount banner area start-->
@@ -230,132 +236,132 @@ $banners = get_banner();
 	<!--discount banner area end-->
 
 	<!--product area start-->
-	<div class="product_area  mb-95">
-		<div class="container">
-			<div class="row">
-				<div class="col-12">
-					<div class="section_title product_shop_title">
-						<h2>Featured products </h2>
-					</div>
-					<div class="product_shop_collection">
-						<a href="<?= $site ?>category/sale">Shop all collection</a>
-					</div>
-				</div>
-			</div>
-			<div class="row">
-				<div class="product_carousel product_column5 owl-carousel">
-					<?php
-					$fetaured_products = get_featured_product();
+<div class="product_area mb-95">
+    <div class="container">
+        <div class="row">
+            <div class="col-12">
+                <div class="section_title product_shop_title">
+                    <h2>Featured products</h2>
+                </div>
+                <div class="product_shop_collection">
+                    <a href="<?= $site ?>category/sale">Shop all collection</a>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <?php
+            $fetaured_products = get_featured_product();
 
-					// If no featured products, create placeholder array
-					if (empty($fetaured_products)) {
-						$fetaured_products = [
-							[
-								'pro_id' => 1,
-								'pro_name' => 'Eodem modo vels is mattis antes facilisis',
-								'pro_img' => 'product3.jpg',
-								'mrp' => 86.00,
-								'selling_price' => 82.00,
-								'is_on_sale' => true
-							],
-							[
-								'pro_id' => 2,
-								'pro_name' => 'Epicuri per lobortis eleifend eget laoreet',
-								'pro_img' => 'product5.jpg',
-								'mrp' => 82.00,
-								'selling_price' => 77.00,
-								'is_on_sale' => true
-							],
-							[
-								'pro_id' => 3,
-								'pro_name' => 'Fusce ultricies dolor vitae tristique suscipit',
-								'pro_img' => 'product7.jpg',
-								'mrp' => 90.00,
-								'selling_price' => 88.00,
-								'is_on_sale' => true
-							],
-							[
-								'pro_id' => 4,
-								'pro_name' => 'Product Name 4',
-								'pro_img' => 'product2.jpg',
-								'mrp' => 84.00,
-								'selling_price' => 79.00,
-								'is_on_sale' => true
-							]
-						];
-					}
+            // If no featured products, create placeholder array
+            if (empty($fetaured_products)) {
+                $fetaured_products = [
+                    [
+                        'pro_id' => 1,
+                        'pro_name' => 'Eodem modo vels is mattis antes facilisis',
+                        'pro_img' => 'product3.jpg',
+                        'mrp' => 86.00,
+                        'selling_price' => 82.00,
+                        'is_on_sale' => true
+                    ],
+                    [
+                        'pro_id' => 2,
+                        'pro_name' => 'Epicuri per lobortis eleifend eget laoreet',
+                        'pro_img' => 'product5.jpg',
+                        'mrp' => 82.00,
+                        'selling_price' => 77.00,
+                        'is_on_sale' => true
+                    ],
+                    [
+                        'pro_id' => 3,
+                        'pro_name' => 'Fusce ultricies dolor vitae tristique suscipit',
+                        'pro_img' => 'product7.jpg',
+                        'mrp' => 90.00,
+                        'selling_price' => 88.00,
+                        'is_on_sale' => true
+                    ],
+                    [
+                        'pro_id' => 4,
+                        'pro_name' => 'Product Name 4',
+                        'pro_img' => 'product2.jpg',
+                        'mrp' => 84.00,
+                        'selling_price' => 79.00,
+                        'is_on_sale' => true
+                    ]
+                ];
+            }
 
-					foreach ($fetaured_products as $index => $f_p):
-						// Determine secondary image
-						$secondary_img_num = ($index % 4) + 2; // This will cycle through 2, 3, 4, 5, etc.
+            foreach ($fetaured_products as $index => $f_p):
+                // Determine secondary image (if needed)
+                $secondary_img_num = ($index % 4) + 2;
 
-						// Calculate discount if available
-						$show_sale = isset($f_p['mrp']) && isset($f_p['selling_price']) &&
-							$f_p['mrp'] > $f_p['selling_price'];
+                // Calculate discount if available
+                $show_sale = isset($f_p['mrp']) && isset($f_p['selling_price']) &&
+                    $f_p['mrp'] > $f_p['selling_price'];
 
-						// Format prices
-						$old_price = isset($f_p['mrp']) ? '$' . number_format($f_p['mrp'], 2) : '$0.00';
-						$current_price = isset($f_p['selling_price']) ? '$' . number_format($f_p['selling_price'], 2) : '$0.00';
+                // Format prices
+                $old_price = isset($f_p['mrp']) ? '₹' . number_format($f_p['mrp'], 2) : '$0.00';
+                $current_price = isset($f_p['selling_price']) ? '₹' . number_format($f_p['selling_price'], 2) : '$0.00';
 
-						// Product link
-						$product_link = isset($f_p['slug_url']) ? "{$site}product-details/{$f_p['slug_url']}" : "product-details.html";
+                // Product link
+                $product_link = isset($f_p['slug_url']) ? "{$site}product-details/{$f_p['slug_url']}" : "product-details.html";
 
-						// Primary image path
-						if (isset($f_p['pro_img']) && strpos($f_p['pro_img'], 'assets/') === false) {
-							$primary_img = $site . 'admin/assets/img/uploads/' . $f_p['pro_img'];
-						} else {
-							$primary_img = isset($f_p['pro_img']) ? $f_p['pro_img'] : "assets/img/product/product" . (($index * 2) + 1) . ".jpg";
-						}
-					?>
+                // Primary image path
+                if (isset($f_p['pro_img']) && strpos($f_p['pro_img'], 'assets/') === false) {
+                    $primary_img = $site . 'admin/assets/img/uploads/' . $f_p['pro_img'];
+                } else {
+                    $primary_img = isset($f_p['pro_img']) ? $f_p['pro_img'] : "assets/img/product/product" . (($index * 2) + 1) . ".jpg";
+                }
+            ?>
 
-						<!-- Each carousel item should be a single product -->
-						<article class="single_product">
-							<figure>
-								<div class="product_thumb">
-									<a class="primary_img" href="<?= $product_link ?>">
-										<img src="<?= $primary_img ?>" alt="<?= htmlspecialchars($f_p['pro_name']) ?>">
-									</a>
+                <!-- Each product in a grid column - adjust the column classes based on how many products per row you want -->
+                <div class="col-lg-3 col-md-3 col-sm-6 col-6 my-2 px-1">
+                    <article class="single_product">
+                        <figure>
+                            <div class="product_thumb">
+                                <a class="primary_img" href="<?= $product_link ?>">
+                                    <img src="<?= $primary_img ?>" alt="<?= htmlspecialchars($f_p['pro_name']) ?>">
+                                </a>
 
-									<?php if ($show_sale): ?>
-										<div class="label_product">
-											<span class="label_sale">Sale</span>
-											<?php
-											$discount = round((($f_p['mrp'] - $f_p['selling_price']) / $f_p['mrp']) * 100);
-											if ($discount > 0): ?>
-												<span class="label_discount">-<?= $discount ?>%</span>
-											<?php endif; ?>
-										</div>
-									<?php endif; ?>
+                                <?php if ($show_sale): ?>
+                                    <div class="label_product">
+                                        <span class="label_sale">Sale</span>
+                                        <?php
+                                        $discount = round((($f_p['mrp'] - $f_p['selling_price']) / $f_p['mrp']) * 100);
+                                        if ($discount > 0): ?>
+                                            <span class="label_discount">-<?= $discount ?>%</span>
+                                        <?php endif; ?>
+                                    </div>
+                                <?php endif; ?>
 
-								</div>
-								<figcaption class="product_content">
-									<div class="product_content_inner">
-										<h4 class="product_name">
-											<a href="<?= $product_link ?>">
-												<?= htmlspecialchars($f_p['pro_name']) ?>
-											</a>
-										</h4>
-										<div class="price_box">
-											<?php if ($show_sale): ?>
-												<span class="old_price"><?= $old_price ?></span>
-											<?php endif; ?>
-											<span class="current_price"><?= $current_price ?></span>
-										</div>
-									</div>
-									<!-- <div class="add_to_cart">
-										<a class="add-to-cart" href="<?= $site ?>product-details/<?= $f_p['slug_url'] ?>">View Product</a>
-										
-									</div> -->
-								</figcaption>
-							</figure>
-						</article>
+                            </div>
+                            <figcaption class="product_content">
+                                <div class="product_content_inner px-2">
+                                    <h4 class="product_name">
+                                        <a href="<?= $product_link ?>">
+                                            <?= htmlspecialchars($f_p['pro_name']) ?>
+                                        </a>
+                                    </h4>
+                                    <div class="price_box">
+                                        <?php if ($show_sale): ?>
+                                            <span class="old_price"><?= $old_price ?></span>
+                                        <?php endif; ?>
+                                        <span class="current_price"><?= $current_price ?></span>
+                                    </div>
+                                </div>
+                                <!-- Uncomment if you want to add a view product button -->
+                                <!-- <div class="add_to_cart">
+                                    <a class="add-to-cart" href="<?= $site ?>product-details/<?= $f_p['slug_url'] ?>">View Product</a>
+                                </div> -->
+                            </figcaption>
+                        </figure>
+                    </article>
+                </div>
 
-					<?php endforeach; ?>
-				</div>
-			</div>
-		</div>
-	</div>
-	<!--product area end-->
+            <?php endforeach; ?>
+        </div>
+    </div>
+</div>
+<!--product area end-->
 
 
 	<!--discount banner area start-->
@@ -449,7 +455,8 @@ $banners = get_banner();
 			<div class="row">
 				<div class="col-12">
 					<div class="section_title">
-						<h2>Testimonials</h2>
+					 <h2>What Our Customers Say</h2>
+                    <p>Real feedback from our happy customers</p>
 					</div>
 				</div>
 			</div>
@@ -465,11 +472,24 @@ $banners = get_banner();
 									<div class="testimonial_thumb">
 										<img src="<?= $site ?>admin/uploads/testimonials/<?= $test['client_photo'] ?>" alt="">
 									</div>
-									<div class="testimonial_content">
-										<p><?= $test['testimonial_text'] ?></p>
-										<h3><a href="#"><?= $test['client_name'] ?></a></h3>
-										<span>Customer</span>
-									</div>
+									 <div class="testimonial_content">
+
+                                    <div class="rating">
+                                        <i class="fa fa-star"></i>
+                                        <i class="fa fa-star"></i>
+                                        <i class="fa fa-star"></i>
+                                        <i class="fa fa-star"></i>
+                                        <i class="fa fa-star"></i>
+                                    </div>
+
+                                    <p>
+                                        <?= $test['testimonial_text'] ?>
+                                    </p>
+
+                                    <h3><?= $test['client_name'] ?></h3>
+                                    <span>Verified Customer</span>
+
+                                </div>
 								</div>
 							<?php } ?>
 

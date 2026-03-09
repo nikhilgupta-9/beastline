@@ -16,7 +16,7 @@ try {
     $orderId = intval($_POST['order_id'] ?? 0);
     $orderNumber = $_POST['order_number'] ?? '';
     
-    if ($orderId <= 0 && empty($orderNumber)) {
+    if ($orderId <= 0 && empty($orderNumber)) {   
         throw new Exception('Order ID or number is required');
     }
     

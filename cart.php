@@ -424,6 +424,8 @@ $contact = contact_us();
     <!--modernizr min js here-->
     <script src="<?= $site ?>assets/js/vendor/modernizr-3.7.1.min.js"></script>
 
+    <?php include_once "includes/meta_pixel.php" ?>
+
 </head>
 
 <body>
@@ -897,7 +899,7 @@ $contact = contact_us();
         function removeCartItem(cartItemId) {
             if (confirm('Are you sure you want to remove this item from cart?')) {
                 $.ajax({
-                    url: '<?= $site ?>ajax/remove-from-cart.php',
+                    url: '<?= $site ?>ajax/remove-from-cart1.php',
                     method: 'POST',
                     data: {
                         action: 'remove_item',

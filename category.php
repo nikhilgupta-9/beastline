@@ -44,7 +44,7 @@ $contact = contact_us();
 
     <!--modernizr min js here-->
     <script src="<?= $site ?>assets/js/vendor/modernizr-3.7.1.min.js"></script>
-
+    <?php include_once "includes/meta_pixel.php" ?>
 </head>
 
 <body>

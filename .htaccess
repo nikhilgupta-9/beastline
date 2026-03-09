@@ -2,7 +2,7 @@
 # Enable Rewrite Engine
 # -------------------------------
 RewriteEngine On
-RewriteBase /beastline/
+RewriteBase /
 
 # -------------------------------
 # URL Rewrites

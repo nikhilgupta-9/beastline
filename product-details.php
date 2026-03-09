@@ -2,6 +2,7 @@
 session_start();
 include_once "config/connect.php";
 include_once "util/function.php";
+include 'includes/meta_conversion_api.php';
 
 $contact = contact_us();
 
@@ -69,6 +70,9 @@ $available_colors = [];
 $available_sizes = [];
 $variant_stock = 0;
 
+// Define custom size order
+$size_order = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+
 while ($variant = $variants_result->fetch_assoc()) {
     $variants[] = $variant;
 
@@ -85,6 +89,18 @@ while ($variant = $variants_result->fetch_assoc()) {
     // Calculate total stock
     $variant_stock += $variant['quantity'];
 }
+
+// Sort sizes according to custom order
+usort($available_sizes, function ($a, $b) use ($size_order) {
+    $pos_a = array_search($a, $size_order);
+    $pos_b = array_search($b, $size_order);
+
+    // If size not found in custom order, put it at the end
+    if ($pos_a === false) $pos_a = count($size_order);
+    if ($pos_b === false) $pos_b = count($size_order);
+
+    return $pos_a - $pos_b;
+});
 
 // Calculate if product has variants
 $has_variants = !empty($variants);
@@ -235,6 +251,11 @@ $colorMap = [
 
     <!--modernizr min js here-->
     <script src="<?= $site ?>assets/js/vendor/modernizr-3.7.1.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"
+        integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo="
+        crossorigin="anonymous"></script>
+
+    <?php include_once "includes/meta_pixel.php" ?>
 
 </head>
 <style>
@@ -367,7 +388,7 @@ $colorMap = [
         height: auto;
     }
 
-    @media (max-width: 756px ) {
+    @media (max-width: 756px) {
         .img-thumbnail {
             width: 40%;
             height: auto;
@@ -389,13 +410,76 @@ $colorMap = [
         position: relative;
         bottom: 50px;
     }
+
+    /* Add to your stylesheet */
+    .spinner-border {
+        display: inline-block;
+        width: 1rem;
+        height: 1rem;
+        vertical-align: text-bottom;
+        border: 0.2em solid currentColor;
+        border-right-color: transparent;
+        border-radius: 50%;
+        animation: spinner-border .75s linear infinite;
+    }
+
+    @keyframes spinner-border {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .alert {
+        padding: 0.75rem 1.25rem;
+        border: 1px solid transparent;
+        border-radius: 0.25rem;
+    }
+
+    .alert-info {
+        color: #0c5460;
+        background-color: #d1ecf1;
+        border-color: #bee5eb;
+    }
+
+    .position-fixed {
+        position: fixed;
+    }
+
+    .top-0 {
+        top: 0;
+    }
+
+    .start-50 {
+        left: 50%;
+    }
+
+    .translate-middle-x {
+        transform: translateX(-50%);
+    }
+
+    .mt-3 {
+        margin-top: 1rem;
+    }
+
+    .z-index-high {
+        z-index: 9999;
+    }
 </style>
 
 <body>
 
 
     <!--header area start-->
-    <?php include_once "includes/header.php" ?>
+    <?php
+    include_once "includes/header.php";
+    $product_price = $product['selling_price'];
+
+    sendMetaEvent(
+        "ViewContent",
+        $product_price,
+        "INR"
+    );
+    ?>
     <!--header area end-->
 
     <!--breadcrumbs area start-->
@@ -632,22 +716,35 @@ $colorMap = [
                                                     break;
                                                 }
                                             }
+
+                                            $size_sku = '';
+                                            foreach ($variants as $variant) {
+                                                if ($variant['size'] === $size) {
+                                                    $size_sku = $variant['sku'];
+                                                    break;
+                                                }
+                                            }
                                         ?>
                                             <button type="button"
                                                 class="size-option-btn <?= !$size_in_stock ? 'out-of-stock' : '' ?>"
                                                 data-size="<?= htmlspecialchars($size) ?>"
+                                                data-sku="<?= htmlspecialchars($size_sku) ?>"
                                                 <?= !$size_in_stock ? 'disabled' : '' ?>>
                                                 <?= htmlspecialchars($size) ?>
+
                                             </button>
+
                                         <?php endforeach; ?>
                                     </div>
                                     <input type="hidden" name="size" id="selected_size" value="">
+                                    <input type="hidden" name="sku" id="selected_sku" value="">
+
                                 </div>
                             <?php endif; ?>
 
                             <!-- Variant Notification -->
                             <div id="variantNotification" style="display: none; padding: 10px; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 4px; margin: 15px 0;">
-                                Please select size before adding to cart.
+                                Please select size before buy or adding to cart.
                             </div>
 
                             <!-- Selected Variant Details -->
@@ -676,14 +773,17 @@ $colorMap = [
                             <!-- Replace your existing buy now button section with this: -->
                             <div class="product_variant1 mb-3">
                                 <div class="d-flex buy-now-wrapper">
-                                    <button type="button"
-                                        id="buyNowBtn"
+
+                                    <!-- In your product page HTML, update the buy now button -->
+                                    <button type="button" id="buyNowBtn"
                                         class="buy-now-button"
                                         <?= $total_stock == 0 ? 'disabled' : '' ?>
                                         data-product-id="<?= $product_id ?>"
-                                        data-price="<?= $product['selling_price'] ?>">
+                                        data-price="<?= $product['selling_price'] ?>"
+                                        data-sku="<?= htmlspecialchars($product['sku']) ?>">
                                         BUY NOW
                                     </button>
+
                                 </div>
                             </div>
 
@@ -1017,116 +1117,123 @@ $colorMap = [
     <?php include_once "includes/footer.php"; ?>
     <!--footer area end-->
 
+    <script src="https://checkout.razorpay.com/v1/magic-checkout.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const mainImage = document.getElementById('main-product-image');
-            const thumbnailLinks = document.querySelectorAll('.thumbnail-link');
-            const currentIndexSpan = document.querySelector('.current-index');
-            const totalImagesSpan = document.querySelector('.total-images');
-            const mainPrevBtn = document.querySelector('.prev-btn');
-            const mainNextBtn = document.querySelector('.next-btn');
-            const thumbPrevBtn = document.querySelector('.thumb-prev-btn');
-            const thumbNextBtn = document.querySelector('.thumb-next-btn');
-            const thumbnailsWrapper = document.querySelector('.thumbnails-wrapper');
-            const thumbnailsList = document.querySelector('.product-thumbnails');
-            const popupLink = document.querySelector('.magnific-popup-image');
+        $(document).ready(function() {
+            $('#buyNowBtn').click(function(e) {
+                e.preventDefault();
+                const btn = $(this);
 
-            const buyNowBtn = document.getElementById('buyNowBtn');
+                // Basic Validation
+                const selectedSize = $('#selected_size').val();
+                if ($('.product_variant.size').length && !selectedSize) {
+                    $('#variantNotification').show().delay(3000).fadeOut();
+                    return;
+                }
 
-            let currentIndex = 0;
-            const totalImages = thumbnailLinks.length;
+                // Prepare Data
+                const orderData = {
+                    product_id: btn.data('product-id'),
+                    variant_id: $('#selected_variant_id').val() || 0,
+                    quantity: $('#quantity').val(),
+                    size: selectedSize,
+                    color: $('#selected_color').val() || '',
+                    price: btn.data('price')
+                };
 
-            document.getElementById('productCarousel').addEventListener('slide.bs.carousel', function(event) {
-                const currentIndex = event.to;
-                const totalImages = <?= count($product_images) ?>;
+                btn.html('<span class="spinner-border spinner-border-sm"></span> Processing...').prop('disabled', true);
 
-                // Update counter in each carousel item
-                document.querySelectorAll('.carousel-item .current-index').forEach(span => {
-                    span.textContent = currentIndex + 1;
-                });
+                // Create order
+                $.ajax({
+                    url: '<?= $site ?>ajax/buy-now.php',
+                    method: 'POST',
+                    data: orderData,
+                    dataType: 'json',
+                    success: function(orderResponse) {
+                        if (!orderResponse.success) {
+                            alert('Error: ' + orderResponse.message);
+                            resetButton(btn);
+                            return;
+                        }
 
-                // Update active thumbnail
-                document.querySelectorAll('.thumbnail-link').forEach((btn, index) => {
-                    if (index === currentIndex) {
-                        btn.classList.add('active', 'border-primary', 'border-2');
-                        btn.classList.remove('border-1');
-                    } else {
-                        btn.classList.remove('active', 'border-primary', 'border-2');
-                        btn.classList.add('border-1');
-                    }
-                });
-            });
-            // Image hover zoom effect
-            document.querySelectorAll('.main-product-img').forEach(img => {
-                img.addEventListener('mouseenter', function() {
-                    this.style.transform = 'scale(1.5)';
-                    this.style.transition = 'transform 0.3s ease';
-                });
+                        // Magic Checkout Options - USING 'handler' (correct)
+                        const options = {
+                            key: orderResponse.key_id,
+                            name: 'Beastline',
+                            order_id: orderResponse.razorpay_order_id,
+                            one_click_checkout: true,
+                            show_coupons: true,
 
-                img.addEventListener('mouseleave', function() {
-                    this.style.transform = 'scale(1)';
-                });
-            });
-
-
-            if (buyNowBtn) {
-                buyNowBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-
-                    // Get selected variant details
-                    const selectedSize = document.getElementById('selected_size').value;
-                    const selectedColor = document.getElementById('selected_color').value;
-                    const quantity = document.getElementById('quantity').value;
-                    const productId = this.getAttribute('data-product-id');
-                    const price = this.getAttribute('data-price');
-
-                    // Check if size is selected (if sizes exist)
-                    const sizeRequired = document.querySelector('.product_variant.size');
-                    if (sizeRequired && !selectedSize) {
-                        document.getElementById('variantNotification').style.display = 'block';
-                        setTimeout(() => {
-                            document.getElementById('variantNotification').style.display = 'none';
-                        }, 3000);
-                        return;
-                    }
-
-                    // Get variant ID if exists
-                    const variantId = document.getElementById('selected_variant_id').value || 0;
-
-                    // Prepare buy now data
-                    const buyNowData = {
-                        action: 'buy_now',
-                        product_id: productId,
-                        variant_id: variantId,
-                        size: selectedSize,
-                        color: selectedColor,
-                        quantity: quantity,
-                        price: price,
-                        product_name: document.querySelector('h1 a').textContent
-                    };
-
-                    // Send AJAX request to create buy now session
-                    fetch('<?= $site ?>ajax/buy-now.php', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/x-www-form-urlencoded',
+                            prefill: {
+                                name: '<?= $_SESSION['user_name'] ?? '' ?>',
+                                email: '<?= $_SESSION['user_email'] ?? '' ?>',
+                                contact: '<?= $_SESSION['user_phone'] ?? '' ?>'
                             },
-                            body: new URLSearchParams(buyNowData)
-                        })
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success) {
-                                // Redirect to checkout page
-                                window.location.href = '<?= $site ?>checkout';
-                            } else {
-                                alert(data.message || 'Error processing buy now request');
+
+                            theme: {
+                                color: '#0f0f0f'
+                            },
+
+                            // ✅ CORRECT: Use 'handler' not 'onPaymentSuccess'
+                            handler: function(paymentResponse) {
+                                console.log('Payment Success:', paymentResponse);
+
+                                const notification = $('<div class="alert alert-info">Verifying your order...</div>').appendTo('body');
+
+                                $.ajax({
+                                    url: '<?= $site ?>ajax/verify-magic-payment.php',
+                                    method: 'POST',
+                                    contentType: 'application/json',
+                                    data: JSON.stringify({
+                                        razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                                        razorpay_order_id: paymentResponse.razorpay_order_id,
+                                        razorpay_signature: paymentResponse.razorpay_signature
+                                    }),
+                                    dataType: 'json',
+                                    success: function(verifyResponse) {
+                                        notification.remove();
+                                        if (verifyResponse.success) {
+                                            window.location.href = verifyResponse.confirmation_url;
+                                        } else {
+                                            alert('❌ Verification Failed: ' + verifyResponse.message);
+                                            resetButton(btn);
+                                        }
+                                    },
+                                    error: function(xhr) {
+                                        notification.remove();
+                                        console.error('Verification Error:', xhr.responseText);
+                                        alert('❌ Verification failed. Check console.');
+                                        resetButton(btn);
+                                    }
+                                });
+                            },
+
+                            modal: {
+                                ondismiss: function() {
+                                    resetButton(btn);
+                                }
                             }
-                        })
-                        .catch(error => {
-                            console.error('Error:', error);
-                            alert('Network error. Please try again.');
+                        };
+
+                        const rzp = new Razorpay(options);
+
+                        rzp.on('payment.failed', function(response) {
+                            alert('Payment failed: ' + (response.error.description || 'Please try again'));
+                            resetButton(btn);
                         });
+
+                        rzp.open();
+                    },
+                    error: function(xhr) {
+                        console.error('Order Creation Error:', xhr.responseText);
+                        alert('Failed to create order. Please try again.');
+                        resetButton(btn);
+                    }
                 });
+            });
+
+            function resetButton(btn) {
+                btn.html('BUY NOW').prop('disabled', false);
             }
         });
     </script>
@@ -1180,71 +1287,59 @@ $colorMap = [
 
             // Size selection
             $('.size-option-btn:not(.out-of-stock)').click(function() {
-                var size = $(this).data('size');
 
-                // Update selected size
                 $('.size-option-btn').removeClass('selected');
                 $(this).addClass('selected');
-                $('#selected_size').val(size);
 
-                // Update variant details
+                $('#selected_size').val($(this).data('size'));
+                $('#selected_sku').val($(this).data('sku'));
+                $('#selected_variant_id').val($(this).data('variant-id'));
+
                 updateVariantDetails();
             });
 
-            // Function to update variant details
+
             function updateVariantDetails() {
-                var color = $('#selected_color').val();
-                var size = $('#selected_size').val();
 
-                // if (color && size) {
-                if (size) {
-                    // Hide notification
-                    $('#variantNotification').hide();
+                var variantId = $('#selected_variant_id').val();
+                if (!variantId) return;
 
-                    // AJAX call to get variant details
-                    $.ajax({
-                        url: '<?= $site ?>ajax/get-variant-details.php',
-                        method: 'POST',
-                        dataType: 'json', // ✅ REQUIRED
-                        data: {
-                            product_id: <?= $product_id ?>,
-                            color: color,
-                            size: size
-                        },
-                        success: function(response) {
-                            console.log('Variant response:', response); // debug
+                $('#variantNotification').hide();
 
-                            if (response.success && response.variant) {
+                $.ajax({
+                    url: '<?= $site ?>ajax/get-variant-details.php',
+                    method: 'POST',
+                    dataType: 'json',
+                    data: {
+                        variant_id: variantId
+                    },
+                    success: function(response) {
 
-                                // ✅ SET VARIANT ID
-                                $('#selected_variant_id').val(response.variant.id);
+                        console.log('Variant response:', response);
 
-                                console.log('Variant ID set:', response.variant.id);
+                        if (response.success) {
 
-                                // price
-                                if (response.variant.price > 0) {
-                                    $('#variantPrice').html('Price: <strong>₹ ' + response.variant.price + '</strong>');
-                                } else {
-                                    $('#variantPrice').html('');
-                                }
-
-                                // stock
-                                if (response.variant.stock <= 10) {
-                                    $('#variantStock').html('Stock: <span style="color:#ffc107;">Only ' + response.variant.stock + ' left</span>');
-                                } else {
-                                    $('#variantStock').html('Stock: <span style="color:#28a745;">In Stock</span>');
-                                }
-
-                                $('#quantity').attr('max', response.variant.stock);
-                                $('#selectedVariantDetails').show();
-                            } else {
-                                console.log('Variant not found');
+                            if (response.variant.price > 0) {
+                                $('#variantPrice').html('Price: <strong>₹ ' + response.variant.price + '</strong>');
                             }
-                        }
-                    });
 
-                }
+                            if (response.variant.stock <= 10) {
+                                $('#variantStock').html(
+                                    'Stock: <span style="color:#ffc107;">Only ' + response.variant.stock + ' left</span>'
+                                );
+                            } else {
+                                $('#variantStock').html(
+                                    'Stock: <span style="color:#28a745;">In Stock</span>'
+                                );
+                            }
+
+                            $('#quantity').attr('max', response.variant.stock);
+                            $('#selectedVariantDetails').show();
+                        }
+                    }
+                });
             }
+
 
             // add to cart function 
             $('#productForm').submit(function(e) {
@@ -1431,6 +1526,8 @@ $colorMap = [
 
         });
     </script>
+
+
 
 </body>
 

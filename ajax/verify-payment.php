@@ -1,308 +1,310 @@
 <?php
-// verify-payment.php - UPDATED WITH PROPER ITHINK SYNC API
 session_start();
 require_once __DIR__ . '/../config/connect.php';
 require_once __DIR__ . '/../models/OrderService.php';
 require_once __DIR__ . '/../admin/models/PaymentSmtpSetting.php';
-require_once __DIR__ . '/../api/LogisticsApi.php'; // Updated API class
+require_once __DIR__ . '/../vendor/autoload.php';
+
+use Razorpay\Api\Api;
+use Razorpay\Api\Errors\SignatureVerificationError;
 
 header('Content-Type: application/json');
 
-$response = ['success' => false, 'message' => ''];
+// Create debug log
+$debug_file = __DIR__ . '/../logs/verify-debug.log';
+file_put_contents($debug_file, date('Y-m-d H:i:s') . " - Verify started\n", FILE_APPEND);
 
 try {
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-        throw new Exception('Invalid request method');
+    // --- 1. Get and Parse Input ---
+    $input = json_decode(file_get_contents('php://input'), true);
+    file_put_contents($debug_file, "Input: " . print_r($input, true) . "\n", FILE_APPEND);
+
+    $razorpay_payment_id = $input['razorpay_payment_id'] ?? '';
+    $razorpay_order_id = $input['razorpay_order_id'] ?? '';
+    $razorpay_signature = $input['razorpay_signature'] ?? '';
+    $is_cod = $input['is_cod'] ?? false;
+
+    if (!$razorpay_payment_id || !$razorpay_order_id || !$razorpay_signature) {
+        throw new Exception('Missing payment details');
     }
 
-    $razorpay_payment_id = $_POST['razorpay_payment_id'] ?? '';
-    $razorpay_order_id = $_POST['razorpay_order_id'] ?? '';
-    $razorpay_signature = $_POST['razorpay_signature'] ?? '';
-    $is_cod = isset($_POST['is_cod']) && $_POST['is_cod'] == 'true' ? true : false;
+    // --- 2. Verify Signature ---
+    $paymentSetting = new PaymentSmtpSetting($conn);
+    $api_key = $paymentSetting->getSetting('razorpay', 'api_key');
+    $api_secret = $paymentSetting->getSetting('razorpay', 'api_secret');
 
-    // Verify payment signature (only for non-COD)
-    if (!$is_cod) {
-        $paymentSetting = new PaymentSmtpSetting($conn);
-        $razorpay_secret = $paymentSetting->getSetting('razorpay', 'api_secret');
-
-        if (empty($razorpay_secret)) {
-            throw new Exception('Razorpay secret key not configured');
-        }
-
-        $generated_signature = hash_hmac('sha256', $razorpay_order_id . '|' . $razorpay_payment_id, $razorpay_secret);
-
+    $api = new Api($api_key, $api_secret);
+    
+    try {
+        $api->utility->verifyPaymentSignature([
+            'razorpay_order_id' => $razorpay_order_id,
+            'razorpay_payment_id' => $razorpay_payment_id,
+            'razorpay_signature' => $razorpay_signature
+        ]);
+        file_put_contents($debug_file, "✅ Signature verified\n", FILE_APPEND);
+    } catch (SignatureVerificationError $e) {
+        // Manual verification as fallback
+        $generated_signature = hash_hmac('sha256', $razorpay_order_id . '|' . $razorpay_payment_id, $api_secret);
         if ($generated_signature !== $razorpay_signature) {
-            throw new Exception('Payment verification failed - Invalid signature');
+            throw new Exception('Invalid signature');
         }
+        file_put_contents($debug_file, "✅ Manual signature verified\n", FILE_APPEND);
     }
 
-    // Check if pending order exists in session
-    if (!isset($_SESSION['pending_order'])) {
-        throw new Exception('No pending order found. Session may have expired.');
+    // --- 3. Fetch Pending Order from Session ---
+    file_put_contents($debug_file, "Session data: " . print_r($_SESSION, true) . "\n", FILE_APPEND);
+
+    if (!isset($_SESSION['pending_magic_order'][$razorpay_order_id])) {
+        // Try to find by searching all pending orders
+        $found = false;
+        foreach ($_SESSION['pending_magic_order'] as $key => $order) {
+            if ($order['razorpay_order_id'] == $razorpay_order_id) {
+                $pendingOrder = $order;
+                $razorpay_order_id = $key;
+                $found = true;
+                file_put_contents($debug_file, "Found order by searching: " . print_r($order, true) . "\n", FILE_APPEND);
+                break;
+            }
+        }
+        if (!$found) {
+            throw new Exception('Pending order not found in session. Order ID: ' . $razorpay_order_id);
+        }
+    } else {
+        $pendingOrder = $_SESSION['pending_magic_order'][$razorpay_order_id];
     }
 
-    $pendingOrder = $_SESSION['pending_order'];
-    $orderData = $pendingOrder['order_data'];
-    $cartItems = $pendingOrder['cart_items'];
-    $userId = $pendingOrder['user_id'];
-    $userData = $pendingOrder['user_data'] ?? [];
+    // --- 4. Fetch Complete Order Details from Razorpay ---
+    $order = $api->order->fetch($razorpay_order_id);
+    $orderArray = $order->toArray();
+    file_put_contents($debug_file, "Razorpay order: " . print_r($orderArray, true) . "\n", FILE_APPEND);
 
-    // Calculate totals again for verification
-    $subtotal = 0;
-    foreach ($cartItems as $item) {
-        $subtotal += $item['total_price'];
+    $razorpay_order_status = $orderArray['status'] ?? 'unknown';
+    $razorpay_created_at = $orderArray['created_at'] ?? null;
+    $customerDetails = $orderArray['customer_details'] ?? null;
+
+    if ($customerDetails) {
+        file_put_contents($debug_file, "CUSTOMER DETAILS: " . print_r($customerDetails, true) . "\n", FILE_APPEND);
     }
 
-    $shipping_fee = ($subtotal >= 1000) ? 0 : 1.00;
-    $discount = $orderData['discount'] ?? 0;
-    $total = $subtotal - $discount + $shipping_fee;
-
-    // Validate order data
-    if (abs($total - $orderData['total']) > 0.01) {
-        throw new Exception('Order total mismatch. Please try again.');
+    // --- 5. Verify Amount ---
+    $payment = $api->payment->fetch($razorpay_payment_id);
+    
+    if ($payment->amount != ($pendingOrder['total'] * 100)) {
+        throw new Exception('Payment amount mismatch');
     }
 
-    // Create order in database
-    $orderService = new OrderService($conn, $site);
+    // --- 6. Extract User Details ---
+    $userDetails = extractUserDetails($customerDetails, $pendingOrder);
+    file_put_contents($debug_file, "User details: " . print_r($userDetails, true) . "\n", FILE_APPEND);
 
-    $paymentMethod = $is_cod ? 'cod' : 'razorpay';
-    $razorpayOrderId = !$is_cod ? $razorpay_order_id : null;
+    // --- 7. Create/Get User ---
+    $orderService = new OrderService($conn, $GLOBALS['site']);
+    $userId = $orderService->getOrCreateUser($userDetails);
+    if (!$userId) throw new Exception('Failed to create user');
+
+    // --- 8. Prepare Order Data ---
+    $orderDbData = [
+        'subtotal' => $pendingOrder['subtotal'],
+        'discount' => 0,
+        'shipping_fee' => $pendingOrder['shipping_fee'] ?? 0,
+        'total' => $pendingOrder['total'],
+        'tax' => 0,
+        'billing_first_name' => $userDetails['first_name'] ?? $userDetails['name'] ?? 'Guest',
+        'billing_last_name' => $userDetails['last_name'] ?? '',
+        'billing_phone' => $userDetails['phone'] ?? '',
+        'billing_email' => $userDetails['email'] ?? '',
+        'billing_address_1' => $userDetails['address_1'] ?? $userDetails['address'] ?? '',
+        'billing_address_2' => $userDetails['address_2'] ?? '',
+        'billing_city' => $userDetails['city'] ?? '',
+        'billing_state' => $userDetails['state'] ?? '',
+        'billing_country' => $userDetails['country'] ?? 'IN',
+        'billing_postcode' => $userDetails['postcode'] ?? '',
+        'order_note' => 'Magic Checkout Order'
+    ];
+
+    // --- 9. Determine Payment Method ---
+    if ($razorpay_order_status === 'placed') {
+        $paymentMethod = 'COD';
+    } elseif ($razorpay_order_status === 'paid') {
+        $paymentMethod = 'Prepaid';
+    } else {
+        $paymentMethod = 'Unknown';
+    }
+    
+    file_put_contents($debug_file, "Payment method: $paymentMethod\n", FILE_APPEND);
+
+    // --- 10. Create Order with Payment Details ---
+    $paymentDetails = [
+        'razorpay_payment_id' => $razorpay_payment_id,
+        'razorpay_order_id' => $razorpay_order_id,
+        'razorpay_signature' => $razorpay_signature,
+        'method' => $paymentMethod,
+        'amount' => $orderDbData['total'],
+        'status' => 'paid'
+    ];
+
+    if ($paymentMethod === 'cod') {
+        $cod_advance = 200;
+        $cod_remaining = $orderDbData['total'] - $cod_advance;
+        $paymentDetails['cod_advance'] = $cod_advance;
+        $paymentDetails['cod_remaining'] = $cod_remaining;
+        $paymentDetails['status'] = 'cod_advance_paid';
+    }
+
+    $orderDbData['payment_details'] = $paymentDetails;
 
     $orderResult = $orderService->createOrder(
-        $orderData,
-        $userId,
+        $orderDbData, 
+        $userId, 
         $paymentMethod,
-        $razorpayOrderId
+        $razorpay_order_id,
+        $razorpay_created_at
     );
+    
+    if (!$orderResult) throw new Exception('Failed to create order in DB');
 
-    if (!$orderResult) {
-        throw new Exception('Failed to create order in database');
-    }
-
-    $orderId = $orderResult['order_id'];
-    $orderNumber = $orderResult['order_number'];
-
-    // Add order items
-    if (!$orderService->addOrderItems($orderId, $cartItems)) {
-        throw new Exception('Failed to add order items');
-    }
-
-    // Update payment status
-    if ($is_cod) {
-        $orderService->processCODAdvance($orderId);
-        $conn->query("UPDATE orders SET order_status = 'confirmed' WHERE order_id = {$orderId}");
-        $paymentStatus = 'cod_advance_paid';
-    } else {
-        $orderService->completePayment($orderId, $razorpay_payment_id, $razorpay_signature);
-        $conn->query("UPDATE orders SET order_status = 'confirmed' WHERE order_id = {$orderId}");
-        $paymentStatus = 'paid';
-    }
-
-    $normalizedItems = [];
-
-    foreach ($cartItems as $item) {
-        $normalizedItems[] = [
-            'product_name' => $item['product_name'] ?? 'Product',
-            'sku' => $item['sku'] ?? 'SKU-' . ($item['product_id'] ?? rand(100, 999)),
-            'quantity' => (string)$item['quantity'],
-            'price' => (string)$item['unit_price'],
-            'tax_rate' => $item['tax_rate'] ?? '0',
-            'hsn_code' => $item['hsn_code'] ?? '',
-            'discount' => '0'
+    // --- 11. Add Order Items ---
+    $orderItems = [];
+    
+    foreach ($pendingOrder['cart_items'] as $item_data) {
+        $orderItems[] = [
+            'product_id' => $item_data['product']['pro_id'],
+            'product_name' => $item_data['product']['pro_name'],
+            'quantity' => $item_data['cart_item']['quantity'],
+            'unit_price' => $item_data['cart_item']['price'],
+            'total_price' => $item_data['cart_item']['price'] * $item_data['cart_item']['quantity'],
+            'color' => $item_data['cart_item']['color'] ?? '',
+            'size' => $item_data['cart_item']['size'] ?? '',
+            'variant_id' => $item_data['cart_item']['variant_id'] ?? 0
         ];
     }
 
-    // --- SYNC TO ITHINK LOGISTICS USING SYNC API ---
-    $shouldSyncToLogistics = true;
+    $addItemsResult = $orderService->addOrderItems($orderResult['order_id'], $orderItems);
+    file_put_contents($debug_file, "Add items result: " . ($addItemsResult ? 'Success' : 'Failed') . "\n", FILE_APPEND);
 
-    // Conditions when NOT to sync:
-    if ($total <= 0) {
-        $shouldSyncToLogistics = false;
-        error_log("Order #{$orderNumber}: Skipping logistics sync - order total is 0");
-    }
+    // --- 12. Update Payment Status with Signature ---
+    $updateStmt = $conn->prepare("UPDATE orders SET 
+        payment_status = ?, 
+        order_status = 'confirmed', 
+        razorpay_payment_id = ?,
+        razorpay_signature = ?,
+        notes = ?
+        WHERE order_id = ?");
+    
+    $payment_status = ($paymentMethod === 'cod') ? 'cod_advance_paid' : 'paid';
+    $notes = json_encode(['payment_details' => $paymentDetails]);
+    
+    $updateStmt->bind_param("ssssi", 
+        $payment_status, 
+        $razorpay_payment_id, 
+        $razorpay_signature, 
+        $notes,
+        $orderResult['order_id']
+    );
+    $updateStmt->execute();
 
-    if ($shouldSyncToLogistics) {
-        try {
-            $logisticsApi = new LogisticsApi();
+    // --- 13. Clear Session ---
+    unset($_SESSION['pending_magic_order'][$razorpay_order_id]);
+    if (isset($_SESSION['buy_now'])) unset($_SESSION['buy_now']);
+    $_SESSION['cart'] = [];
 
-            // Get shipping address (use shipping if available, otherwise billing)
-            $shippingAddress = isset($orderData['shipping_address_1']) && !empty($orderData['shipping_address_1'])
-                ? $orderData['shipping_address_1']
-                : $orderData['billing_address_1'];
+    // --- 14. Trigger Email (Async) ---
+    $ch = curl_init($GLOBALS['site'] . "cron/send-order-mails.php?order_id=" . $orderResult['order_id']);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 1);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_NOSIGNAL, true);
+    curl_setopt($ch, CURLOPT_NOBODY, true);
+    curl_exec($ch);
+    curl_close($ch);
 
-            $shippingCity = isset($orderData['shipping_city']) && !empty($orderData['shipping_city'])
-                ? $orderData['shipping_city']
-                : $orderData['billing_city'];
-
-            $shippingState = isset($orderData['shipping_state']) && !empty($orderData['shipping_state'])
-                ? $orderData['shipping_state']
-                : $orderData['billing_state'];
-
-            $shippingPostcode = isset($orderData['shipping_postcode']) && !empty($orderData['shipping_postcode'])
-                ? $orderData['shipping_postcode']
-                : $orderData['billing_postcode'];
-
-            // Calculate order weight based on cart items
-            $orderWeight = calculateOrderWeight($cartItems);
-
-            // Prepare order data for iThink
-            $logisticsData = [
-                'order_number' => $orderNumber,
-                'total_amount' => number_format($total, 2, '.', ''),
-                'consignee_name' => trim($userData['first_name'] . ' ' . $userData['last_name']),
-                'consignee_address' => $shippingAddress,
-                'consignee_city' => $shippingCity,
-                'consignee_state' => $shippingState,
-                'consignee_pincode' => $shippingPostcode,
-                'consignee_country' => $orderData['billing_country'] ?? 'India',
-                'consignee_phone' => $userData['phone'] ?? '',
-                'consignee_email' => $userData['email'] ?? '',
-                'payment_type' => $is_cod ? 'cod' : 'prepaid',
-                'cod_amount' => $is_cod ? number_format($total, 2, '.', '') : '0',
-                'pickup_location' => 'Beastline Delhi',
-                'cart_items' => $normalizedItems, // Pass cart items for product details
-                'weight' => $orderWeight,
-                'length' => 15,
-                'width' => 10,
-                'height' => 5
-            ];
-
-            // Sync to iThink using sync API
-            $logisticsResult = $logisticsApi->createShipment($logisticsData);
-
-            // Check if sync was successful
-            if (
-                isset($logisticsResult['data']) &&
-                is_array($logisticsResult['data'])
-            ) {
-                $firstKey = array_key_first($logisticsResult['data']);
-                $shipmentResult = $logisticsResult['data'][$firstKey];
-
-                if (
-                    isset($shipmentResult['status']) &&
-                    $shipmentResult['status'] === 'success'
-                ) {
-
-                    // Get tracking data from response
-                    $trackingData = null;
-                    $awbNumber = '';
-                    $courierName = 'Delhivery';
-
-                    if (isset($logisticsResult['data']) && is_array($logisticsResult['data'])) {
-
-                        $firstKey = array_key_first($logisticsResult['data']);
-                        $shipmentData = $logisticsResult['data'][$firstKey];
-
-                        // STEP 1 — GET REFNUM
-                        $refnum = $shipmentResult['refnum'] ?? '';
-
-                        if (empty($refnum)) {
-                            throw new Exception('iThink refnum missing');
-                        }
-
-                        if (!empty($refnum)) {
-
-                            // STEP 2 — CALL AWB API
-                            $awbResponse = $logisticsApi->assignAwb($refnum);
-
-                            if (
-                                isset($awbResponse['status']) &&
-                                $awbResponse['status'] === 'success'
-                            ) {
-                                $awbKey = array_key_first($awbResponse['data']);
-                                $awbData = $awbResponse['data'][$awbKey];
-
-                                $awbNumber = $awbData['awb_number'] ?? '';
-                                $courierName = $awbData['logistic_name'] ?? 'iThink';
-
-                                if (!empty($awbNumber)) {
-                                    $conn->query("
-                                        UPDATE orders SET
-                                        order_status = 'processing',
-                                        logistics_sync_status = 'synced',
-                                        logistics_refnum = '" . mysqli_real_escape_string($conn, $refnum) . "',
-                                        awb_number = '" . mysqli_real_escape_string($conn, $awbNumber) . "',
-                                        tracking_number = '" . mysqli_real_escape_string($conn, $awbNumber) . "',
-                                        courier_name = '" . mysqli_real_escape_string($conn, $courierName) . "'
-                                        WHERE order_id = $orderId
-                                    ");
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
-
-                $errorMsg = $logisticsResult['html_message']
-                    ?? ($logisticsResult['message'] ?? 'iThink sync failed');
-
-                error_log("⚠️ iThink sync failed for order #{$orderNumber}: " . $errorMsg);
-
-                            $conn->query("
-                    UPDATE orders SET
-                    order_status = 'confirmed',
-                    logistics_sync_status = 'failed',
-                    logistics_sync_error = '" . mysqli_real_escape_string($conn, $errorMsg) . "'
-                    WHERE order_id = $orderId
-                ");
-            }
-        } catch (Exception $e) {
-            // Log exception but don't stop order processing
-            error_log("⚠️ Logistics exception for order #{$orderNumber}: " . $e->getMessage());
-
-            // Update order with exception info
-            $conn->query("UPDATE orders SET 
-            order_status = 'confirmed',
-            logistics_sync_status = 'error',
-            logistics_sync_error = '" . mysqli_real_escape_string($conn, $e->getMessage()) . "'
-            WHERE order_id = $orderId");
-        }
-    } else {
-        // For non-synced orders (free orders)
-        $orderStatus = 'confirmed';
-        $conn->query("UPDATE orders SET order_status = '{$orderStatus}' WHERE order_id = {$orderId}");
-    }
-
-    // Clear cart sessions
-    $orderService->clearSessions();
-
-    // Clear pending order from session
-    unset($_SESSION['pending_order']);
-
-    // Create order confirmation URL
-    $confirmationUrl = $site . "order-confirmation/" . $orderId;
-
+    // --- 15. Return Success ---
     $response = [
         'success' => true,
-        'order_id' => $orderId,
-        'order_number' => $orderNumber,
-        'confirmation_url' => $confirmationUrl,
-        'message' => 'Order placed successfully!'
+        'order_id' => $orderResult['order_id'],
+        'order_number' => $orderResult['order_number'],
+        'confirmation_url' => $GLOBALS['site'] . 'order-confirmation/' . $orderResult['order_id']
     ];
+
+    file_put_contents($debug_file, "Success response: " . print_r($response, true) . "\n", FILE_APPEND);
+    echo json_encode($response);
+
+} catch (SignatureVerificationError $e) {
+    file_put_contents($debug_file, "Signature error: " . $e->getMessage() . "\n", FILE_APPEND);
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => 'Signature verification failed']);
 } catch (Exception $e) {
-    // Clear sessions on error
-    if (isset($_SESSION['cart'])) unset($_SESSION['cart']);
-    if (isset($_SESSION['promotion_code'])) unset($_SESSION['promotion_code']);
-    if (isset($_SESSION['buy_now'])) unset($_SESSION['buy_now']);
-    if (isset($_SESSION['pending_order'])) unset($_SESSION['pending_order']);
-
-    $response = [
-        'success' => false,
-        'message' => $e->getMessage()
-    ];
-    error_log("Payment Verification Error: " . $e->getMessage());
+    file_put_contents($debug_file, "Error: " . $e->getMessage() . "\n", FILE_APPEND);
+    http_response_code(400);
+    echo json_encode(['success' => false, 'message' => $e->getMessage()]);
 }
 
-echo json_encode($response);
-
-// Helper functions
-function calculateOrderWeight($cartItems)
-{
-    $totalWeight = 0;
-    foreach ($cartItems as $item) {
-        // Get weight from product if available, otherwise use default
-        $itemWeight = isset($item['weight']) ? $item['weight'] : 0.3;
-        $totalWeight += ($item['quantity'] * $itemWeight);
+/**
+ * Extract user details from various sources
+ */
+function extractUserDetails($customerDetails, $pendingOrder) {
+    $userDetails = [];
+    
+    // Try from Razorpay customer details first
+    if ($customerDetails) {
+        $fullName = $customerDetails['name'] ?? 'Guest User';
+        $nameParts = explode(' ', $fullName, 2);
+        
+        $address = $customerDetails['shipping_address'] ?? $customerDetails['billing_address'] ?? [];
+        
+        // Clean phone number
+        $phone = preg_replace('/[^0-9]/', '', $customerDetails['contact'] ?? '');
+        if (strlen($phone) > 10) $phone = substr($phone, -10);
+        
+        $userDetails = [
+            'first_name' => $nameParts[0],
+            'last_name' => $nameParts[1] ?? '',
+            'name' => $fullName,
+            'phone' => $phone ?: '9999999999',
+            'email' => $customerDetails['email'] ?? ('guest_' . time() . '@example.com'),
+            'address_1' => trim(($address['line1'] ?? '') . ' ' . ($address['line2'] ?? '')),
+            'city' => $address['city'] ?? '',
+            'state' => $address['state'] ?? '',
+            'postcode' => $address['zipcode'] ?? '',
+            'country' => strtoupper($address['country'] ?? 'IN')
+        ];
+    } 
+    // Try from session
+    elseif (isset($_SESSION['user_id'])) {
+        global $conn;
+        $user_sql = "SELECT first_name, last_name, email, phone, address, city, state, zip_code FROM users WHERE id = ?";
+        $user_stmt = $conn->prepare($user_sql);
+        $user_stmt->bind_param("i", $_SESSION['user_id']);
+        $user_stmt->execute();
+        $user = $user_stmt->get_result()->fetch_assoc();
+        
+        $userDetails = [
+            'first_name' => $user['first_name'] ?? 'User',
+            'last_name' => $user['last_name'] ?? '',
+            'phone' => $user['phone'] ?? '9999999999',
+            'email' => $user['email'] ?? ('user_' . time() . '@example.com'),
+            'address_1' => $user['address'] ?? '',
+            'city' => $user['city'] ?? '',
+            'state' => $user['state'] ?? '',
+            'postcode' => $user['zip_code'] ?? '',
+            'country' => 'IN'
+        ];
     }
-    return max(0.5, $totalWeight); // Minimum 0.5kg
+    // Fallback to pending order data
+    else {
+        $userDetails = [
+            'first_name' => $pendingOrder['user_name'] ?? 'Guest',
+            'last_name' => '',
+            'name' => $pendingOrder['user_name'] ?? 'Guest User',
+            'phone' => $pendingOrder['user_phone'] ?? '9999999999',
+            'email' => $pendingOrder['user_email'] ?? ('guest_' . time() . '@example.com'),
+            'address_1' => $pendingOrder['address'] ?? '',
+            'city' => $pendingOrder['city'] ?? '',
+            'state' => $pendingOrder['state'] ?? '',
+            'postcode' => $pendingOrder['postcode'] ?? '',
+            'country' => 'IN'
+        ];
+    }
+    
+    return $userDetails;
 }
+?>

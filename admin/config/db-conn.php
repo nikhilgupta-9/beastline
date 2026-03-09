@@ -8,9 +8,10 @@ ini_set('log_errors', 1);
 if (session_status() === PHP_SESSION_NONE) {
   session_start();
 }
+date_default_timezone_set('Asia/Kolkata');
 
 // Database Configuration
-$local = true; // Set to false for live server
+$local = false; // Set to false for live server
 
 if ($local) {
     $host = 'localhost';
@@ -18,8 +19,8 @@ if ($local) {
     $password = '';
     $dbName = 'beast_line_db';
     // $site = "http://localhost/beast-line/";
-    define('BASE_URL', 'http://localhost/beastline/') ;
-    define('ADMIN_URL', 'http://localhost/beastline/admin/') ;
+    define('BASE_URL', 'http://localhost/beast-line/') ;
+    define('ADMIN_URL', 'http://localhost/beast-line/admin/') ;
 } else {
     $host = 'localhost';
         $username = 'u950539402_beastLine_db';
@@ -37,6 +38,7 @@ $conn = new mysqli($host, $username, $password, $dbName);
 if ($conn->connect_error) {
     die("Database Connection Failed: " . $conn->connect_error);
 }
+mysqli_query($conn, "SET time_zone = '+05:30'");
 
 // Optional: Set Character Encoding to UTF-8
 $conn->set_charset("utf8");

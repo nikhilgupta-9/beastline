@@ -279,6 +279,8 @@ if(isset($_GET['resend']) && isset($_SESSION['reset_email'])) {
     <!--modernizr min js here-->
     <script src="<?= $site ?>assets/js/vendor/modernizr-3.7.1.min.js"></script>
 
+    <?php include_once "includes/meta_pixel.php" ?>
+    
     <style>
         .password-reset-container {
             max-width: 500px;

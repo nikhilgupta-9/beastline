@@ -7,14 +7,6 @@ require_once __DIR__ . '/admin/models/PaymentSmtpSetting.php';
 $payment_setting = new PaymentSmtpSetting($conn);
 $razorpay_key_id = $payment_setting->getSetting('razorpay', 'api_key');
 
-// Check if user is logged in
-// if (!isset($_SESSION['user_id'])) {
-//     $_SESSION['checkout_redirect'] = true;
-//     $_SESSION['redirect_source'] = isset($_SESSION['buy_now']) ? 'buy_now' : 'cart';
-//     header("Location: " . $site . "user-login");
-//     exit();
-// }
-
 // Initialize variables
 $subtotal = 0;
 $total_quantity = 0;
@@ -27,6 +19,19 @@ if (!$isBuyNow && (!isset($_SESSION['cart']) || empty($_SESSION['cart']))) {
     exit();
 }
 
+// Process cart items (KEEP YOUR EXISTING CART PROCESSING CODE)
+$subtotal = 0;
+$total_quantity = 0;
+$cart_items = [];
+$isBuyNow = isset($_SESSION['buy_now']);
+
+// Check if we have items (either cart or buy now)
+if (!$isBuyNow && (!isset($_SESSION['cart']) || empty($_SESSION['cart']))) {
+    header("Location: " . $site . "cart");
+    exit();
+}
+
+// print_r($_SESSION['buy_now']);
 if ($isBuyNow) {
     // PROCESS BUY NOW SESSION
     $buyNowItem = $_SESSION['buy_now'];
@@ -120,37 +125,11 @@ if ($isBuyNow) {
     }
 }
 
-// Rest of your checkout calculations remain the same...
-// Shipping calculation
-$shipping_fee = ($subtotal >= 1000) ? 0 : 1.00;
 
-// Apply discount if any
+// Calculate totals
+$shipping_fee = ($subtotal >= 1000) ? 0 : 0;
 $discount = 0;
-$discount_percentage = 0;
-$promotion_code = '';
-
-if (isset($_SESSION['promotion_code'])) {
-    $promotion_code = $_SESSION['promotion_code'];
-    $discount_percentage = 15; // Example: 15% off
-    $discount = ($subtotal * $discount_percentage) / 100;
-}
-
 $total = $subtotal - $discount + $shipping_fee;
-
-// Cash on Delivery advance payment
-$cod_advance = 200;
-$cod_remaining = $total - $cod_advance;
-
-// Get user data if logged in
-$user_data = [];
-if (isset($_SESSION['user_id'])) {
-    $user_sql = "SELECT * FROM users WHERE id = ?";
-    $user_stmt = $conn->prepare($user_sql);
-    $user_stmt->bind_param("i", $_SESSION['user_id']);
-    $user_stmt->execute();
-    $user_result = $user_stmt->get_result();
-    $user_data = $user_result->fetch_assoc();
-}
 
 $contact = contact_us();
 ?>
@@ -162,17 +141,10 @@ $contact = contact_us();
     <meta charset="utf-8">
     <meta http-equiv="x-ua-compatible" content="ie=edge">
     <title>Checkout | Beastline</title>
-    <meta name="description" content="">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <!-- Favicon -->
     <link rel="shortcut icon" type="image/x-icon" href="<?= $site ?>assets/img/favicon/favicon.ico">
 
-    <!-- Favicon -->
-    <link rel="shortcut icon" type="image/x-icon" href="<?= $site ?>assets/img/favicon/favicon.ico">
-
-    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
-    <!-- CSS 
-    ========================= -->
     <!--bootstrap min css-->
     <link rel="stylesheet" href="<?= $site ?>assets/css/bootstrap.min.css">
     <!--owl carousel min css-->
@@ -197,103 +169,128 @@ $contact = contact_us();
     <!-- Main Style CSS -->
     <link rel="stylesheet" href="<?= $site ?>assets/css/style.css">
 
-    <!-- Razorpay -->
-    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <!--modernizr min js here-->
+    <script src="<?= $site ?>assets/js/vendor/modernizr-3.7.1.min.js"></script>
+    <?php include_once "includes/meta_pixel.php" ?>
 
-    <!-- Checkout Custom CSS -->
     <style>
-        .payment-method-option {
-            border: 2px solid #e0e0e0;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 15px;
-            cursor: pointer;
-            transition: all 0.3s;
+        .checkout-container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 0 15px;
         }
 
-        .payment-method-option:hover {
-            border-color: #e50010;
+        .checkout-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            margin-bottom: 20px;
         }
 
-        .payment-method-option.selected {
-            border-color: #e50010;
-            background-color: #fff8f8;
-        }
-
-        .payment-method-option input[type="radio"] {
-            margin-right: 10px;
-        }
-
-        .payment-method-option label {
-            margin: 0;
-            font-weight: 500;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-        }
-
-        .payment-method-details {
-            margin-top: 10px;
-            padding: 10px;
+        .card-header {
             background: #f8f9fa;
-            border-radius: 5px;
-            font-size: 14px;
+            padding: 20px 25px;
+            border-bottom: 1px solid #eee;
+            font-weight: 600;
+            font-size: 18px;
+        }
+
+        .card-body {
+            padding: 25px;
+        }
+
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .order-item:last-child {
+            border-bottom: none;
+        }
+
+        .item-details {
+            flex: 2;
+        }
+
+        .item-name {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .item-meta {
+            font-size: 13px;
             color: #666;
         }
 
-        .cod-info {
-            color: #e50010;
-            font-weight: 500;
-            margin-top: 10px;
+        .item-price {
+            font-weight: 600;
+            min-width: 100px;
+            text-align: right;
         }
 
-        .cod-breakdown {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 5px;
-            padding: 10px;
-            margin-top: 10px;
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
         }
 
-        .cod-breakdown p {
-            margin: 5px 0;
-            font-size: 14px;
+        .summary-row.total {
+            font-size: 18px;
+            font-weight: 700;
+            border-bottom: none;
+            padding-top: 15px;
+            color: #000;
         }
 
-        .razorpay-logo {
-            height: 25px;
-            margin-left: 10px;
+        .magic-checkout-btn {
+            width: 100%;
+            padding: 16px;
+            background: #0f0f0f;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 20px;
         }
 
-        /* Mobile Responsive */
-        @media (max-width: 768px) {
-            .checkout_form {
-                padding: 15px;
-            }
-
-            .payment-method-option {
-                padding: 12px;
-            }
-
-            .order_table {
-                font-size: 14px;
-            }
-
-            .cod-breakdown {
-                font-size: 13px;
-            }
+        .magic-checkout-btn:hover {
+            background: #333;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
         }
 
-        /* Form Validation */
-        .error-message {
-            color: #dc3545;
-            font-size: 14px;
-            margin-top: 5px;
-            display: none;
+        .magic-checkout-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
         }
 
-        .form-control.error {
-            border-color: #dc3545;
+        .login-prompt {
+            background: #e3f2fd;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .login-link {
+            color: #1976d2;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .login-link:hover {
+            text-decoration: underline;
         }
 
         .loading-overlay {
@@ -310,56 +307,39 @@ $contact = contact_us();
         }
 
         .loading-spinner {
-            color: #fff;
-            font-size: 20px;
+            background: white;
+            padding: 20px 30px;
+            border-radius: 10px;
+            font-size: 18px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
         }
 
-        /* Order Summary */
-        .order-summary-mobile {
-            display: none;
-            background: #fff;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        .badge-cod {
+            background: #ff9800;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-left: 10px;
         }
 
-        @media (max-width: 768px) {
-            .order-summary-mobile {
-                display: block;
-            }
-
-            .order_table {
-                display: none;
-            }
+        .secure-badge {
+            text-align: center;
+            margin-top: 15px;
+            color: #666;
+            font-size: 13px;
         }
 
-        .summary-item {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            font-size: 14px;
-        }
-
-        .summary-total {
-            font-weight: 600;
-            font-size: 16px;
-            margin-top: 10px;
-            padding-top: 10px;
-            border-top: 1px solid #eee;
+        .secure-badge i {
+            color: #28a745;
+            margin-right: 5px;
         }
     </style>
-
-    <!--modernizr min js here-->
-    <script src="<?= $site ?>assets/js/vendor/modernizr-3.7.1.min.js"></script>
-
 </head>
 
 <body>
 
-    <!--header area start-->
-    <?php include_once "includes/header.php" ?>
-    <!--header area end-->
+    <?php include_once "includes/header.php"; ?>
 
     <!--breadcrumbs area start-->
     <div class="breadcrumbs_area">
@@ -378,634 +358,404 @@ $contact = contact_us();
         </div>
     </div>
     <!--breadcrumbs area end-->
+    <div class="container">
+        <div class="checkout-container">
+
+            <?php if ($isBuyNow): ?>
+                <div class="alert alert-info">
+                    <i class="fa fa-bolt"></i> <strong>Express Checkout:</strong> You're purchasing a single item
+                </div>
+            <?php endif; ?>
+
+            <!-- Login Prompt for Guest Users -->
+            <?php if (!isset($_SESSION['user_id'])): ?>
+                <div class="login-prompt">
+                    <span>
+                        <i class="fa fa-user"></i>
+                        <strong>Returning customer?</strong> Login for faster checkout
+                    </span>
+                    <a href="<?= $site ?>user-login?redirect=checkout" class="login-link">
+                        Login <i class="fa fa-arrow-right"></i>
+                    </a>
+                </div>
+            <?php endif; ?>
+
+            <div class="row">
+                <!-- Main Order Summary -->
+                <div class="col-md-8">
+                    <div class="checkout-card">
+                        <div class="card-header">
+                            <i class="fa fa-shopping-bag me-2"></i> Order Summary (<?= $total_quantity ?> items)
+                        </div>
+                        <div class="card-body">
+                            <?php foreach ($cart_items as $item_data):
+                                $product = $item_data['product'];
+                                $cart_item = $item_data['cart_item'];
+                            ?>
+                                <div class="order-item">
+                                    <div class="item-details">
+                                        <div class="item-name">
+                                            <?= htmlspecialchars($product['pro_name']) ?>
+                                        </div>
+                                        <div class="item-meta">
+                                            <?php if (!empty($cart_item['size'])): ?>
+                                                <span class="me-3">Size: <?= $cart_item['size'] ?></span>
+                                            <?php endif; ?>
+                                            <?php if (!empty($cart_item['color'])): ?>
+                                                <span>Color: <?= $cart_item['color'] ?></span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                    <div class="item-price">
+                                        ₹<?= number_format($cart_item['price'], 2) ?> × <?= $cart_item['quantity'] ?>
+                                        <br>
+                                        <small class="text-muted">Total: ₹<?= number_format($item_data['item_total'], 2) ?></small>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    </div>
+
+                    <!-- COD Information Card -->
+                    <div class="checkout-card mt-3">
+                        <div class="card-header">
+                            <i class="fa fa-truck me-2"></i> Delivery Information
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-2">
+                                <i class="fa fa-check-circle text-success"></i>
+                                Free shipping on orders above ₹1000
+                            </p>
+                            <p class="mb-0">
+                                <i class="fa fa-clock-o"></i>
+                                Estimated delivery: 3-5 business days
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Price Summary Sidebar -->
+                <div class="col-md-4">
+                    <div class="checkout-card">
+                        <div class="card-header">
+                            <i class="fa fa-calculator me-2"></i> Price Details
+                        </div>
+                        <div class="card-body">
+                            <div class="summary-row">
+                                <span>Subtotal</span>
+                                <span>₹<?= number_format($subtotal, 2) ?></span>
+                            </div>
+
+                            <?php if ($discount > 0): ?>
+                                <div class="summary-row" style="color: #28a745;">
+                                    <span>Discount</span>
+                                    <span>-₹<?= number_format($discount, 2) ?></span>
+                                </div>
+                            <?php endif; ?>
+
+                            <div class="summary-row">
+                                <span>Shipping</span>
+                                <span>
+                                    <?php if ($shipping_fee == 0): ?>
+                                        <span class="text-success">Free</span>
+                                    <?php else: ?>
+                                        ₹<?= number_format($shipping_fee, 2) ?>
+                                    <?php endif; ?>
+                                </span>
+                            </div>
+
+                            <div class="summary-row total">
+                                <span>Total Amount</span>
+                                <span class="text-primary">₹<?= number_format($total, 2) ?></span>
+                            </div>
+
+                            <!-- Payment Method Selection -->
+                            <div class="mt-4 d-none">
+                                <h6 class="fw-bold mb-3">Payment Method</h6>
+
+                                <!-- Razorpay Option (Selected by default) -->
+                                <div class="payment-option mb-3 p-3 border rounded selected" style="border-color: #0f0f0f !important; background: #fafafa;">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="payment_method" id="razorpayPayment" value="razorpay" checked>
+                                        <label class="form-check-label fw-bold" for="razorpayPayment">
+                                            <img src="<?= $site ?>assets/img/payment/razorpay-logo.jpg" alt="Razorpay" style="height: 25px;" class="me-2">
+                                            Razorpay (Cards, UPI, NetBanking)
+                                        </label>
+                                    </div>
+                                    <p class="text-muted small mt-2 mb-0 ms-4">
+                                        <i class="fa fa-lock"></i> Secure payment by Razorpay
+                                    </p>
+                                </div>
+
+                                <!-- COD Option -->
+                                <div class="payment-option mb-3 p-3 border rounded">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="payment_method" id="codPayment" value="cod">
+                                        <label class="form-check-label fw-bold" for="codPayment">
+                                            Cash on Delivery (COD)
+                                            <span class="badge-cod">Advance ₹200</span>
+                                        </label>
+                                    </div>
+                                    <p class="text-muted small mt-2 mb-0 ms-4">
+                                        Pay ₹200 now online, remaining ₹<?= number_format($total - 200, 2) ?> at delivery
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- Terms Checkbox -->
+                            <div class="form-check mt-3">
+                                <input class="form-check-input" type="checkbox" id="termsCheckbox" checked>
+                                <label class="form-check-label small" for="termsCheckbox">
+                                    I agree to the <a href="<?= $site ?>terms" target="_blank">Terms & Conditions</a>
+                                </label>
+                            </div>
+
+                            <!-- Magic Checkout Button -->
+                            <button id="magicCheckoutBtn" class="magic-checkout-btn">
+                                <i class="fa fa-bolt me-2"></i> Proceed to Secure Checkout
+                            </button>
+
+                            <div class="secure-badge">
+                                <i class="fa fa-shield"></i> 100% Secure | PCI Compliant
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Loading Overlay -->
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-spinner">
-            <i class="fa fa-spinner fa-spin"></i> Processing...
+            <i class="fa fa-spinner fa-spin"></i> Processing your order...
         </div>
     </div>
-    <?php if ($isBuyNow): ?>
-        <div class="container mt-3">
-            <div class="alert alert-info alert-dismissible fade show" role="alert">
-                <i class="fa fa-bolt me-2"></i>
-                <strong>Express Checkout:</strong> You are checking out a single item via Buy Now.
-                <a href="<?= $site ?>cart" class="alert-link">Go to full cart</a>
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        </div>
-    <?php endif; ?>
 
-    <!--Checkout page section-->
-    <div class="Checkout_section" id="accordion">
-        <div class="container">
-            <?php if (isset($_SESSION['user_id'])): ?>
-                <div class="row">
-                    <div class="col-12">
-                        <div class="user-actions">
-                            <h3>
-                                <i class="fa fa-user" aria-hidden="true"></i>
-                                Welcome back, <?= htmlspecialchars($user_data['first_name'] ?? 'Customer') ?>!
-                                <a class="Returning" href="<?= $site ?>logout">Logout</a>
-                            </h3>
-                        </div>
-                    </div>
-                </div>
-            <?php else: ?>
-                <div class="row">
-                    <div class="col-12">
-                        <div class="user-actions">
-                            <h3>
-                                <i class="fa fa-file-o" aria-hidden="true"></i>
-                                Returning customer?
-                                <a class="Returning" href="#" data-bs-toggle="collapse" data-bs-target="#checkout_login" aria-expanded="true">Click here to login</a>
-                            </h3>
-                            <div id="checkout_login" class="collapse" data-parent="#accordion">
-                                <div class="checkout_info">
-                                    <p>If you have shopped with us before, please login to pre-fill your details.</p>
-                                    <form id="loginForm" action="<?= $site ?>ajax/login.php" method="POST">
-                                        <div class="form_group">
-                                            <label>Email <span>*</span></label>
-                                            <input type="email" name="email" required>
-                                        </div>
-                                        <div class="form_group">
-                                            <label>Password <span>*</span></label>
-                                            <input type="password" name="password" required>
-                                        </div>
-                                        <div class="form_group group_3 ">
-                                            <button type="submit">Login</button>
-                                            <label for="remember_box">
-                                                <input id="remember_box" name="remember" type="checkbox">
-                                                <span> Remember me </span>
-                                            </label>
-                                        </div>
-                                        <a href="<?= $site ?>forgot-password">Forgot your password?</a>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            <?php endif; ?>
-
-            <div class="checkout_form">
-                <form id="checkoutForm" method="POST">
-                    <div class="row">
-                        <div class="col-lg-6 col-md-6">
-                            <h3>Billing Details</h3>
-                            <div class="row">
-                                <div class="checkout_info">
-                                    <div class="row">
-                                        <div class="col-lg-6 mb-20">
-                                            <label>First Name <span>*</span></label><br>
-                                            <input type="text" name="billing_first_name"
-                                                value="<?= htmlspecialchars($user_data['first_name'] ?? '') ?>"
-                                                required>
-                                            <div class="error-message" id="billing_first_name_error"></div>
-                                        </div>
-                                        <div class="col-lg-6 mb-20">
-                                            <label>Last Name <span>*</span></label><br>
-                                            <input type="text" name="billing_last_name"
-                                                value="<?= htmlspecialchars($user_data['last_name'] ?? '') ?>"
-                                                required>
-                                            <div class="error-message" id="billing_last_name_error"></div>
-                                        </div>
-                                    </div>
-                                    <div class="row">
-                                        <div class="col-6 mb-20">
-                                            <label>Email Address <span>*</span></label><br>
-                                            <input type="email" name="billing_email"
-                                                value="<?= htmlspecialchars($user_data['email'] ?? '') ?>"
-                                                required>
-                                            <div class="error-message" id="billing_email_error"></div>
-                                        </div>
-                                        <div class="col-6 mb-20">
-                                            <label>Phone <span>*</span></label><br>
-                                            <input type="tel" name="billing_phone"
-                                                value="<?= htmlspecialchars($user_data['phone'] ?? '') ?>"
-                                                required pattern="[0-9]{10}">
-                                            <div class="error-message" id="billing_phone_error"></div>
-                                        </div>
-                                    </div>
-
-                                    <div class="col-12 mb-20">
-                                        <label>Street Address <span>*</span></label>
-                                        <input type="text" name="billing_address_1"
-                                            placeholder="House number and street name"
-                                            value="<?= htmlspecialchars($user_data['address'] ?? '') ?>"
-                                            required>
-                                        <div class="error-message" id="billing_address_1_error"></div>
-                                    </div>
-                                    <div class="col-12 mb-20">
-                                        <input type="text" name="billing_address_2"
-                                            placeholder="Apartment, suite, unit etc. (optional)"
-                                            value="<?= htmlspecialchars($user_data['address2'] ?? '') ?>">
-                                    </div>
-                                    <div class="row">
-                                        <div class="col-6 mb-20">
-                                            <label>Town / City <span>*</span></label>
-                                            <input type="text" name="billing_city"
-                                                value="<?= htmlspecialchars($user_data['city'] ?? '') ?>"
-                                                required>
-                                            <div class="error-message" id="billing_city_error"></div>
-                                        </div>
-                                        <div class="col-6 mb-20">
-                                            <label>State <span>*</span></label>
-                                            <input type="text" name="billing_state"
-                                                value="<?= htmlspecialchars($user_data['state'] ?? '') ?>"
-                                                required>
-                                            <div class="error-message" id="billing_state_error"></div>
-                                        </div>
-                                    </div>
-
-                                    <div class="row">
-                                        <div class="col-lg-6 mb-20">
-                                            <label>Postcode / ZIP <span>*</span></label>
-                                            <input type="text" name="billing_postcode"
-                                                value="<?= htmlspecialchars($user_data['postcode'] ?? '') ?>"
-                                                required>
-                                            <div class="error-message" id="billing_postcode_error"></div>
-                                        </div>
-                                        <div class="col-lg-6 mb-20">
-                                            <label>Country <span>*</span></label>
-                                            <input type="text" name="billing_country" id="billing_country"
-                                                value="<?= htmlspecialchars($user_data['country'] ?? '') ?>"
-                                                required>
-                                            <div class="error-message" id="billing_postcode_error"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-12 mb-20 mt-5">
-                                    <input id="different_shipping" name="different_shipping" type="checkbox">
-                                    <label for="different_shipping" data-bs-toggle="collapse" data-bs-target="#shipping_address_section" class="fw-bold">
-                                        Ship to a different address?
-                                    </label>
-                                    <div class="checkout_info">
-                                        <div id="shipping_address_section" class="collapse">
-                                            <div class="row mt-3">
-                                                <div class="col-lg-6 mb-20">
-                                                    <label>First Name <span>*</span></label>
-                                                    <input type="text" name="shipping_first_name">
-                                                </div>
-                                                <div class="col-lg-6 mb-20">
-                                                    <label>Last Name <span>*</span></label>
-                                                    <input type="text" name="shipping_last_name">
-                                                </div>
-                                                <div class="col-12 mb-20">
-                                                    <label>Email Address <span>*</span></label>
-                                                    <input type="email" name="shipping_email">
-                                                </div>
-                                                <div class="col-12 mb-20">
-                                                    <label>Phone <span>*</span></label>
-                                                    <input type="tel" name="shipping_phone">
-                                                </div>
-                                                <div class="col-12 mb-20">
-                                                    <label for="shipping_country">Country <span>*</span></label>
-                                                    <select class="select_option" name="shipping_country" id="shipping_country">
-                                                        <option value="">Select Country</option>
-                                                        <?php foreach ($countries as $code => $name): ?>
-                                                            <option value="<?= $code ?>"><?= htmlspecialchars($name) ?></option>
-                                                        <?php endforeach; ?>
-                                                    </select>
-                                                </div>
-                                                <div class="col-12 mb-20">
-                                                    <label>Street Address <span>*</span></label>
-                                                    <input type="text" name="shipping_address_1" placeholder="House number and street name">
-                                                </div>
-                                                <div class="col-12 mb-20">
-                                                    <input type="text" name="shipping_address_2" placeholder="Apartment, suite, unit etc. (optional)">
-                                                </div>
-                                                <div class="col-12 mb-20">
-                                                    <label>Town / City <span>*</span></label>
-                                                    <input type="text" name="shipping_city">
-                                                </div>
-                                                <div class="col-12 mb-20">
-                                                    <label>State <span>*</span></label>
-                                                    <input type="text" name="shipping_state">
-                                                </div>
-                                                <div class="col-lg-6 mb-20">
-                                                    <label>Postcode / ZIP <span>*</span></label>
-                                                    <input type="text" name="shipping_postcode">
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-12">
-                                    <div class="order-notes">
-                                        <label for="order_note" class="fw-bold">Order Notes</label>
-                                        <textarea id="order_note" name="order_note" placeholder="Notes about your order, e.g. special notes for delivery."></textarea>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-lg-6 col-md-6">
-                            <!-- Mobile Order Summary -->
-                            <div class="order-summary-mobile">
-                                <h4>Order Summary</h4>
-                                <?php foreach ($cart_items as $item_data): ?>
-                                    <div class="summary-item">
-                                        <span><?= htmlspecialchars($item_data['product']['pro_name']) ?> × <?= $item_data['cart_item']['quantity'] ?></span>
-                                        <span>₹<?= number_format($item_data['item_total'], 2) ?></span>
-                                    </div>
-                                <?php endforeach; ?>
-                                <div class="summary-item">
-                                    <span>Subtotal</span>
-                                    <span>₹<?= number_format($subtotal, 2) ?></span>
-                                </div>
-                                <?php if ($discount > 0): ?>
-                                    <div class="summary-item">
-                                        <span>Discount</span>
-                                        <span style="color: #28a745;">-₹<?= number_format($discount, 2) ?></span>
-                                    </div>
-                                <?php endif; ?>
-                                <div class="summary-item">
-                                    <span>Shipping</span>
-                                    <span>₹<?= number_format($shipping_fee, 2) ?></span>
-                                </div>
-                                <div class="summary-item summary-total">
-                                    <span>Total</span>
-                                    <span>₹<?= number_format($total, 2) ?></span>
-                                </div>
-                            </div>
-
-                            <h3>Your order</h3>
-                            <div class="order_table table-responsive">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>Product</th>
-                                            <th>Total</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php foreach ($cart_items as $item_data):
-                                            $product = $item_data['product'];
-                                            $cart_item = $item_data['cart_item'];
-                                        ?>
-                                            <tr>
-                                                <td><?= htmlspecialchars($product['pro_name']) ?>
-                                                    <?php if (!empty($cart_item['color'])): ?>
-                                                        <br><small>Color: <?= htmlspecialchars($cart_item['color']) ?></small>
-                                                    <?php endif; ?>
-                                                    <?php if (!empty($cart_item['size'])): ?>
-                                                        <br><small>Size: <?= htmlspecialchars($cart_item['size']) ?></small>
-                                                    <?php endif; ?>
-                                                    <strong> × <?= $cart_item['quantity'] ?></strong>
-                                                </td>
-                                                <td>₹<?= number_format($item_data['item_total'], 2) ?></td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                    <tfoot>
-                                        <tr>
-                                            <th>Cart Subtotal</th>
-                                            <td>₹<?= number_format($subtotal, 2) ?></td>
-                                        </tr>
-                                        <?php if ($discount > 0): ?>
-                                            <tr>
-                                                <th>Discount (<?= $discount_percentage ?>% off)</th>
-                                                <td style="color: #28a745;">-₹<?= number_format($discount, 2) ?></td>
-                                            </tr>
-                                        <?php endif; ?>
-                                        <tr>
-                                            <th>Shipping</th>
-                                            <td><strong>₹<?= number_format($shipping_fee, 2) ?></strong></td>
-                                        </tr>
-                                        <tr class="order_total">
-                                            <th>Order Total</th>
-                                            <td><strong>₹<?= number_format($total, 2) ?></strong></td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-
-                            <h3 class="mt-4">Payment Method</h3>
-                            <div class="payment_method">
-                                <!-- Razorpay Payment -->
-                                <div class="payment-method-option" id="razorpayOption">
-                                    <label>
-                                        <input class="input-radio" type="radio" name="payment_method" value="razorpay" required style="width: 15px;">
-                                        Razorpay (Credit/Debit Card, UPI, NetBanking, Wallets)
-                                        <img src="<?= $site ?>assets/img/payment/razorpay-logo.jpg" alt="Razorpay" class="razorpay-logo">
-                                    </label>
-                                    <div class="payment-method-details">
-                                        Secure payment by Razorpay. All major payment methods accepted.
-                                    </div>
-                                </div>
-
-                                <!-- Cash on Delivery -->
-                                <div class="payment-method-option" id="codOption">
-                                    <label>
-                                        <input type="radio" name="payment_method" value="cod" style="width: 15px;">
-                                        Cash on Delivery (COD)
-                                    </label>
-                                    <div class="payment-method-details">
-                                        Pay when you receive your order.
-                                        <div class="cod-info">
-                                            Note: ₹200 advance payment required for COD orders
-                                        </div>
-                                        <div class="cod-breakdown">
-                                            <p><strong>Payment Breakdown:</strong></p>
-                                            <p>Advance Payment (Online): ₹200</p>
-                                            <p>Remaining (Cash on Delivery): ₹<?= number_format($cod_remaining, 2) ?></p>
-                                            <p><strong>Total: ₹<?= number_format($total, 2) ?></strong></p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="error-message" id="payment_method_error"></div>
-
-                                <!-- Terms and Conditions -->
-                                <div class="form_group mt-4">
-                                    <label class="checkbox-label">
-                                        <input type="checkbox" name="terms" required>
-                                        I have read and agree to the website <a href="<?= $site ?>terms" target="_blank" class="text-danger">terms and conditions</a> *
-                                    </label>
-                                    <div class="error-message" id="terms_error"></div>
-                                </div>
-
-                                <!-- Hidden fields -->
-                                <input type="hidden" name="order_total" value="<?= $total ?>">
-                                <input type="hidden" name="cod_advance" value="<?= $cod_advance ?>">
-                                <input type="hidden" name="cod_remaining" value="<?= $cod_remaining ?>">
-
-                                <div class="order_button mt-4">
-                                    <button type="submit" id="placeOrderBtn" class="btn btn-primary btn-lg w-100">
-                                        Place Order
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-    <!--Checkout page section end-->
-
-    <!--footer area start-->
     <?php include_once "includes/footer.php"; ?>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js" integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <!-- Magic Checkout Script -->
+    <script src="https://checkout.razorpay.com/v1/magic-checkout.js"></script>
 
     <script>
         $(document).ready(function() {
-            // Initialize
-            initCheckout();
 
-            function initCheckout() {
-                // Payment method selection
-                $('.payment-method-option').click(function() {
-                    $('.payment-method-option').removeClass('selected');
-                    $(this).addClass('selected');
-                    $(this).find('input[type="radio"]').prop('checked', true);
-                });
+            // Payment option selection styling
+            $('.payment-option').click(function() {
+                $('.payment-option').removeClass('selected').css('border-color', '#dee2e6');
+                $(this).addClass('selected').css('border-color', '#0f0f0f');
+                $(this).find('input[type="radio"]').prop('checked', true);
+            });
 
-                // Form submission
-                $('#checkoutForm').submit(handleCheckoutSubmit);
-
-                // Login form
-                $('#loginForm').submit(handleLoginSubmit);
-            }
-
-            async function handleCheckoutSubmit(e) {
-                e.preventDefault();
-
-                if (!validateForm()) {
-                    return false;
-                }
-
+            // Magic Checkout Button Click
+            $('#magicCheckoutBtn').click(function() {
+                const btn = $(this);
                 const paymentMethod = $('input[name="payment_method"]:checked').val();
 
-                if (paymentMethod === 'razorpay') {
-                    await processRazorpayPayment();
-                } else if (paymentMethod === 'cod') {
-                    await processCODOrder();
-                } else {
-                    showError('payment_method_error', 'Please select a payment method');
+                // Validate terms
+                if (!$('#termsCheckbox').is(':checked')) {
+                    alert('Please agree to the terms and conditions');
+                    return;
                 }
-            }
 
-            async function processRazorpayPayment() {
+                btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Processing...');
                 showLoading();
 
-                try {
-                    const response = await $.ajax({
-                        url: '<?= $site ?>ajax/create-order.php',
-                        method: 'POST',
-                        dataType: 'json',
-                        data: {
-                            action: 'create_order',
-                            form_data: $('#checkoutForm').serialize()
-                        }
-                    });
+                // Prepare cart items
+                const cartItems = <?= json_encode($cart_items) ?>;
 
-                    if (response.success) {
-                        const options = {
-                            key: response.key_id,
-                            amount: response.final_amount * 100,
-                            currency: 'INR',
-                            name: 'Beastline',
-                            description: 'Order Payment',
-                            order_id: response.razorpay_order_id,
-                            handler: async function(razorpayResponse) {
-                                await verifyPayment(razorpayResponse, false);
-                            },
-                            prefill: {
-                                name: $('[name="billing_first_name"]').val() + ' ' + $('[name="billing_last_name"]').val(),
-                                email: $('[name="billing_email"]').val(),
-                                contact: $('[name="billing_phone"]').val()
-                            },
-                            theme: {
-                                color: '#0f0f0f'
-                            },
-                            modal: {
-                                ondismiss: function() {
-                                    hideLoading();
-                                    // Clear pending order if user dismisses modal
-                                    $.ajax({
-                                        url: '<?= $site ?>ajax/clear-pending-order.php',
-                                        method: 'POST'
-                                    });
-                                }
+                // Create order using your existing create-magic-order.php
+                $.ajax({
+                    url: '<?= $site ?>ajax/create-magic-order.php',
+                    method: 'POST',
+                    dataType: 'json',
+                    data: {
+                        cart_items: JSON.stringify(cartItems),
+                        form_data: $('#checkoutForm').serialize()
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            if (paymentMethod === 'razorpay') {
+                                openMagicCheckout(response, btn);
+                            } else {
+                                processCOD(response, btn);
                             }
-                        };
-
-                        const rzp = new Razorpay(options);
-                        rzp.open();
-                    } else {
-                        throw new Error(response.message || 'Error creating order');
-                    }
-                } catch (error) {
-                    hideLoading();
-                    console.error('Payment error:', error);
-                    alert('Error: ' + (error.message || 'Please try again'));
-                }
-            }
-
-            async function processCODOrder() {
-                showLoading();
-
-                try {
-                    const response = await $.ajax({
-                        url: '<?= $site ?>ajax/create-order.php',
-                        method: 'POST',
-                        dataType: 'json',
-                        data: {
-                            action: 'create_cod_order',
-                            form_data: $('#checkoutForm').serialize()
+                        } else {
+                            alert('❌ ' + (response.message || 'Failed to create order'));
+                            resetButton(btn);
+                            hideLoading();
                         }
-                    });
-
-                    if (response.success) {
-                        const options = {
-                            key: response.key_id,
-                            amount: response.cod_advance * 100,
-                            currency: 'INR',
-                            name: 'Beastline - COD Advance',
-                            description: 'COD Advance Payment',
-                            order_id: response.razorpay_order_id,
-                            handler: async function(razorpayResponse) {
-                                await verifyPayment(razorpayResponse, true);
-                            },
-                            prefill: {
-                                name: $('[name="billing_first_name"]').val() + ' ' + $('[name="billing_last_name"]').val(),
-                                email: $('[name="billing_email"]').val(),
-                                contact: $('[name="billing_phone"]').val()
-                            },
-                            theme: {
-                                color: '#0f0f0f'
-                            },
-                            modal: {
-                                ondismiss: function() {
-                                    hideLoading();
-                                    // Clear pending order if user dismisses modal
-                                    $.ajax({
-                                        url: '<?= $site ?>ajax/clear-pending-order.php',
-                                        method: 'POST'
-                                    });
-                                }
-                            }
-                        };
-
-                        const rzp = new Razorpay(options);
-                        rzp.open();
-                    } else {
-                        throw new Error(response.message || 'Error creating COD order');
-                    }
-                } catch (error) {
-                    hideLoading();
-                    console.error('COD error:', error);
-                    alert('Error: ' + (error.message || 'Please try again'));
-                }
-            }
-
-            async function verifyPayment(razorpayResponse, isCOD) {
-                showLoading();
-
-                try {
-                    const response = await $.ajax({
-                        url: '<?= $site ?>ajax/verify-payment.php',
-                        method: 'POST',
-                        dataType: 'json',
-                        data: {
-                            razorpay_payment_id: razorpayResponse.razorpay_payment_id,
-                            razorpay_order_id: razorpayResponse.razorpay_order_id,
-                            razorpay_signature: razorpayResponse.razorpay_signature,
-                            is_cod: isCOD
-                        }
-                    });
-
-                    if (response.success) {
-                        // Success! Order created in database
-                        window.location.href = '<?= $site ?>order-confirmation/' + response.order_id;
-                    } else {
-                        throw new Error(response.message || 'Payment verification failed');
-                    }
-                } catch (error) {
-                    hideLoading();
-                    console.error('Verification error:', error);
-                    alert('Error: ' + (error.message || 'Please contact support'));
-                }
-            }
-            async function updateCODStatus(orderId) {
-                try {
-                    const response = await $.ajax({
-                        url: '<?= $site ?>ajax/update-cod-status.php',
-                        method: 'POST',
-                        dataType: 'json',
-                        data: {
-                            order_id: orderId
-                        }
-                    });
-
-                    if (response.success) {
-                        window.location.href = '<?= $site ?>order-confirmation/' + orderId;
-                    } else {
-                        throw new Error(response.message || 'Failed to update COD status');
-                    }
-                } catch (error) {
-                    hideLoading();
-                    console.error('COD status error:', error);
-                    alert('Error: ' + (error.message || 'Please contact support'));
-                }
-            }
-
-            // Helper functions
-            function validateForm() {
-                let isValid = true;
-
-                // Clear errors
-                $('.error-message').hide().text('');
-                $('.form-control').removeClass('error');
-
-                // Validate required fields
-                const requiredFields = [
-                    'billing_first_name', 'billing_last_name', 'billing_email',
-                    'billing_phone', 'billing_address_1', 'billing_city',
-                    'billing_state', 'billing_postcode', 'billing_country'
-                ];
-
-                requiredFields.forEach(field => {
-                    const value = $(`[name="${field}"]`).val().trim();
-                    if (!value) {
-                        showError(`${field}_error`, 'This field is required');
-                        $(`[name="${field}"]`).addClass('error');
-                        isValid = false;
+                    },
+                    error: function(xhr) {
+                        console.error('Order creation error:', xhr.responseText);
+                        alert('❌ Failed to create order. Please try again.');
+                        resetButton(btn);
+                        hideLoading();
                     }
                 });
+            });
 
-                // Validate email
-                const email = $('[name="billing_email"]').val();
-                if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                    showError('billing_email_error', 'Please enter a valid email address');
-                    isValid = false;
-                }
+            function openMagicCheckout(orderData, btn) {
+                const options = {
+                    key: orderData.key_id,
+                    one_click_checkout: true,
+                    name: 'Beastline',
+                    order_id: orderData.razorpay_order_id,
+                    show_coupons: true,
 
-                // Validate phone
-                const phone = $('[name="billing_phone"]').val();
-                if (phone && !/^\d{10}$/.test(phone)) {
-                    showError('billing_phone_error', 'Please enter a valid 10-digit phone number');
-                    isValid = false;
-                }
+                    // API endpoints
+                    shipping_info_url: '<?= $site ?>ajax/shipping-info.php',
+                    get_promotions_url: '<?= $site ?>ajax/get-promotions.php',
+                    apply_promotion_url: '<?= $site ?>ajax/apply-promotion.php',
 
-                // Validate payment method
-                if (!$('input[name="payment_method"]:checked').val()) {
-                    showError('payment_method_error', 'Please select a payment method');
-                    isValid = false;
-                }
+                    // Prefill if user is logged in
+                    prefill: {
+                        name: '<?= $_SESSION['user_name'] ?? '' ?>',
+                        email: '<?= $_SESSION['user_email'] ?? '' ?>',
+                        contact: '<?= $_SESSION['user_phone'] ?? '' ?>'
+                    },
 
-                // Validate terms
-                if (!$('input[name="terms"]').is(':checked')) {
-                    showError('terms_error', 'You must agree to the terms and conditions');
-                    isValid = false;
-                }
+                    theme: {
+                        color: '#0f0f0f'
+                    },
 
-                return isValid;
+                    // ✅ IMPORTANT: Use 'handler' not 'onPaymentSuccess'
+                    handler: function(paymentResponse) {
+                        console.log('========== PAYMENT SUCCESS ==========');
+                        console.log('Payment Response:', paymentResponse);
+
+                        // Show verification message
+                        const notification = $('<div class="alert alert-info position-fixed top-0 start-50 translate-middle-x mt-3" style="z-index:9999;">Verifying your order...</div>').appendTo('body');
+
+                        // Verify payment
+                        $.ajax({
+                            url: '<?= $site ?>ajax/verify-payment.php',
+                            method: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify({
+                                razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                                razorpay_order_id: paymentResponse.razorpay_order_id,
+                                razorpay_signature: paymentResponse.razorpay_signature,
+                                is_cod: false
+                            }),
+                            dataType: 'json',
+                            success: function(verification) {
+                                notification.remove();
+                                if (verification.success) {
+                                    console.log('Redirecting to:', verification.confirmation_url);
+                                    window.location.href = verification.confirmation_url;
+                                } else {
+                                    alert('❌ Verification Failed: ' + verification.message);
+                                    resetButton(btn);
+                                    hideLoading();
+                                }
+                            },
+                            error: function(xhr) {
+                                notification.remove();
+                                console.error('Verification Error:', xhr.responseText);
+                                alert('❌ Verification failed. Please check console.');
+                                resetButton(btn);
+                                hideLoading();
+                            }
+                        });
+                    },
+
+                    modal: {
+                        ondismiss: function() {
+                            console.log('Modal dismissed');
+                            resetButton(btn);
+                            hideLoading();
+                            $.ajax({
+                                url: '<?= $site ?>ajax/clear-pending-order.php',
+                                method: 'POST'
+                            });
+                        }
+                    }
+                };
+
+                const rzp = new Razorpay(options);
+
+                rzp.on('payment.failed', function(response) {
+                    console.error('Payment failed:', response);
+                    alert('❌ Payment failed: ' + (response.error.description || 'Please try again'));
+                    resetButton(btn);
+                    hideLoading();
+                });
+
+                rzp.open();
+                hideLoading();
             }
 
-            function showError(elementId, message) {
-                $(`#${elementId}`).text(message).show();
+            function processCOD(orderData, btn) {
+                // For COD advance payment
+                const options = {
+                    key: orderData.key_id,
+                    one_click_checkout: true,
+                    name: 'Beastline - COD Advance',
+                    order_id: orderData.razorpay_order_id,
+
+                    prefill: {
+                        name: '<?= $_SESSION['user_name'] ?? '' ?>',
+                        email: '<?= $_SESSION['user_email'] ?? '' ?>',
+                        contact: '<?= $_SESSION['user_phone'] ?? '' ?>'
+                    },
+
+                    theme: {
+                        color: '#0f0f0f'
+                    },
+
+                    handler: function(paymentResponse) {
+                        console.log('COD Payment Success:', paymentResponse);
+
+                        const notification = $('<div class="alert alert-info position-fixed top-0 start-50 translate-middle-x mt-3" style="z-index:9999;">Processing your COD order...</div>').appendTo('body');
+
+                        $.ajax({
+                            url: '<?= $site ?>ajax/verify-payment.php',
+                            method: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify({
+                                razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                                razorpay_order_id: paymentResponse.razorpay_order_id,
+                                razorpay_signature: paymentResponse.razorpay_signature,
+                                is_cod: true
+                            }),
+                            dataType: 'json',
+                            success: function(verification) {
+                                notification.remove();
+                                if (verification.success) {
+                                    window.location.href = verification.confirmation_url;
+                                } else {
+                                    alert('❌ Verification Failed: ' + verification.message);
+                                    resetButton(btn);
+                                    hideLoading();
+                                }
+                            },
+                            error: function() {
+                                notification.remove();
+                                alert('❌ Verification failed. Please contact support.');
+                                resetButton(btn);
+                                hideLoading();
+                            }
+                        });
+                    },
+
+                    modal: {
+                        ondismiss: function() {
+                            resetButton(btn);
+                            hideLoading();
+                        }
+                    }
+                };
+
+                const rzp = new Razorpay(options);
+                rzp.on('payment.failed', function(response) {
+                    alert('❌ Payment failed: ' + (response.error.description || 'Please try again'));
+                    resetButton(btn);
+                    hideLoading();
+                });
+
+                rzp.open();
+                hideLoading();
             }
 
             function showLoading() {
@@ -1016,23 +766,16 @@ $contact = contact_us();
                 $('#loadingOverlay').hide();
             }
 
-            function handleLoginSubmit(e) {
-                e.preventDefault();
-                $.ajax({
-                    url: $(this).attr('action'),
-                    method: 'POST',
-                    data: $(this).serialize(),
-                    success: function(response) {
-                        if (response.success) {
-                            location.reload();
-                        } else {
-                            alert(response.message || 'Login failed');
-                        }
-                    }
-                });
+            function resetButton(btn) {
+                btn.prop('disabled', false).html('<i class="fa fa-bolt me-2"></i> Proceed to Secure Checkout');
             }
         });
     </script>
+
+    <!-- Hidden form for compatibility (not shown to users) -->
+    <form id="checkoutForm" method="POST" style="display: none;">
+        <!-- This form is hidden but needed for your existing create-magic-order.php -->
+    </form>
 
     <?php include_once "includes/footer-link.php"; ?>
 

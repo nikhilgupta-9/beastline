@@ -2135,7 +2135,7 @@ textarea:-ms-input-placeholder {
 }
 @media only screen and (max-width: 575px) {
   .discount_banner_area .banner_thumb img {
-    height: 265px;
+    height: 286px;
     object-fit: cover;
   }
 }
@@ -3022,8 +3022,8 @@ textarea:-ms-input-placeholder {
 
 .single_product {
   transition: 0.3s;
-  border: 1px solid #14141417;
-  padding: 10px;
+  border: 1px solid #1414140a;
+  padding: 1px;
 }
 .single_product:hover .add_to_cart {
   opacity: 1;
@@ -4676,7 +4676,7 @@ textarea:-ms-input-placeholder {
 
 .footer_social {
   text-align: center;
-  padding: 40px 0;
+  padding: 15px 0;
   border-top: 1px solid rgba(255, 255, 255, 0.07);
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
@@ -10724,7 +10724,6 @@ textarea:-ms-input-placeholder {
 
 .buy-now-button {
     width: auto;
-    min-width: 486px;
     max-width: 520px;
     background: #242424;
     color: #ffffff;

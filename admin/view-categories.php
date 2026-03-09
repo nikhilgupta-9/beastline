@@ -230,7 +230,7 @@ $stats = $stats_result ? mysqli_fetch_assoc($stats_result) : ['total' => 0, 'act
                             <div class="white_card_header">
                                 <div class="box_header m-0">
                                     <div class="main-title">
-                                        <h2 class="m-0">Category Management</h2>
+                                        <h3 class="m-0">Category Management</h3>
                                     </div>
                                     <div class="action-btn">
                                         <a href="add-categories.php" class="btn_1">Add New</a>

@@ -119,6 +119,7 @@ $stats = $stats_result ? mysqli_fetch_assoc($stats_result) : [
 ];
 
 // Build the query with filters for pagination
+// In your SQL query section, update the SELECT statement:
 $sql = "SELECT o.*, 
         u.first_name, u.last_name, u.email, u.mobile,
         (SELECT COUNT(*) FROM order_items oi WHERE oi.order_id = o.order_id) as item_count,
@@ -287,7 +288,7 @@ $result = mysqli_query($conn, $sql);
             color: #28a745;
         }
 
-        .badge-pending {
+        .badge-cod {
             background-color: rgba(220, 53, 69, 0.2);
             color: #dc3545;
         }
@@ -342,9 +343,9 @@ $result = mysqli_query($conn, $sql);
                                     <div class="main-title">
                                         <h2 class="m-0">Order Management</h2>
                                     </div>
-                                    <div class="action-btn">
-                                        <a href="add-order.php" class="btn_1">Add New Order</a>
-                                    </div>
+                                    <!--<div class="action-btn">-->
+                                    <!--    <a href="add-order.php" class="btn_1">Add New Order</a>-->
+                                    <!--</div>-->
                                 </div>
                             </div>
 
@@ -520,7 +521,7 @@ $result = mysqli_query($conn, $sql);
                                                     <th scope="col">Products</th>
                                                     <th scope="col">Amount</th>
                                                     <th scope="col">Order Status</th>
-                                                    <th scope="col">Payment Status</th>
+                                                    <!--<th scope="col">Payment Status</th>-->
                                                     <th scope="col">Payment Method</th>
                                                     <th scope="col">Date</th>
                                                     <th scope="col">Action</th>
@@ -558,11 +559,17 @@ $result = mysqli_query($conn, $sql);
 
                                                         // Payment Status badge
                                                         $paymentStatusClass = 'badge-pending';
-                                                        if (strtolower($row['payment_status']) === 'paid' || strtolower($row['payment_status']) === 'delivered') {
+                                                        if (strtolower($row['payment_method'] ?? '') === 'paid') {
                                                             $paymentStatusClass = 'badge-paid';
-                                                            $paymentStatusText = 'Paid';
-                                                        } else {
-                                                            $paymentStatusText = 'Pending';
+                                                            $paymentStatusText = 'Prepaid';
+                                                            
+                                                        }elseif( strtolower($row['payment_method'] ?? '') === 'prepaid') {
+                                                            $paymentStatusClass = 'badge-paid';
+                                                            $paymentStatusText = 'Prepaid';
+                                                        }
+                                                        else {
+                                                            $paymentStatusClass = 'badge-cod';
+                                                            $paymentStatusText = 'COD';
                                                         }
 
                                                         // Format date
@@ -582,8 +589,13 @@ $result = mysqli_query($conn, $sql);
                                                                 <a href="order_details.php?id=<?php echo $row['order_id']; ?>" class="text-primary">
                                                                     #<?php echo $row['order_id']; ?>
                                                                 </a>
+                                                                
                                                             </td>
-                                                            <td><?php echo htmlspecialchars($row['order_number']); ?></td>
+                                                            <td>
+                                                                <a href="order_details.php?id=<?php echo $row['order_id']; ?>">
+                                                                <?php echo htmlspecialchars($row['order_number']); ?> 
+                                                                </a>
+                                                                <br> <?php echo htmlspecialchars($row['razorpay_order_id'] ?? 'NA'); ?></td>
                                                             <td class="customer-info">
                                                                 <div><strong><?php echo $customerName; ?></strong></div>
                                                                 <?php if (!empty($row['email'])): ?>
@@ -620,12 +632,16 @@ $result = mysqli_query($conn, $sql);
                                                                     <?php echo $orderStatusText; ?>
                                                                 </span>
                                                             </td>
+                                                            <!--<td>-->
+                                                            <!--    <span class="badge <?php echo $paymentStatusClass; ?>">-->
+                                                            <!--        <?php echo $paymentStatusText; ?>-->
+                                                            <!--    </span>-->
+                                                            <!--</td>-->
                                                             <td>
-                                                                <span class="badge <?php echo $paymentStatusClass; ?>">
-                                                                    <?php echo $paymentStatusText; ?>
+                                                                <span class="badge <?php echo $paymentStatusClass; ?>">    
+                                                                <?php echo ucfirst(htmlspecialchars($row['payment_method'] ?? 'NA')); ?>
                                                                 </span>
                                                             </td>
-                                                            <td><?php echo ucfirst(htmlspecialchars($row['payment_method'])); ?></td>
                                                             <td class="text-center"><?php echo $orderDate; ?></td>
                                                             <td class="text-center">
                                                                 <div class="d-flex justify-content-center gap-2">

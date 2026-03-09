@@ -241,46 +241,7 @@ $contact = contact_us();
     <!--shop  area start-->
     <div class="shop_area shop_fullwidth mb-80">
         <div class="container">
-            <!-- Filter and Sort Section -->
-            <div class="row mb-30">
-                <div class="col-12">
-                    <div class="shop_toolbar_wrapper">
-                        <div class="row align-items-left">
-                            <!-- Center - Search -->
-                            <div class="col-lg-5 col-md-4">
-                                <form method="GET" action="<?= $site ?>shop/" class="search_form">
-                                    <div class="input-group">
-                                        <input type="text" name="search" class="form-control"
-                                            placeholder="Search products..." value="<?= htmlspecialchars($search) ?>">
-                                        <input type="hidden" name="category" value="<?= $category_id ?>">
-                                        <input type="hidden" name="brand" value="<?= $brand_id ?>">
-                                        <button type="submit" class="btn btn-primary">
-                                            <i class="pe-7s-search"></i>
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-
-                            <!-- Right Side - Sort -->
-                            <div class="col-lg-4 col-md-4">
-                                <div class="niceselect_option">
-                                    <form class="select_option" method="GET" action="<?= $site ?>shop/">
-                                        <input type="hidden" name="category" value="<?= $category_id ?>">
-                                        <input type="hidden" name="brand" value="<?= $brand_id ?>">
-                                        <input type="hidden" name="search" value="<?= htmlspecialchars($search) ?>">
-                                        <select name="sort" id="sort" class="form-control" onchange="this.form.submit()">
-                                            <option value="newest" <?= $sort_by == 'newest' ? 'selected' : '' ?>>Sort by newest</option>
-                                            <option value="price_low" <?= $sort_by == 'price_low' ? 'selected' : '' ?>>Price: Low to High</option>
-                                            <option value="price_high" <?= $sort_by == 'price_high' ? 'selected' : '' ?>>Price: High to Low</option>
-                                            <option value="popular" <?= $sort_by == 'popular' ? 'selected' : '' ?>>Most Popular</option>
-                                        </select>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            
 
             <!-- Products Section -->
             <div class="row">

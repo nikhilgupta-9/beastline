@@ -48,7 +48,7 @@ class LogisticsApi
                 'product_discount' => '0'
             ];
         }
-
+  
         // Get current date in correct format
         $orderDate = date('d-m-Y H:i:s');
 
@@ -99,7 +99,7 @@ class LogisticsApi
 
             'payment_mode' => $paymentMode,
 
-            // 'reseller_name' => '',
+            'reseller_name' => 'NA',
             'eway_bill_number' => '',
             'gst_number' => ''
         ];

@@ -5,16 +5,17 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
+date_default_timezone_set('Asia/Kolkata');
 
 // Database Configuration
-$local = true; // Set to false for live server
+$local = false; // Set to false for live server
 
 if ($local) {
     $host = 'localhost';
     $username = 'root';
     $password = '';
     $dbName = 'beast_line_db';
-    $site = "http://localhost/beastline/";
+    $site = "http://localhost/beast-line/";
 } else {
     $host = 'localhost';
     $username = 'u950539402_beastLine_db';
@@ -27,6 +28,7 @@ global $site;
 
 // Create Database Connection
 $conn = new mysqli($host, $username, $password, $dbName);
+mysqli_query($conn, "SET time_zone = '+05:30'");
 
 // Check Connection
 if ($conn->connect_error) {

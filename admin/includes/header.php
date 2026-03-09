@@ -76,6 +76,7 @@
             <a class="has-arrow" href="#"><i class="fas fa-users" style="color: #c0392b;"></i> <span>Customers</span></a>
             <ul>
                 <li><a href="all-customers.php">All Customers</a></li>
+                <li><a href="all-visitors.php">Visitors</a></li>
             </ul>
         </li>
 
