@@ -49,7 +49,7 @@ $banners = get_banner();
 
 	<!--modernizr min js here-->
 	<script src="<?= $site ?>assets/js/vendor/modernizr-3.7.1.min.js"></script>
-	<?php include_once "includes/meta_pixel.php" ?>
+	<?php require_once 'includes/header.php'; ?>
 </head>
 <style>
 	/* Banner Video Base Fix */
@@ -136,8 +136,13 @@ $banners = get_banner();
 								<div class="col-12">
 									<div class="slider_content">
 										<h2 class="">Get 30% Off &amp; Free Shipping</h2>
-										<h1 class="text-light"><?= $b['title'] ?></h1>
-										<p class="text-light"><?= $b['description'] ?></p>
+									<h1 class="text-light" style="text-shadow: 2px 2px 5px rgba(0,0,0,0.6);">
+                                        <?= $b['title'] ?>
+                                    </h1>
+                                    
+                                    <p class="text-light" style="text-shadow: 1px 1px 4px rgba(0,0,0,0.6);">
+                                        <?= $b['description'] ?>
+                                    </p>
 										<a href="<?= $b['link_url'] ?>">Shop Now +</a>
 									</div>
 								</div>

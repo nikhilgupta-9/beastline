@@ -8,7 +8,7 @@ ini_set('display_errors', 1);
 date_default_timezone_set('Asia/Kolkata');
 
 // Database Configuration
-$local = false; // Set to false for live server
+$local = true; // Set to false for live server
 
 if ($local) {
     $host = 'localhost';
